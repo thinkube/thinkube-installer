@@ -41,9 +41,28 @@ pub fn run() {
       // In production mode, use bundled backend from resources
       #[cfg(not(debug_assertions))]
       {
-        let resource_path = app.path().resource_dir()
-          .expect("Failed to get resource directory");
-        backend_dir = resource_path.join("backend");
+        match app.path().resource_dir() {
+          Ok(resource_path) => {
+            backend_dir = resource_path.join("backend");
+            println!("Resource directory: {}", resource_path.display());
+            println!("Backend directory: {}", backend_dir.display());
+
+            if !backend_dir.exists() {
+              eprintln!("ERROR: Backend directory not found at: {}", backend_dir.display());
+              eprintln!("Resource directory contents:");
+              if let Ok(entries) = std::fs::read_dir(&resource_path) {
+                for entry in entries.flatten() {
+                  eprintln!("  - {}", entry.path().display());
+                }
+              }
+              panic!("Backend directory not found in app bundle");
+            }
+          }
+          Err(e) => {
+            eprintln!("ERROR: Failed to get resource directory: {}", e);
+            panic!("Cannot access app resources");
+          }
+        }
         venv_dir = ".venv".to_string();
 
         // On macOS, check if venv exists and create it if needed (no post-install script support)
