@@ -36,7 +36,7 @@ open thinkube-installer.dmg
 
 2. **Build installer**:
    ```bash
-   ./scripts/build-all.sh
+   ./scripts/build.sh
    ```
 
 3. **Find packages**:
@@ -121,7 +121,7 @@ thinkube-installer/
 │   └── requirements.txt
 ├── scripts/
 │   ├── setup-build-env.sh   # Install build dependencies
-│   └── build-all.sh         # Build installer packages
+│   └── build.sh             # Build installer for current platform
 ├── test-dev.sh              # Run in development mode
 └── README.md
 ```
