@@ -97,6 +97,11 @@ cd "$PROJECT_DIR/frontend"
 npm install
 
 echo ""
+echo "🦀 Updating Rust dependencies..."
+cd "$PROJECT_DIR/frontend/src-tauri"
+cargo update
+
+echo ""
 echo "📦 Building installer..."
 cd "$PROJECT_DIR"
 npm run build
