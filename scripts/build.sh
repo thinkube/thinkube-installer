@@ -46,8 +46,20 @@ command -v cargo >/dev/null 2>&1 || {
     echo "   Install: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
     exit 1
 }
+
+RUST_VERSION=$(rustc --version | awk '{print $2}')
+REQUIRED_RUST="1.82.0"
 echo "✅ Rust: $(rustc --version)"
 echo "✅ Cargo: $(cargo --version)"
+
+# Check and upgrade Rust if needed
+if ! printf '%s\n%s\n' "$REQUIRED_RUST" "$RUST_VERSION" | sort -V -C; then
+    echo ""
+    echo "⚠️  Rust $RUST_VERSION detected, but Tauri v2.9.x requires Rust $REQUIRED_RUST or newer"
+    echo "🔄 Updating Rust to latest stable..."
+    rustup update stable
+    echo "✅ Rust updated: $(rustc --version)"
+fi
 
 command -v python3 >/dev/null 2>&1 || {
     echo "❌ Python 3 is required but not installed."
