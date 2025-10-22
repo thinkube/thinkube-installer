@@ -9,28 +9,29 @@
 set -e
 
 # Find backend in Tauri resources directory
-# Tauri installs to /usr/bin/thinkube-installer and resources are typically in /usr/lib
-BACKEND_DIR="/usr/lib/thinkube-installer/backend"
+# Tauri installs resources with the application name (which may have spaces)
+BACKEND_DIR=""
 
-# If not found, try finding it in the standard Tauri location
-if [ ! -d "$BACKEND_DIR" ]; then
-    # Look for backend in possible locations
-    for dir in /usr/lib/thinkube-installer /opt/thinkube-installer /usr/share/thinkube-installer; do
-        if [ -d "$dir/backend" ]; then
-            BACKEND_DIR="$dir/backend"
-            break
-        fi
-    done
-fi
+# Search for backend in possible locations (with and without spaces in name)
+for base_dir in "/usr/lib/thinkube Installer" "/usr/lib/thinkube-installer" "/opt/thinkube-installer" "/usr/share/thinkube-installer" "/usr/share/thinkube Installer"; do
+    if [ -d "$base_dir/backend" ]; then
+        BACKEND_DIR="$base_dir/backend"
+        break
+    fi
+done
 
 VENV_DIR="$BACKEND_DIR/.venv"
 
 echo "Setting up thinkube-installer backend environment..."
 
 # Check if backend directory exists
-if [ ! -d "$BACKEND_DIR" ]; then
+if [ -z "$BACKEND_DIR" ] || [ ! -d "$BACKEND_DIR" ]; then
     echo "ERROR: Backend directory not found"
-    echo "Searched locations: /usr/lib/thinkube-installer/backend, /opt/thinkube-installer/backend, /usr/share/thinkube-installer/backend"
+    echo "Searched locations:"
+    echo "  - /usr/lib/thinkube Installer/backend"
+    echo "  - /usr/lib/thinkube-installer/backend"
+    echo "  - /opt/thinkube-installer/backend"
+    echo "  - /usr/share/thinkube-installer/backend"
     exit 1
 fi
 
