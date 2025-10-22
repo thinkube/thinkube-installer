@@ -19,6 +19,7 @@ build/
 frontend/dist/
 backend/dist/
 .d2_cache/
+installers/
 
 # IDE
 .vscode/

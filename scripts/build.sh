@@ -124,6 +124,10 @@ echo ""
 
 # Show output packages
 BUNDLE_DIR="$PROJECT_DIR/frontend/src-tauri/target/release/bundle"
+INSTALLERS_DIR="$PROJECT_DIR/installers"
+
+# Create installers directory
+mkdir -p "$INSTALLERS_DIR"
 
 if [ "$PLATFORM" = "Linux" ]; then
     echo "📦 Linux packages created:"
@@ -136,12 +140,24 @@ if [ "$PLATFORM" = "Linux" ]; then
         cd "$BUNDLE_DIR/deb"
         sha256sum *.deb > SHA256SUMS
         echo ""
-        echo "📝 Checksums created: $BUNDLE_DIR/deb/SHA256SUMS"
+        echo "📝 Checksums created"
+
+        # Copy to installers directory
+        echo ""
+        echo "📁 Copying installers to friendly location..."
+        cp *.deb SHA256SUMS "$INSTALLERS_DIR/"
     fi
 elif [ "$PLATFORM" = "macOS" ]; then
     echo "📦 macOS packages created:"
     if [ -d "$BUNDLE_DIR/dmg" ]; then
         ls -lh "$BUNDLE_DIR/dmg/"*.dmg 2>/dev/null || echo "   No .dmg packages found"
+
+        # Copy DMG files
+        if ls "$BUNDLE_DIR/dmg/"*.dmg &> /dev/null; then
+            echo ""
+            echo "📁 Copying installers to friendly location..."
+            cp "$BUNDLE_DIR/dmg/"*.dmg "$INSTALLERS_DIR/"
+        fi
     fi
     if [ -d "$BUNDLE_DIR/macos" ]; then
         ls -lh "$BUNDLE_DIR/macos/"*.app 2>/dev/null || echo "   No .app bundles found"
@@ -151,4 +167,9 @@ fi
 echo ""
 echo "🎉 Build completed successfully!"
 echo ""
-echo "Output directory: $BUNDLE_DIR"
+echo "📦 Installers available at: $INSTALLERS_DIR"
+if [ "$PLATFORM" = "Linux" ]; then
+    ls -lh "$INSTALLERS_DIR"/*.deb 2>/dev/null
+elif [ "$PLATFORM" = "macOS" ]; then
+    ls -lh "$INSTALLERS_DIR"/*.dmg 2>/dev/null
+fi
