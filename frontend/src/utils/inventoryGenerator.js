@@ -188,14 +188,34 @@ export function generateDynamicInventory() {
     inventory.all.vars.primary_ingress_ip = networkConfig.cidr.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
     inventory.all.vars.secondary_ingress_ip = networkConfig.cidr.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.secondaryIngressOctet || "201")
   }
-  
+
+  // Container build architecture configuration
+  const buildArchitecture = sessionStorage.getItem('buildArchitecture') || 'both'
+  // Convert user selection to podman platform format
+  const platformMap = {
+    'amd64': 'linux/amd64',
+    'arm64': 'linux/arm64',
+    'both': 'linux/amd64,linux/arm64'
+  }
+  inventory.all.vars.container_build_platforms = platformMap[buildArchitecture]
+
   // Add baremetal servers from network configuration
+  const discoveredServers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
+
   configuredPhysicalServers.forEach(server => {
     const hostname = server.hostname
+
+    // Find architecture from discovered servers
+    const discoveredServer = discoveredServers.find(s => s.hostname === hostname || s.ip === server.ip)
+    const serverArch = discoveredServer?.architecture || 'x86_64'
+    // Normalize architecture name
+    const normalizedArch = serverArch.toLowerCase() === 'aarch64' ? 'arm64' :
+                          serverArch.toLowerCase() === 'arm64' ? 'arm64' : 'x86_64'
+
     const serverDef = {
       ansible_host: config.networkMode === 'overlay' ? server.zerotierIP : server.ip,
       lan_ip: server.ip,
-      arch: 'x86_64',
+      arch: normalizedArch,
       zerotier_enabled: config.networkMode === 'overlay'
     }
     

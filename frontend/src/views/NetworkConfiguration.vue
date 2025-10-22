@@ -298,7 +298,75 @@
       </div>
     </div>
 
+    <!-- Container Build Architecture -->
+    <div class="card bg-base-100 shadow-xl mb-6">
+      <div class="card-body">
+        <h2 class="card-title mb-4">Container Build Architecture</h2>
 
+        <div class="mb-4">
+          <p class="text-sm text-base-content text-opacity-70">
+            Choose which CPU architectures to build container images for. Detected architectures from your cluster:
+            <span class="font-mono font-semibold">{{ detectedArchitectures.join(', ') || 'None' }}</span>
+          </p>
+        </div>
+
+        <div class="form-control">
+          <div class="flex flex-col gap-3">
+            <label class="label cursor-pointer justify-start gap-4 p-4 bg-base-200 rounded-lg">
+              <input
+                v-model="buildArchitecture"
+                type="radio"
+                name="buildArch"
+                value="amd64"
+                class="radio radio-primary"
+              />
+              <div class="flex flex-col flex-1">
+                <span class="label-text font-medium">AMD64 (x86_64) only</span>
+                <span class="label-text-alt text-sm mt-1">Faster builds, less storage. Recommended for Intel/AMD-only clusters</span>
+              </div>
+            </label>
+
+            <label class="label cursor-pointer justify-start gap-4 p-4 bg-base-200 rounded-lg">
+              <input
+                v-model="buildArchitecture"
+                type="radio"
+                name="buildArch"
+                value="arm64"
+                class="radio radio-primary"
+              />
+              <div class="flex flex-col flex-1">
+                <span class="label-text font-medium">ARM64 only</span>
+                <span class="label-text-alt text-sm mt-1">Faster builds, less storage. Recommended for ARM-only clusters (Raspberry Pi, Apple Silicon)</span>
+              </div>
+            </label>
+
+            <label class="label cursor-pointer justify-start gap-4 p-4 bg-base-200 rounded-lg">
+              <input
+                v-model="buildArchitecture"
+                type="radio"
+                name="buildArch"
+                value="both"
+                class="radio radio-primary"
+              />
+              <div class="flex flex-col flex-1">
+                <span class="label-text font-medium">Both (AMD64 + ARM64)</span>
+                <span class="label-text-alt text-sm mt-1">Slower builds, more storage. Required for mixed clusters or future expansion</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div v-if="buildArchitecture === 'both'" class="alert alert-info mt-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="text-sm">
+            <p class="font-medium">Multi-architecture builds will use QEMU emulation</p>
+            <p class="mt-1">Build time may be 2-3x longer and requires ~2x storage space. Choose this if you plan to add nodes with different architectures later.</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Baremetal Servers -->
     <div class="card bg-base-100 shadow-xl mb-6">
@@ -452,6 +520,9 @@ const networkConfig = ref({
 const physicalServers = ref([])
 const networkValidationErrors = ref([])
 
+// Container build architecture
+const buildArchitecture = ref('both')  // Default to 'both' for maximum compatibility
+
 // ZeroTier API state
 const zerotierLoading = ref(false)
 const zerotierError = ref('')
@@ -465,6 +536,27 @@ const discoveredServers = ref([])
 const controllerOctet = ref('')
 
 // Computed
+
+// Detect architectures from discovered servers
+const detectedArchitectures = computed(() => {
+  const servers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
+  const architectures = new Set()
+
+  servers.forEach(server => {
+    if (server.architecture) {
+      // Normalize architecture names
+      const arch = server.architecture.toLowerCase()
+      if (arch === 'x86_64' || arch === 'amd64') {
+        architectures.add('amd64')
+      } else if (arch === 'aarch64' || arch === 'arm64') {
+        architectures.add('arm64')
+      }
+    }
+  })
+
+  return Array.from(architectures).sort()
+})
+
 const ipConflicts = computed(() => {
   const conflicts = []
   const ipToServers = {}
@@ -936,6 +1028,11 @@ watch([physicalServers, networkConfig], () => {
   // Any additional validation logic can go here
 }, { deep: true })
 
+// Watch build architecture and save to sessionStorage
+watch(buildArchitecture, (newValue) => {
+  sessionStorage.setItem('buildArchitecture', newValue)
+})
+
 // Function to get cluster network from node information
 const getClusterNetwork = () => {
   // Get the network info from the nodes, not from the installer machine
@@ -1047,7 +1144,20 @@ onMounted(async () => {
   
   // Set the discovered servers for other uses
   discoveredServers.value = serversToUse
-  
+
+  // Auto-suggest build architecture based on detected servers
+  const savedBuildArch = sessionStorage.getItem('buildArchitecture')
+  if (savedBuildArch) {
+    buildArchitecture.value = savedBuildArch
+  } else if (detectedArchitectures.value.length === 1) {
+    // Only one architecture detected - suggest building for that only
+    buildArchitecture.value = detectedArchitectures.value[0]
+  } else if (detectedArchitectures.value.length > 1) {
+    // Mixed architectures - suggest building for both
+    buildArchitecture.value = 'both'
+  }
+  // else keep default 'both' for safety
+
   // Check if we're running from an external controller
   const hasLocalServer = discoveredServers.value.some(server => server.is_local)
   isExternalController.value = !hasLocalServer && discoveredServers.value.length > 0
