@@ -28,12 +28,11 @@ pub fn run() {
       // In development mode, use local backend directory
       #[cfg(debug_assertions)]
       {
+        // Backend is now in frontend/src-tauri/backend
         backend_dir = std::env::current_dir()
           .unwrap()
-          .parent()
-          .unwrap()
-          .parent()
-          .unwrap()
+          .join("frontend")
+          .join("src-tauri")
           .join("backend");
         venv_dir = "venv-test".to_string();
       }
