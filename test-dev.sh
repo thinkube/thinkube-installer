@@ -200,7 +200,7 @@ trap cleanup EXIT INT TERM
 # 1. Backend Setup (don't start it, just prepare)
 echo -e "\n1️⃣  Preparing FastAPI Backend"
 echo "------------------------"
-cd backend
+cd frontend/src-tauri/backend
 
 # Use a different venv name to avoid masking the installer's ~/.venv
 BACKEND_VENV="venv-test"
@@ -219,7 +219,7 @@ deactivate
 
 echo "✅ Backend is ready (will be started by Tauri)"
 
-cd ..
+cd ../../..
 
 # 2. Test Tauri App
 echo -e "\n2️⃣  Testing Tauri App"

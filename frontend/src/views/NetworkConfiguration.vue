@@ -496,7 +496,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { generateDynamicInventory, inventoryToYAML } from '../utils/inventoryGenerator.js'
-import axios from 'axios'
+import axios from '@/utils/axios'
 
 const router = useRouter()
 

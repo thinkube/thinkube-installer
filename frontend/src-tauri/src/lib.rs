@@ -28,11 +28,9 @@ pub fn run() {
       // In development mode, use local backend directory
       #[cfg(debug_assertions)]
       {
-        // Backend is now in frontend/src-tauri/backend
+        // In dev mode, cargo runs from frontend/src-tauri/, so backend is just ./backend
         backend_dir = std::env::current_dir()
           .unwrap()
-          .join("frontend")
-          .join("src-tauri")
           .join("backend");
         venv_dir = "venv-test".to_string();
       }
@@ -141,13 +139,6 @@ pub fn run() {
         window.show().unwrap();
         window.center().unwrap();
         window.set_focus().unwrap();
-        
-        // Open devtools in development mode
-        #[cfg(debug_assertions)]
-        {
-          println!("Opening devtools...");
-          window.open_devtools();
-        }
       } else {
         println!("WARNING: Main window not found!");
       }

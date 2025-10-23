@@ -174,7 +174,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '@/utils/axios'
 import PlaybookExecutorStream from '@/components/PlaybookExecutorStream.vue'
 import { saveCheckpoint, getCheckpoint, STEPS } from '@/utils/installerState'
 

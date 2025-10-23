@@ -6,10 +6,18 @@
 import axios from 'axios'
 
 // Configure axios defaults
-const isTauri = window.__TAURI__ !== undefined
-const baseURL = isTauri || (window.location.protocol === 'http:' && window.location.hostname === 'localhost') 
-  ? 'http://localhost:8000' 
+const isTauri = window.__TAURI__ !== undefined || window.location.protocol === 'tauri:'
+const baseURL = isTauri || (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
+  ? 'http://localhost:8000'
   : ''
+
+console.log('=== AXIOS CONFIG DEBUG ===')
+console.log('window.__TAURI__:', window.__TAURI__)
+console.log('isTauri:', isTauri)
+console.log('window.location.protocol:', window.location.protocol)
+console.log('window.location.hostname:', window.location.hostname)
+console.log('baseURL:', baseURL)
+console.log('=========================')
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
@@ -27,6 +35,7 @@ axiosInstance.interceptors.request.use(
     if (config.url && !config.url.startsWith('/api')) {
       config.url = `/api${config.url}`
     }
+    console.log('Axios request:', config.baseURL + config.url)
     return config
   },
   (error) => {

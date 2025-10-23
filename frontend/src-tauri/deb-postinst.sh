@@ -12,8 +12,8 @@ set -e
 # Tauri installs resources with the application name (which may have spaces)
 BACKEND_DIR=""
 
-# Search for backend in possible locations (with and without spaces in name)
-for base_dir in "/usr/lib/thinkube Installer" "/usr/lib/thinkube-installer" "/opt/thinkube-installer" "/usr/share/thinkube-installer" "/usr/share/thinkube Installer"; do
+# Search for backend in possible locations
+for base_dir in "/usr/lib/thinkube-installer" "/opt/thinkube-installer" "/usr/share/thinkube-installer"; do
     if [ -d "$base_dir/backend" ]; then
         BACKEND_DIR="$base_dir/backend"
         break
@@ -28,7 +28,6 @@ echo "Setting up thinkube-installer backend environment..."
 if [ -z "$BACKEND_DIR" ] || [ ! -d "$BACKEND_DIR" ]; then
     echo "ERROR: Backend directory not found"
     echo "Searched locations:"
-    echo "  - /usr/lib/thinkube Installer/backend"
     echo "  - /usr/lib/thinkube-installer/backend"
     echo "  - /opt/thinkube-installer/backend"
     echo "  - /usr/share/thinkube-installer/backend"
