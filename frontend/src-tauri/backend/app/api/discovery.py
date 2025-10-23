@@ -31,7 +31,7 @@ async def get_real_hardware_info(ip_address: str, username: str = "thinkube", pa
     is_local = ip_address in local_ips
     
     # Create a bash script that collects all hardware info in one go
-    hardware_script = '''#!/bin/bash
+    hardware_script = r'''#!/bin/bash
 # Collect all hardware information in one script to minimize SSH connections
 
 # Initialize output

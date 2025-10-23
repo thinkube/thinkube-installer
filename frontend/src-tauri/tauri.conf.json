@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "thinkube Installer",
+  "productName": "thinkube-installer",
   "version": "0.1.0",
   "identifier": "org.thinkube.installer",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "thinkube Installer",
+        "title": "Thinkube Installer",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
