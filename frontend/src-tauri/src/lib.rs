@@ -3,9 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-use std::process::Command;
+use std::process::{Command, Child};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::Manager;
+
+// State to hold the backend process
+struct BackendProcess(Mutex<Option<Child>>);
 
 #[tauri::command]
 fn get_config_flags() -> (bool, bool) {
@@ -100,10 +104,12 @@ pub fn run() {
 
       println!("Backend directory: {}", backend_dir.display());
 
-      // Start backend based on OS
+      // Start backend based on OS and store the process handle
+      let backend_child;
+
       #[cfg(target_os = "linux")]
       {
-        Command::new("bash")
+        backend_child = Command::new("bash")
           .arg("-c")
           .arg(format!("cd {} && source {}/bin/activate && python3 main.py",
                        backend_dir.display(), venv_dir))
@@ -113,13 +119,16 @@ pub fn run() {
 
       #[cfg(target_os = "macos")]
       {
-        Command::new("bash")
+        backend_child = Command::new("bash")
           .arg("-c")
           .arg(format!("cd {} && source {}/bin/activate && python3 main.py",
                        backend_dir.display(), venv_dir))
           .spawn()
           .expect("Failed to start backend");
       }
+
+      // Store the backend process in app state
+      app.manage(BackendProcess(Mutex::new(Some(backend_child))));
 
       // Give backend time to start
       std::thread::sleep(std::time::Duration::from_secs(3));
@@ -139,10 +148,26 @@ pub fn run() {
         window.show().unwrap();
         window.center().unwrap();
         window.set_focus().unwrap();
+
+        // Add cleanup handler for backend process when window closes
+        let app_handle = app.handle().clone();
+        window.on_window_event(move |event| {
+          if let tauri::WindowEvent::CloseRequested { .. } = event {
+            println!("Window closing, killing backend process...");
+            if let Some(backend_state) = app_handle.try_state::<BackendProcess>() {
+              if let Ok(mut child_opt) = backend_state.0.lock() {
+                if let Some(mut child) = child_opt.take() {
+                  let _ = child.kill();
+                  println!("Backend process killed");
+                }
+              }
+            }
+          }
+        });
       } else {
         println!("WARNING: Main window not found!");
       }
-      
+
       println!("Tauri setup complete");
       Ok(())
     })

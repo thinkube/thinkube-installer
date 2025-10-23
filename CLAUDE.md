@@ -205,7 +205,7 @@ When adding tests in the future:
 
 ### Testing Production Builds
 
-**IMPORTANT**: Do NOT run the binary directly from `target/release/app` - it will show a white screen because there's no backend venv.
+**IMPORTANT**: Do NOT run the binary directly from `target/release/thinkube-installer` - it will show a white screen because there's no backend venv.
 
 **Correct way to test production builds**:
 
@@ -222,7 +222,7 @@ When adding tests in the future:
 
 3. **Run the installed app**:
    ```bash
-   app  # From /usr/bin/app
+   thinkube-installer  # From /usr/bin/thinkube-installer
    ```
 
 4. **Check logs** if issues occur:

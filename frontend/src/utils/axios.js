@@ -6,7 +6,8 @@
 import axios from 'axios'
 
 // Configure axios defaults
-const isTauri = window.__TAURI__ !== undefined || window.location.protocol === 'tauri:'
+// Tauri v2 uses tauri: protocol, not window.__TAURI__
+const isTauri = window.location.protocol === 'tauri:'
 const baseURL = isTauri || (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
   ? 'http://localhost:8000'
   : ''

@@ -1,10 +1,10 @@
 [package]
-name = "app"
+name = "thinkube-installer"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+description = "Thinkube Kubernetes Homelab Installer"
+authors = ["Alejandro Martínez Corriá"]
+license = "Apache-2.0"
+repository = "https://github.com/thinkube/thinkube-installer"
 edition = "2021"
 rust-version = "1.71"
 
@@ -13,6 +13,10 @@ rust-version = "1.71"
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "thinkube-installer"
+path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

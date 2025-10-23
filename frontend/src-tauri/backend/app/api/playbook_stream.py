@@ -16,6 +16,8 @@ import tempfile
 import shutil
 from pathlib import Path
 
+from ..services.ansible_environment import ansible_environment
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["playbook-stream"])
@@ -79,11 +81,33 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
                 "message": f"Unknown playbook: {playbook_name}"
             })
             return
-            
-        # Build playbook path
-        thinkube_root = Path.home() / "thinkube"
+
+        # Initialize Ansible environment if needed
+        if not ansible_environment.is_initialized():
+            logger.info("Initializing Ansible environment")
+            success = await ansible_environment.initialize()
+            if not success:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Failed to initialize Ansible environment"
+                })
+                return
+
+        # Clone thinkube repository if needed
+        if not ansible_environment.is_thinkube_cloned():
+            logger.info("Cloning thinkube repository")
+            success = await ansible_environment.clone_thinkube()
+            if not success:
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Failed to clone thinkube repository"
+                })
+                return
+
+        # Build playbook path using cloned repository
+        thinkube_root = ansible_environment.get_thinkube_path()
         playbook_path = thinkube_root / playbook_relative_path
-        
+
         if not playbook_path.exists():
             await websocket.send_json({
                 "type": "error",

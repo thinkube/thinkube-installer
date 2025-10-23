@@ -14,7 +14,7 @@ Desktop application for deploying Thinkube to Ubuntu servers. The installer runs
 
 **Linux (Ubuntu, Debian)**:
 ```bash
-sudo dpkg -i thinkube-installer_1.0.0_amd64.deb
+sudo dpkg -i thinkube-installer_0.1.0_amd64.deb
 thinkube-installer
 ```
 
@@ -172,6 +172,21 @@ The installer automatically sets up its environment on first run:
 | Windows | ❌ | Not supported | Use Linux VM or native Linux/macOS |
 
 **Note**: Windows users should run the installer in a Linux VM (VirtualBox) or use a native Linux/macOS machine.
+
+## Troubleshooting
+
+### White Screen on NVIDIA GPU Systems
+
+If you experience a white screen on systems with NVIDIA GPUs (e.g., DGX Spark, RTX workstations), this is due to a known WebKit/GTK issue with NVIDIA's DMA-BUF renderer.
+
+**The installer includes an automatic workaround** (as of version 0.1.0+) that sets `WEBKIT_DISABLE_DMABUF_RENDERER=1`.
+
+**Optional: For better performance**, you can install the NVIDIA GBM library:
+```bash
+sudo apt install libnvidia-egl-gbm1
+```
+
+This issue is tracked at: https://bugs.webkit.org/show_bug.cgi?id=254901
 
 ## License
 

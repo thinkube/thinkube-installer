@@ -291,12 +291,14 @@ const startDiscovery = async () => {
     try {
       const sudoPassword = sessionStorage.getItem('sudoPassword')
       const currentUsername = sessionStorage.getItem('systemUsername')
-      
+
       const response = await axios.post('/api/discover-servers', {
         network_cidr: networkCIDR.value,
         test_mode: testMode.value,
         username: currentUsername,
         password: sudoPassword
+      }, {
+        timeout: 120000  // 2 minutes for network discovery
       })
       
       discoveredServers.value = response.data.servers || []
@@ -324,12 +326,14 @@ const startDiscovery = async () => {
     try {
       const sudoPassword = sessionStorage.getItem('sudoPassword')
       const currentUsername = sessionStorage.getItem('systemUsername')
-      
+
       const response = await axios.post('/api/discover-servers', {
         network_cidr: networkCIDR.value,
         test_mode: testMode.value,
         username: currentUsername,
         password: sudoPassword
+      }, {
+        timeout: 120000  // 2 minutes for network discovery
       })
       
       discoveredServers.value = response.data.servers || []

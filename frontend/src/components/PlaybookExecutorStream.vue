@@ -236,9 +236,10 @@ const startExecution = (params: any = {}) => {
 
 const connectWebSocket = (params: any) => {
   const encodedPlaybookName = encodeURIComponent(props.playbookName)
-  
+
   // In Tauri, we need to connect directly to localhost:8000
-  const isTauri = window.__TAURI__ !== undefined
+  // Tauri v2 uses tauri: protocol, not window.__TAURI__
+  const isTauri = window.location.protocol === 'tauri:'
   const wsBase = isTauri || (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
     ? 'ws://localhost:8000'
     : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`

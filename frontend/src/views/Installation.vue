@@ -126,11 +126,24 @@ const formatTime = (date) => {
 
 const connectWebSocket = () => {
   // In Tauri, we need to connect directly to localhost:8000
-  const isTauri = window.__TAURI__ !== undefined
-  const wsBase = isTauri || window.location.protocol === 'http:' && window.location.hostname === 'localhost'
-    ? 'ws://localhost:8000'
-    : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
-  
+  // Tauri v2 uses tauri: protocol, not window.__TAURI__
+  const isTauri = window.location.protocol === 'tauri:'
+
+  // Determine WebSocket base URL
+  let wsBase
+  if (isTauri) {
+    // Tauri app - always connect to localhost:8000
+    wsBase = 'ws://localhost:8000'
+  } else if (window.location.hostname === 'localhost' && window.location.port === '5173') {
+    // Development mode (Vite dev server)
+    wsBase = 'ws://localhost:8000'
+  } else {
+    // Production web deployment
+    wsBase = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`
+  }
+
+  console.log('WebSocket base URL:', wsBase, 'isTauri:', isTauri)
+
   // Try /ws first, then /api/ws
   let wsUrl = `${wsBase}/ws`
   let retryWithApi = true

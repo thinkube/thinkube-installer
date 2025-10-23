@@ -823,12 +823,13 @@ async def check_thinkube_installation():
 
 async def run_setup_script(sudo_password: str):
     """Background task to run the setup script"""
-    # Import shared state
+    # Import shared state and ansible environment
     from app.shared import app_state, broadcast_status
-    
+    from app.services.ansible_environment import ansible_environment
+
     try:
         logger.info("Starting thinkube setup script in background")
-        
+
         # Reset installation status
         app_state.installation_status["phase"] = "starting"
         app_state.installation_status["progress"] = 0
@@ -836,9 +837,39 @@ async def run_setup_script(sudo_password: str):
         app_state.installation_status["logs"] = []
         app_state.installation_status["errors"] = []
         await broadcast_status(app_state.installation_status)
-        
-        # Find the setup script - use 10_install-tools.sh directly
-        script_path = Path.home() / "thinkube" / "scripts" / "10_install-tools.sh"
+
+        # Initialize Ansible environment if needed
+        if not ansible_environment.is_initialized():
+            app_state.installation_status["current_task"] = "Setting up Ansible environment..."
+            app_state.installation_status["progress"] = 10
+            await broadcast_status(app_state.installation_status)
+
+            success = await ansible_environment.initialize()
+            if not success:
+                logger.error("Failed to initialize Ansible environment")
+                app_state.installation_status["phase"] = "failed"
+                app_state.installation_status["errors"].append("Failed to initialize Ansible environment")
+                await broadcast_status(app_state.installation_status)
+                return
+
+        # Clone thinkube repository if needed
+        if not ansible_environment.is_thinkube_cloned():
+            app_state.installation_status["current_task"] = "Cloning thinkube repository..."
+            app_state.installation_status["progress"] = 30
+            await broadcast_status(app_state.installation_status)
+
+            success = await ansible_environment.clone_thinkube()
+            if not success:
+                logger.error("Failed to clone thinkube repository")
+                app_state.installation_status["phase"] = "failed"
+                app_state.installation_status["errors"].append("Failed to clone thinkube repository")
+                await broadcast_status(app_state.installation_status)
+                return
+
+        # Get the cloned thinkube path and find the setup script
+        thinkube_path = ansible_environment.get_thinkube_path()
+        script_path = thinkube_path / "scripts" / "10_install-tools.sh"
+
         if not script_path.exists():
             logger.error(f"Setup script not found at {script_path}")
             app_state.installation_status["phase"] = "failed"
@@ -863,6 +894,8 @@ async def run_setup_script(sudo_password: str):
         
         # Update status to running
         app_state.installation_status["phase"] = "running"
+        app_state.installation_status["progress"] = 40
+        app_state.installation_status["current_task"] = "Running tool installation script..."
         app_state.installation_status["logs"].append("Starting installation script...")
         await broadcast_status(app_state.installation_status)
         
