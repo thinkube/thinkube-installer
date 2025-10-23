@@ -205,8 +205,11 @@ export function generateDynamicInventory() {
   configuredPhysicalServers.forEach(server => {
     const hostname = server.hostname
 
-    // Find architecture from discovered servers
-    const discoveredServer = discoveredServers.find(s => s.hostname === hostname || s.ip === server.ip)
+    // Find this server in discovered servers (for architecture and local detection)
+    const discoveredServer = discoveredServers.find(s =>
+      s.hostname === hostname || s.host === hostname || s.ip === server.ip
+    )
+
     const serverArch = discoveredServer?.architecture || 'x86_64'
     // Normalize architecture name
     const normalizedArch = serverArch.toLowerCase() === 'aarch64' ? 'arm64' :
@@ -218,20 +221,14 @@ export function generateDynamicInventory() {
       arch: normalizedArch,
       zerotier_enabled: config.networkMode === 'overlay'
     }
-    
+
     // Only add ZeroTier IP if overlay mode is enabled
     if (config.networkMode === 'overlay') {
       serverDef.zerotier_ip = server.zerotierIP
     }
-    
+
     // Special handling for local connection
     // The server discovery process should have marked which server is local
-    // First check if this server was marked as local during discovery
-    const discoveredServers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
-    const discoveredServer = discoveredServers.find(s => 
-      (s.hostname === hostname || s.host === hostname || s.ip === server.ip) && s.is_local
-    )
-    
     // ONLY set ansible_connection: local if we have explicit confirmation
     // that this server is the local machine (where the installer is running)
     if (discoveredServer?.is_local) {
@@ -324,7 +321,6 @@ export function generateDynamicInventory() {
   
   // Check if we're running from an external controller
   // If no physical server was marked as local, add a controller entry
-  const discoveredServers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
   const hasLocalServer = configuredPhysicalServers.some(server => {
     const discoveredServer = discoveredServers.find(s => 
       (s.hostname === server.hostname || s.host === server.hostname || s.ip === server.ip) && s.is_local
