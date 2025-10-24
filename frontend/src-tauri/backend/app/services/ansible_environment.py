@@ -212,6 +212,14 @@ class AnsibleEnvironment:
             temp_base = Path(tempfile.gettempdir())
             self.thinkube_clone_dir = temp_base / "thinkube-installer"
 
+            # Remove existing clone if it exists
+            if self.thinkube_clone_dir.exists():
+                logger.info(f"Removing existing clone at {self.thinkube_clone_dir}")
+                if progress_callback:
+                    progress_callback("Removing old clone...", 15)
+                shutil.rmtree(self.thinkube_clone_dir)
+                logger.info(f"Removed old clone")
+
             logger.info(f"Cloning to {self.thinkube_clone_dir}")
 
             # Clone the repository
