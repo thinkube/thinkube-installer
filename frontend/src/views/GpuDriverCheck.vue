@@ -250,8 +250,8 @@ async function detectGpuDrivers() {
 
     const config = JSON.parse(savedConfig)
 
-    // Load discovered servers
-    const discoveredServers = JSON.parse(localStorage.getItem('discoveredServers') || '[]')
+    // Load discovered servers from sessionStorage (where they're actually stored)
+    const discoveredServers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
     if (discoveredServers.length === 0) {
       error.value = 'No servers discovered. Please complete Server Discovery first.'
       loading.value = false
