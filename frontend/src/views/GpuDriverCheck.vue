@@ -268,30 +268,56 @@ async function detectGpuDrivers() {
     }))
 
     // Call detection API
+    console.log('Calling GPU detection API with', nodeList.length, 'nodes')
     const response = await axios.post('/api/gpu/detect-drivers', {
       nodes: nodeList
     })
 
-    nodes.value = response.data.nodes
-    summary.value = response.data.summary
+    console.log('GPU detection response:', response.data)
+
+    // Ensure response has expected structure
+    if (!response.data || !response.data.nodes) {
+      throw new Error('Invalid response from GPU detection API')
+    }
+
+    nodes.value = response.data.nodes || []
+    summary.value = response.data.summary || {
+      ready: 0,
+      needs_install: 0,
+      needs_upgrade: 0,
+      no_gpu: 0,
+      error: 0
+    }
 
     // Initialize decisions for nodes that need them
-    nodes.value.forEach(node => {
-      if (node.action_required === 'install' || node.action_required === 'upgrade') {
-        decisions.value[node.ip] = ''
-      }
-    })
+    if (Array.isArray(nodes.value)) {
+      nodes.value.forEach(node => {
+        if (node.action_required === 'install' || node.action_required === 'upgrade') {
+          decisions.value[node.ip] = ''
+        }
+      })
+    }
 
     loading.value = false
   } catch (e) {
     console.error('Error detecting GPU drivers:', e)
     error.value = e.response?.data?.detail || e.message || 'Failed to detect GPU drivers'
     loading.value = false
+    // Ensure nodes is always an array even on error
+    nodes.value = []
+    summary.value = {
+      ready: 0,
+      needs_install: 0,
+      needs_upgrade: 0,
+      no_gpu: 0,
+      error: 0
+    }
   }
 }
 
 // Computed: count nodes that need decisions
 const nodesNeedingDecisions = computed(() => {
+  if (!nodes.value || !Array.isArray(nodes.value)) return []
   return nodes.value.filter(node =>
     node.action_required === 'install' || node.action_required === 'upgrade'
   )
@@ -299,19 +325,24 @@ const nodesNeedingDecisions = computed(() => {
 
 // Computed: check if all decisions are made
 const allDecisionsMade = computed(() => {
-  return nodesNeedingDecisions.value.every(node => decisions.value[node.ip])
+  const neededDecisions = nodesNeedingDecisions.value
+  if (!neededDecisions || neededDecisions.length === 0) return true
+  return neededDecisions.every(node => decisions.value && decisions.value[node.ip])
 })
 
 // Computed: count nodes with each decision type
 const installCount = computed(() => {
+  if (!decisions.value) return 0
   return Object.values(decisions.value).filter(d => d === 'install').length
 })
 
 const abortCount = computed(() => {
+  if (!decisions.value) return 0
   return Object.values(decisions.value).filter(d => d === 'abort').length
 })
 
 const excludeCount = computed(() => {
+  if (!decisions.value) return 0
   return Object.values(decisions.value).filter(d => d === 'exclude').length
 })
 
