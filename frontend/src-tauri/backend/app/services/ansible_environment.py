@@ -11,7 +11,6 @@ import os
 import subprocess
 import sys
 import tempfile
-import uuid
 from pathlib import Path
 from typing import Optional, Callable
 
@@ -208,9 +207,10 @@ class AnsibleEnvironment:
             if progress_callback:
                 progress_callback("Creating temporary directory...", 10)
 
+            # Use fixed directory name for easier testing and debugging
+            # When playbook fails, you can edit /tmp/thinkube-installer/ and retry
             temp_base = Path(tempfile.gettempdir())
-            clone_dir_name = f"thinkube-installer-{uuid.uuid4().hex[:8]}"
-            self.thinkube_clone_dir = temp_base / clone_dir_name
+            self.thinkube_clone_dir = temp_base / "thinkube-installer"
 
             logger.info(f"Cloning to {self.thinkube_clone_dir}")
 
