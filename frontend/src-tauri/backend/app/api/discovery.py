@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["discovery"])
 
+# Fallback GPU name database for GPUs not yet in system pciids database
+# Only for newer datacenter/professional GPUs that lspci might show as "Device"
+GPU_FALLBACK_NAMES = {
+    "10de:2e12": "GB10 (DGX Spark / Blackwell)",
+    "10de:2330": "H100 PCIe",
+    "10de:2331": "H100 SXM5",
+    "10de:2339": "H100 NVL",
+    "10de:20b0": "A100 PCIe 40GB",
+    "10de:20b2": "A100 SXM4 40GB",
+    "10de:20f1": "A100 SXM4 80GB",
+}
+
 
 async def get_real_hardware_info(ip_address: str, username: str = "thinkube", password: str = None):
     """Get actual hardware information via SSH commands"""
@@ -315,6 +327,20 @@ echo "}"
                     else:
                         gpu_model = model_part.split('[')[0].strip()
                         logger.info(f"Fallback GPU model (no opening bracket): {gpu_model}")
+
+                    # If lspci shows "Device" (GPU not in pciids database), use our fallback
+                    if gpu_model == "Device" or gpu_model.startswith("Device "):
+                        # Extract PCI ID from the line (format: [10de:2e12])
+                        import re
+                        pci_match = re.search(r'\[([0-9a-f]{4}:[0-9a-f]{4})\]', line)
+                        if pci_match:
+                            pci_id = pci_match.group(1)
+                            if pci_id in GPU_FALLBACK_NAMES:
+                                gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
+                                logger.info(f"Using fallback name for {pci_id}: {gpu_model}")
+                            else:
+                                gpu_model = f"NVIDIA GPU ({pci_id})"
+                                logger.info(f"No fallback name for {pci_id}, showing PCI ID")
                 else:
                     gpu_model = "NVIDIA GPU"
                     logger.info("No parts after split, using default")
