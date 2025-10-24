@@ -251,12 +251,13 @@ async def verify_ssh_connectivity(ip_address: str, username: str = "thinkube", p
         except Exception as e:
             logger.info(f"IP {ip_address} socket binding failed: {e}")
     
+    # Log local detection but ALWAYS try SSH first (even for local IPs)
+    # This ensures password authentication is tested during discovery
     if is_local:
-        logger.info(f"Detected local server {ip_address}, using direct verification")
-        return await verify_local_server()
+        logger.info(f"Detected local server {ip_address}, but testing SSH anyway to verify password auth")
     else:
         logger.info(f"IP {ip_address} is not local, proceeding with SSH verification")
-    
+
     try:
         # Try SSH connection - use password if provided, otherwise try key-based
         if password:
@@ -328,6 +329,13 @@ async def verify_ssh_connectivity(ip_address: str, username: str = "thinkube", p
             }
         else:
             error_msg = stderr.decode().strip()
+
+            # If SSH failed but this is a local server, try direct verification as fallback
+            if is_local:
+                logger.warning(f"SSH to local server {ip_address} failed, attempting direct verification as fallback")
+                logger.warning(f"SSH error was: {error_msg}")
+                return await verify_local_server()
+
             return {
                 "connected": False,
                 "success": False,  # Frontend compatibility
@@ -336,6 +344,12 @@ async def verify_ssh_connectivity(ip_address: str, username: str = "thinkube", p
                 "hostname": None
             }
     except Exception as e:
+        # If SSH verification failed with exception but this is a local server, try direct verification
+        if is_local:
+            logger.warning(f"SSH to local server {ip_address} raised exception, attempting direct verification as fallback")
+            logger.warning(f"SSH exception was: {str(e)}")
+            return await verify_local_server()
+
         return {
             "connected": False,
             "success": False,  # Frontend compatibility
