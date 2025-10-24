@@ -238,7 +238,7 @@ const buildPlaybookQueue = () => {
     name: 'ansible/40_thinkube/core/infrastructure/00_setup_python_k8s.yaml'
   })
   
-  // Add shell configuration (required before MicroK8s installation)
+  // Add shell configuration (required before Kubernetes installation)
   queue.push({
     id: 'shell-setup',
     phase: 'initial',
@@ -270,21 +270,21 @@ const buildPlaybookQueue = () => {
   })
   
   queue.push({
-    id: 'microk8s',
+    id: 'k8s',
     phase: 'kubernetes',
-    title: 'Installing MicroK8s',
-    name: 'ansible/40_thinkube/core/infrastructure/microk8s/10_install_microk8s.yaml'
+    title: 'Installing Canonical Kubernetes',
+    name: 'ansible/40_thinkube/core/infrastructure/k8s-snap/10_install_k8s.yaml'
   })
-  
+
   // Join worker nodes after control plane is set up
   const clusterNodes = JSON.parse(sessionStorage.getItem('clusterNodes') || '[]')
   const hasWorkers = clusterNodes.some(n => n.role === 'worker')
   if (hasWorkers) {
     queue.push({
-      id: 'microk8s-join-workers',
+      id: 'k8s-join-workers',
       phase: 'kubernetes',
       title: 'Joining Worker Nodes to Cluster',
-      name: 'ansible/40_thinkube/core/infrastructure/microk8s/20_join_workers.yaml'
+      name: 'ansible/40_thinkube/core/infrastructure/k8s-snap/20_join_workers.yaml'
     })
   }
   

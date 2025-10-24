@@ -90,7 +90,7 @@ export function generateDynamicInventory() {
         metallb_ip_start_octet: networkConfig.metallbStartOctet || "200",
         metallb_ip_end_octet: networkConfig.metallbEndOctet || "210",
         
-        // Kubernetes configuration (will be configured later with MicroK8s)
+        // Kubernetes configuration (will be configured later with k8s-snap)
         
         // Cloudflare configuration - token written directly to inventory
         cloudflare_api_token: sessionStorage.getItem('cloudflareToken') || '',
@@ -132,13 +132,13 @@ export function generateDynamicInventory() {
         },
         
         
-        // MicroK8s groups
-        microk8s: {
+        // Kubernetes groups
+        k8s: {
           children: {
-            microk8s_control_plane: {
+            k8s_control_plane: {
               hosts: {}
             },
-            microk8s_workers: {
+            k8s_workers: {
               hosts: {}
             }
           }
@@ -304,9 +304,9 @@ export function generateDynamicInventory() {
     }
     
     if (node.role === 'control_plane') {
-      inventory.all.children.microk8s.children.microk8s_control_plane.hosts[node.hostname] = {}
+      inventory.all.children.k8s.children.k8s_control_plane.hosts[node.hostname] = {}
     } else if (node.role === 'worker') {
-      inventory.all.children.microk8s.children.microk8s_workers.hosts[node.hostname] = {}
+      inventory.all.children.k8s.children.k8s_workers.hosts[node.hostname] = {}
     }
   })
   

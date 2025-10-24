@@ -165,9 +165,9 @@ export function usePlaybookExecution() {
   }
 
   /**
-   * Pre-configured execution method for MicroK8s setup
+   * Pre-configured execution method for Kubernetes setup
    */
-  const executeMicroK8sSetup = async (
+  const executeK8sSetup = async (
     servers: any[], 
     username: string, 
     password: string,
@@ -244,7 +244,7 @@ export function usePlaybookExecution() {
     executePlaybook,
     cancelExecution,
     executeSSHSetup,
-    executeMicroK8sSetup,
+    executeK8sSetup,
     executeKeycloakDeploy,
     executeHarborDeploy
   }

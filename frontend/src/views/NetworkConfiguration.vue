@@ -1000,7 +1000,7 @@ const generateDefaultIPs = () => {
   // Generate LXD internal network based on local network CIDR
   // This keeps them in the same address family while avoiding conflicts
   
-  // Ingress IP will be configured later with MicroK8s
+  // Ingress IP will be configured later with Kubernetes
 }
 
 
