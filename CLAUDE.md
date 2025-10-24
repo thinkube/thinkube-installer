@@ -39,6 +39,44 @@ SKIP_CONFIG=true ./test-dev.sh            # Skip configuration
 CLEAN_STATE=true ./test-dev.sh            # Clean state before start
 ```
 
+### Configuration Persistence
+
+The installer automatically saves all configuration values to `~/.env` for reuse in future runs. This avoids re-entering tokens and configuration repeatedly.
+
+**How it works**:
+1. Enter your configuration (tokens, domain, cluster name, etc.) in the Configuration screen
+2. When you click "Continue", all values are saved to `~/.env`
+3. On next run, the Configuration screen automatically loads values from `~/.env`
+4. Edit any field and save again - `~/.env` is updated
+
+**Saved values**:
+- `CLOUDFLARE_TOKEN` - Cloudflare API token
+- `GITHUB_TOKEN` - GitHub personal access token
+- `GITHUB_ORG` - GitHub organization name
+- `ZEROTIER_API_TOKEN` - ZeroTier API token
+- `ZEROTIER_NETWORK_ID` - ZeroTier network ID
+- `CLUSTER_NAME` - Kubernetes cluster name
+- `DOMAIN_NAME` - Domain name for services
+
+**File location**: `~/.env` (read/write with 600 permissions)
+
+**Manual setup** (optional):
+You can also manually create `~/.env` with your values:
+```bash
+# ~/.env
+CLOUDFLARE_TOKEN=your_token_here
+ZEROTIER_API_TOKEN=your_token_here
+ZEROTIER_NETWORK_ID=your_network_id_here
+GITHUB_TOKEN=ghp_your_token_here
+GITHUB_ORG=your_org
+CLUSTER_NAME=thinkube
+DOMAIN_NAME=my-homelab.com
+```
+
+**Default values**:
+- `clusterName`: `"thinkube"` (can be changed)
+- `domainName`: `""` (empty - you must enter your domain)
+
 ### Building
 
 **Build installer for current platform**:

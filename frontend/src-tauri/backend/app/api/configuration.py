@@ -67,3 +67,5 @@ async def clear_configuration():
     except Exception as e:
         logger.error(f"Failed to clear configuration: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+

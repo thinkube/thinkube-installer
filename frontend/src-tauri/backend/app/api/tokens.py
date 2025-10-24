@@ -124,6 +124,74 @@ async def store_zerotier_token(request: TokenRequest) -> TokenResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to store token: {str(e)}")
 
+@router.post("/save-configuration")
+async def save_configuration(config: Dict) -> TokenResponse:
+    """Save all configuration values to ~/.env file"""
+    try:
+        # Read existing env vars
+        env_vars = read_env_file()
+
+        # Update with all config values
+        if config.get('cloudflareToken'):
+            env_vars['CLOUDFLARE_TOKEN'] = config['cloudflareToken']
+        if config.get('githubToken'):
+            env_vars['GITHUB_TOKEN'] = config['githubToken']
+        if config.get('zerotierApiToken'):
+            env_vars['ZEROTIER_API_TOKEN'] = config['zerotierApiToken']
+        if config.get('zerotierNetworkId'):
+            env_vars['ZEROTIER_NETWORK_ID'] = config['zerotierNetworkId']
+        if config.get('githubOrg'):
+            env_vars['GITHUB_ORG'] = config['githubOrg']
+        if config.get('clusterName'):
+            env_vars['CLUSTER_NAME'] = config['clusterName']
+        if config.get('domainName'):
+            env_vars['DOMAIN_NAME'] = config['domainName']
+
+        # Write back to file
+        write_env_file(env_vars)
+
+        return TokenResponse(
+            success=True,
+            message="Configuration saved to ~/.env"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save configuration: {str(e)}")
+
+
+@router.get("/load-configuration")
+async def load_configuration() -> Dict:
+    """Load all configuration values from ~/.env file"""
+    try:
+        env_vars = read_env_file()
+
+        # Map env vars to config fields
+        config = {}
+        if 'CLOUDFLARE_TOKEN' in env_vars:
+            config['cloudflareToken'] = env_vars['CLOUDFLARE_TOKEN']
+        if 'GITHUB_TOKEN' in env_vars:
+            config['githubToken'] = env_vars['GITHUB_TOKEN']
+        if 'ZEROTIER_API_TOKEN' in env_vars:
+            config['zerotierApiToken'] = env_vars['ZEROTIER_API_TOKEN']
+        if 'ZEROTIER_NETWORK_ID' in env_vars:
+            config['zerotierNetworkId'] = env_vars['ZEROTIER_NETWORK_ID']
+        if 'GITHUB_ORG' in env_vars:
+            config['githubOrg'] = env_vars['GITHUB_ORG']
+        if 'CLUSTER_NAME' in env_vars:
+            config['clusterName'] = env_vars['CLUSTER_NAME']
+        if 'DOMAIN_NAME' in env_vars:
+            config['domainName'] = env_vars['DOMAIN_NAME']
+
+        return {
+            "exists": len(config) > 0,
+            "config": config
+        }
+    except Exception:
+        return {
+            "exists": False,
+            "config": {}
+        }
+
+
 @router.get("/check-tokens")
 async def check_tokens() -> Dict[str, bool]:
     """Check which tokens are present in ~/.env file"""
@@ -132,7 +200,7 @@ async def check_tokens() -> Dict[str, bool]:
         return {
             "cloudflare": "CLOUDFLARE_TOKEN" in env_vars,
             "github": "GITHUB_TOKEN" in env_vars,
-            "zerotier": "ZEROTIER_TOKEN" in env_vars
+            "zerotier": "ZEROTIER_TOKEN" in env_vars or "ZEROTIER_API_TOKEN" in env_vars
         }
     except Exception:
         return {

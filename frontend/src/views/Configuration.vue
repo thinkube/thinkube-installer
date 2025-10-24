@@ -301,8 +301,8 @@ const router = useRouter()
 
 const config = ref({
   networkMode: 'overlay', // Default to overlay mode (ZeroTier)
-  clusterName: 'thinkube',
-  domainName: 'my-homelab.com',
+  clusterName: 'thinkube',  // Keep thinkube as default
+  domainName: '',            // Empty - no annoying default to delete
   cloudflareToken: '',
   zerotierNetworkId: '',
   zerotierApiToken: '',
@@ -329,40 +329,50 @@ const verifyingGithub = ref(false)
 const githubVerified = ref(false)
 
 // Load saved configuration on mount
-onMounted(() => {
+onMounted(async () => {
+  // Load configuration from ~/.env file (if it exists)
+  try {
+    const envResponse = await axios.get('/api/load-configuration')
+    if (envResponse.data.exists) {
+      const savedConfig = envResponse.data.config
+      console.log('Loaded configuration from ~/.env')
+
+      // Prepopulate all fields from .env
+      if (savedConfig.cloudflareToken) config.value.cloudflareToken = savedConfig.cloudflareToken
+      if (savedConfig.zerotierApiToken) config.value.zerotierApiToken = savedConfig.zerotierApiToken
+      if (savedConfig.zerotierNetworkId) config.value.zerotierNetworkId = savedConfig.zerotierNetworkId
+      if (savedConfig.githubToken) config.value.githubToken = savedConfig.githubToken
+      if (savedConfig.githubOrg) config.value.githubOrg = savedConfig.githubOrg
+      if (savedConfig.clusterName) config.value.clusterName = savedConfig.clusterName
+      if (savedConfig.domainName) config.value.domainName = savedConfig.domainName
+
+      console.log('Prepopulated fields:', Object.keys(savedConfig))
+    }
+  } catch (e) {
+    console.warn('Could not load configuration from ~/.env (this is optional):', e.message)
+  }
+
   // Load network mode from localStorage (set during Server Discovery)
-  const savedConfig = localStorage.getItem('thinkube-config')
-  if (savedConfig) {
+  const localConfig = localStorage.getItem('thinkube-config')
+  if (localConfig) {
     try {
-      const parsed = JSON.parse(savedConfig)
+      const parsed = JSON.parse(localConfig)
       // Network mode was already selected in Server Discovery
       if (parsed.networkMode) {
         config.value.networkMode = parsed.networkMode
       }
-      // Restore API tokens and other sensitive data
-      if (parsed.cloudflareToken) {
-        config.value.cloudflareToken = parsed.cloudflareToken
-      }
-      if (parsed.zerotierNetworkId) {
-        config.value.zerotierNetworkId = parsed.zerotierNetworkId
-      }
-      if (parsed.zerotierApiToken) {
-        config.value.zerotierApiToken = parsed.zerotierApiToken
-      }
+      // Domain and cluster name from localStorage (if user changed them)
       if (parsed.domainName) {
         config.value.domainName = parsed.domainName
       }
       if (parsed.clusterName) {
         config.value.clusterName = parsed.clusterName
       }
-      if (parsed.githubOrg) {
-        config.value.githubOrg = parsed.githubOrg
-      }
     } catch (e) {
       console.error('Failed to parse saved config:', e)
     }
   }
-  
+
   // Also check sessionStorage for network mode
   const networkMode = sessionStorage.getItem('networkMode')
   if (networkMode) {
@@ -638,26 +648,21 @@ const saveAndContinue = async () => {
     }
   }
   
-  // Store Cloudflare token securely in ~/.env
-  const cloudflareStored = await storeCloudflareToken()
-  if (!cloudflareStored) {
-    alert('Failed to store Cloudflare token securely. Please try again.')
-    return
-  }
-  
-  // Store ZeroTier token securely in ~/.env (only if overlay mode)
-  if (config.value.networkMode === 'overlay') {
-    const zerotierStored = await storeZerotierToken()
-    if (!zerotierStored) {
-      alert('Failed to store ZeroTier token securely. Please try again.')
-      return
-    }
-  }
-  
-  // Store GitHub token securely in ~/.env (if provided)
-  const githubStored = await storeGithubToken()
-  if (!githubStored) {
-    alert('Failed to store GitHub token securely. Please try again.')
+  // Save all configuration to ~/.env
+  try {
+    await axios.post('/api/save-configuration', {
+      cloudflareToken: config.value.cloudflareToken,
+      githubToken: config.value.githubToken,
+      zerotierApiToken: config.value.zerotierApiToken,
+      zerotierNetworkId: config.value.zerotierNetworkId,
+      githubOrg: config.value.githubOrg,
+      clusterName: config.value.clusterName,
+      domainName: config.value.domainName
+    })
+    console.log('Configuration saved to ~/.env')
+  } catch (error) {
+    console.error('Failed to save configuration:', error)
+    alert('Failed to save configuration securely. Please try again.')
     return
   }
   
