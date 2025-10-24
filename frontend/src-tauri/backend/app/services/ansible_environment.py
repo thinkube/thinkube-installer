@@ -8,6 +8,7 @@ Ansible environment management - ensures Ansible is installed and available
 import asyncio
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
