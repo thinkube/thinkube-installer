@@ -251,7 +251,26 @@ export function generateDynamicInventory() {
       serverDef.assigned_pci_slots = assignedSlots
       console.log(`Host ${hostname} configured for GPU passthrough with slots: ${assignedSlots}`)
     }
-    
+
+    // Add GPU node configuration from GPU Driver Check screen
+    const gpuNodes = config.gpuNodes || []
+    const gpuNodeConfig = gpuNodes.find(node =>
+      node.hostname === hostname || node.ip === server.ip
+    )
+
+    if (gpuNodeConfig) {
+      serverDef.gpu_node_config = {
+        gpu_detected: gpuNodeConfig.gpu_detected,
+        gpu_name: gpuNodeConfig.gpu_name,
+        gpu_enabled: gpuNodeConfig.gpu_enabled,
+        driver_preinstalled: gpuNodeConfig.driver_preinstalled,
+        driver_version: gpuNodeConfig.driver_version,
+        needs_driver_install: gpuNodeConfig.needs_driver_install,
+        reason: gpuNodeConfig.reason
+      }
+      console.log(`Host ${hostname} GPU config:`, serverDef.gpu_node_config)
+    }
+
     // Add to inventory
     inventory.all.children.baremetal.hosts[hostname] = serverDef
     

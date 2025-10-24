@@ -65,25 +65,37 @@ The installer follows this sequential flow:
    └─> router: /configuration
    └─> component: frontend/src/views/Configuration.vue
    └─> purpose: Configure cluster name, domain, admin credentials
+   └─> stores: localStorage.thinkube-config, ~/.env (tokens)
 
-9. Network Configuration
-   └─> router: /network-configuration
-   └─> component: frontend/src/views/NetworkConfiguration.vue
-   └─> purpose: Configure network mode, ZeroTier, MetalLB IP pool
+9. GPU Driver Check
+   └─> router: /gpu-driver-check
+   └─> component: frontend/src/views/GpuDriverCheck.vue
+   └─> purpose: Detect GPUs, check driver versions, decide install/exclude
+   └─> api: POST /api/gpu/detect-drivers
+   └─> stores: localStorage.thinkube-config.gpuNodes
+   └─> decisions:
+       - Compatible drivers (>=580.x): Auto-enable for GPU workloads
+       - Missing drivers: User chooses "Install automatically" or "Exclude"
+       - Old drivers (<580.x): User chooses "Upgrade manually (abort)" or "Exclude"
 
-10. Review
+10. Network Configuration
+    └─> router: /network-configuration
+    └─> component: frontend/src/views/NetworkConfiguration.vue
+    └─> purpose: Configure network mode, ZeroTier, MetalLB IP pool
+
+11. Review
     └─> router: /review
     └─> component: frontend/src/views/Review.vue
     └─> purpose: Review all configuration before deployment
 
-11. Deploy ⚠️ USES FULL INVENTORY
+12. Deploy ⚠️ USES FULL INVENTORY
     └─> router: /deploy
     └─> component: frontend/src/views/Deploy.vue
     └─> purpose: Execute all deployment playbooks
-    └─> inventory: inventoryGenerator.js (complete inventory with roles, network, tokens)
+    └─> inventory: inventoryGenerator.js (complete inventory with roles, network, tokens, GPU config)
     └─> stores: ~/.thinkube-installer/inventory.yaml (persisted to disk)
 
-12. Complete
+13. Complete
     └─> router: /complete
     └─> component: frontend/src/views/Complete.vue
     └─> purpose: Show completion status and next steps

@@ -702,7 +702,8 @@ const saveAndContinue = async () => {
     sessionStorage.setItem('githubToken', config.value.githubToken)
     sessionStorage.setItem('githubOrg', config.value.githubOrg)
   }
-  
-  router.push('/network-configuration')
+
+  // Navigate to GPU driver check instead of network configuration
+  router.push('/gpu-driver-check')
 }
 </script>

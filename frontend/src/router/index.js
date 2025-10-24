@@ -13,6 +13,7 @@ import SSHSetup from '../views/SSHSetup.vue'
 import HardwareDetection from '../views/HardwareDetection.vue'
 import RoleAssignment from '../views/RoleAssignment.vue'
 import Configuration from '../views/Configuration.vue'
+import GpuDriverCheck from '../views/GpuDriverCheck.vue'
 import NetworkConfiguration from '../views/NetworkConfiguration.vue'
 import Review from '../views/Review.vue'
 import Deploy from '../views/Deploy.vue'
@@ -63,6 +64,11 @@ const routes = [
     path: '/configuration',
     name: 'configuration',
     component: Configuration
+  },
+  {
+    path: '/gpu-driver-check',
+    name: 'gpu-driver-check',
+    component: GpuDriverCheck
   },
   {
     path: '/network-configuration',
