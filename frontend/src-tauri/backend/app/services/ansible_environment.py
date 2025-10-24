@@ -197,11 +197,12 @@ class AnsibleEnvironment:
         try:
             logger.info("Cloning thinkube repository...")
 
+            # Always get fresh code - delete existing clone if present
             if self.is_thinkube_cloned():
-                logger.info("Thinkube repository already cloned")
+                logger.info("Removing existing clone to get latest code...")
                 if progress_callback:
-                    progress_callback("Thinkube repository ready", 100)
-                return True
+                    progress_callback("Removing old clone...", 5)
+                self.cleanup_thinkube_clone()
 
             # Create temporary directory for the clone
             if progress_callback:
