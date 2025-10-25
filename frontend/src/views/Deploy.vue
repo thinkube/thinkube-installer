@@ -273,7 +273,7 @@ const buildPlaybookQueue = () => {
     id: 'k8s',
     phase: 'kubernetes',
     title: 'Installing Canonical Kubernetes',
-    name: 'ansible/40_thinkube/core/infrastructure/k8s-snap/10_install_k8s.yaml'
+    name: 'ansible/40_thinkube/core/infrastructure/k8s/10_install_k8s.yaml'
   })
 
   // Join worker nodes after control plane is set up
@@ -284,7 +284,7 @@ const buildPlaybookQueue = () => {
       id: 'k8s-join-workers',
       phase: 'kubernetes',
       title: 'Joining Worker Nodes to Cluster',
-      name: 'ansible/40_thinkube/core/infrastructure/k8s-snap/20_join_workers.yaml'
+      name: 'ansible/40_thinkube/core/infrastructure/k8s/20_join_workers.yaml'
     })
   }
   
