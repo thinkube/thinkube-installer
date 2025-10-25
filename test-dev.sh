@@ -34,9 +34,15 @@ while [[ $# -gt 0 ]]; do
             echo "  --skip-config    Skip configuration screens and use existing inventory.yaml"
             echo "  -h, --help       Show this help message"
             echo ""
+            echo "Environment Variables:"
+            echo "  TK_PROFILER=1    Enable detailed Ansible profiling and logging"
+            echo "                   Logs saved to ~/.thinkube-installer/logs/"
+            echo "                   Includes task timing and performance data"
+            echo ""
             echo "Examples:"
             echo "  $0 --clean-state --skip-config   # Start fresh deployment with existing config"
             echo "  $0 --skip-config                  # Resume deployment with existing config"
+            echo "  TK_PROFILER=1 $0                  # Run with detailed profiling enabled"
             exit 0
             ;;
         *)
@@ -49,6 +55,15 @@ done
 
 echo "🧪 Testing thinkube installer in development mode"
 echo "================================================"
+
+# Check if profiler is enabled
+if [ "${TK_PROFILER}" = "1" ]; then
+    echo ""
+    echo "📊 TK_PROFILER enabled - Detailed logging active"
+    echo "   Logs will be saved to: ~/.thinkube-installer/logs/"
+    echo "   Includes task timing and performance profiling"
+    echo ""
+fi
 
 # Check memory availability and warn about OOM killer
 echo -e "\n🔍 Checking system memory..."

@@ -14,6 +14,7 @@ import json
 import yaml
 import tempfile
 import shutil
+import datetime
 from pathlib import Path
 
 from ..services.ansible_environment import ansible_environment
@@ -21,6 +22,11 @@ from ..services.ansible_environment import ansible_environment
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["playbook-stream"])
+
+# Check if profiling is enabled via environment variable
+PROFILER_ENABLED = os.getenv('TK_PROFILER', '0') == '1'
+if PROFILER_ENABLED:
+    logger.info("TK_PROFILER enabled - detailed logging and profiling active")
 
 
 @router.websocket("/ws/playbook/{playbook_name:path}")
@@ -114,7 +120,25 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
                 "message": f"Playbook not found: {playbook_path}"
             })
             return
-            
+
+        # Initialize log file if profiling is enabled
+        log_fh = None
+        if PROFILER_ENABLED:
+            log_dir = Path.home() / ".thinkube-installer" / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            playbook_short_name = playbook_name.replace("/", "-").replace(".yaml", "").replace(".yml", "")
+            log_file = log_dir / f"{timestamp}_{playbook_short_name}.log"
+
+            log_fh = open(log_file, 'w', buffering=1)  # Line buffered
+            log_fh.write(f"Playbook: {playbook_name}\n")
+            log_fh.write(f"Started: {datetime.datetime.now().isoformat()}\n")
+            log_fh.write(f"Log file: {log_file}\n")
+            log_fh.write("="*80 + "\n\n")
+            log_fh.flush()
+            logger.info(f"Profiler log: {log_file}")
+
         # Get parameters
         environment = data.get("environment", {})
         extra_vars = data.get("extra_vars", {})
@@ -183,8 +207,13 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
             "-i", inventory_to_use,
             str(playbook_path),
             "-e", f"@{temp_vars_path}",
-            "-v"  # Verbose output
         ]
+
+        # Add verbosity: -vvv for profiling, -v for normal
+        if PROFILER_ENABLED:
+            cmd.append("-vvv")  # Very verbose for detailed timing
+        else:
+            cmd.append("-v")  # Normal verbose
             
         # Set up environment with Ansible specific settings for real-time output
         env = os.environ.copy()
@@ -202,6 +231,12 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         env['ANSIBLE_STDOUT_CALLBACK'] = 'default'  # Use default callback for standard output
         env['ANSIBLE_HOST_KEY_CHECKING'] = 'False'
         env['ANSIBLE_CONFIG'] = str(thinkube_root / "ansible.cfg")
+
+        # Enable profiling callbacks if TK_PROFILER is set
+        if PROFILER_ENABLED:
+            env['ANSIBLE_CALLBACKS_ENABLED'] = 'profile_tasks,timer'
+            env['ANSIBLE_CALLBACK_RESULT_FORMAT'] = 'yaml'
+            logger.info("Ansible profiling callbacks enabled")
         
         # Send start message
         logger.info("Sending start message to WebSocket")
@@ -234,11 +269,19 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         
         async def process_line(line_text):
             nonlocal current_task, task_count
-            
+
             # Debug logging
             if line_text:
                 logger.info(f"Ansible output: {line_text}")
-            
+
+            # Write to profiler log file if enabled
+            if PROFILER_ENABLED and log_fh:
+                try:
+                    log_fh.write(line_text + '\n')
+                    log_fh.flush()
+                except Exception as e:
+                    logger.error(f"Error writing to log file: {e}")
+
             # Always send the line to frontend for visibility
             if line_text:  # Skip empty lines
                 # Parse Ansible output for task information
@@ -347,6 +390,16 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         })
         await websocket.close()
     finally:
+        # Close profiler log file if open
+        if PROFILER_ENABLED and 'log_fh' in locals() and log_fh:
+            try:
+                log_fh.write(f"\n{'='*80}\n")
+                log_fh.write(f"Completed: {datetime.datetime.now().isoformat()}\n")
+                log_fh.close()
+                logger.info("Profiler log file closed")
+            except Exception as e:
+                logger.error(f"Error closing log file: {e}")
+
         # Clean up temp files
         if 'temp_vars_path' in locals():
             try:
