@@ -292,6 +292,68 @@ The backend venv is created by:
 - **Linux**: Post-install script (`deb-postinst.sh`) during `dpkg -i`
 - **macOS**: Rust code (`lib.rs`) on first launch (no post-install script support)
 
+## Modifying Ansible Playbooks (Thinkube Deployment)
+
+**CRITICAL WORKFLOW**: The installer uses playbooks from the separate `thinkube` repository. Here's the correct workflow:
+
+### File Locations
+- **Installer repo**: `~/thinkube-installer/` (this repo - installer code only)
+- **Thinkube repo**: `~/thinkube/` (deployment playbooks, cloned from github.com/thinkube/thinkube)
+- **Temporary clone**: `/tmp/thinkube-installer/` (backend clones thinkube here during deployment)
+
+### Workflow for Modifying Playbooks
+
+**NEVER edit files in `/tmp/thinkube-installer/`** - changes will be lost!
+
+**Correct workflow:**
+
+1. **Edit playbooks in `~/thinkube/`**:
+   ```bash
+   cd ~/thinkube
+   # Edit ansible/40_thinkube/core/infrastructure/gpu_operator/10_deploy.yaml
+   ```
+
+2. **Commit and push to thinkube repo**:
+   ```bash
+   cd ~/thinkube
+   git add ansible/40_thinkube/core/infrastructure/gpu_operator/10_deploy.yaml
+   git commit -m "Fix GPU operator configuration"
+   git push
+   ```
+
+3. **Pull changes into temporary clone** (if installer is already running):
+   ```bash
+   cd /tmp/thinkube-installer
+   git pull
+   ```
+
+4. **Retry in installer UI** - click "Retry" button for the failed playbook
+
+**Why this workflow:**
+- The installer's backend clones `github.com/thinkube/thinkube` to `/tmp/` when deployment starts
+- Changes to playbooks must be in the thinkube repo and pushed to GitHub
+- During active deployment, manually pull into `/tmp/` to test changes immediately
+- Don't edit `/tmp/` directly - changes won't persist
+
+### Example: Fixing GPU Operator Playbook
+
+```bash
+# 1. Edit in ~/thinkube
+cd ~/thinkube
+# Make changes to ansible/40_thinkube/core/infrastructure/gpu_operator/10_deploy.yaml
+
+# 2. Commit and push
+git add ansible/40_thinkube/core/infrastructure/gpu_operator/10_deploy.yaml
+git commit -m "Add driver.enabled=false for pre-installed drivers"
+git push
+
+# 3. Pull into running deployment
+cd /tmp/thinkube-installer
+git pull
+
+# 4. Click "Retry" in installer UI
+```
+
 ## Common Tasks
 
 ### Adding a New API Endpoint
@@ -360,3 +422,102 @@ Edit `frontend/src-tauri/backend/app/services/ansible_environment.py`:
 8. **Router guard redirects**: If you modify deployment state structure, update the router guard in `frontend/src/router/index.js` to handle it correctly.
 
 9. **Product name uses dash**: The `productName` in `tauri.conf.json` is `thinkube-installer` (with dash) to avoid path issues. The window title uses "Thinkube Installer" (with space and capitalization) for display purposes only.
+
+## Claude Code Plugins
+
+**IMPORTANT**: This project uses Claude Code plugins for automated migration and refactoring tasks.
+
+### What are Claude Code Plugins?
+
+Plugins extend Claude Code with custom slash commands, skills (autonomous capabilities), agents, and hooks. They are defined in `.claude-plugin/` directories.
+
+### Plugin Locations
+
+**User-level plugins** (shared across all projects):
+```
+~/.claude/plugins/
+```
+
+**Project-level plugins** (specific to this repository):
+```
+.claude/plugins/
+```
+
+### Available Plugins
+
+**microk8s-migration plugin** (at `~/.claude/plugins/microk8s-migration/`):
+- **Purpose**: Migrate Ansible playbooks from MicroK8s to Canonical k8s-snap
+- **Location**: User-level plugin (available across all Thinkube projects)
+- **Commands**:
+  - `/migrate-all` - Fix k8s-snap issues in remaining playbooks
+  - `/migrate-file` - Migrate a single playbook file
+  - `/verify-migration` - Verify migration was successful
+- **Skills**:
+  - `migrate-playbook` - Autonomous skill for transforming playbooks
+
+**Key patterns the plugin fixes**:
+1. `become: true` → `become: false` (k8s-snap uses user kubectl, not root)
+2. Hardcoded paths `k8s kubectl` → `{{ kubectl_bin }}`
+3. Hardcoded `kubeconfig: "/etc/kubernetes/admin.conf"` → inventory variable
+4. Complex Jinja2 filters in `until:` → `kubectl wait --for=condition=Ready`
+5. PostgreSQL `PGDATA` for ext4 storage compatibility
+
+### How to Use Plugins
+
+**List available commands**:
+```bash
+# Slash commands from plugins appear in /help
+```
+
+**Invoke plugin commands**:
+```
+/migrate-all
+```
+
+**Check if plugin is loaded**:
+```bash
+ls -la ~/.claude/plugins/microk8s-migration/
+```
+
+### When to Use the Migration Plugin
+
+Use `/migrate-all` when:
+- Fixing systematic kubectl/kubeconfig issues across multiple playbooks
+- Migrating remaining playbooks after manual fixes
+- Applying consistent patterns (become, hardcoded paths, filters)
+
+**DO NOT** use when:
+- Working on single-file issues (use manual Edit instead)
+- Plugin is not loaded (check `~/.claude/plugins/` first)
+
+### Plugin Structure
+
+```
+~/.claude/plugins/microk8s-migration/
+├── .claude-plugin/
+│   └── plugin.json          # Plugin metadata
+├── commands/                # Slash commands
+│   ├── migrate-all.md
+│   ├── migrate-file.md
+│   └── verify-migration.md
+└── skills/                  # Autonomous skills
+    └── migrate-playbook.md
+```
+
+### Debugging Plugin Issues
+
+If `/migrate-all` shows "Unknown slash command":
+1. **Check plugin exists**: `ls ~/.claude/plugins/microk8s-migration/`
+2. **Verify plugin.json**: `cat ~/.claude/plugins/microk8s-migration/.claude-plugin/plugin.json`
+3. **Restart Claude Code**: Plugin changes require restart
+4. **Check command files exist**: `ls ~/.claude/plugins/microk8s-migration/commands/`
+
+### Creating New Plugins
+
+See Claude Code documentation: https://docs.claude.com/en/docs/claude-code/plugins
+
+**Do NOT forget**:
+- Plugins are in `~/.claude/plugins/` (user-level) or `.claude/plugins/` (project-level)
+- Commands are markdown files in `commands/` subdirectory
+- Skills are markdown files in `skills/` subdirectory
+- Always check `~/.claude/plugins/` first when asked about plugins
