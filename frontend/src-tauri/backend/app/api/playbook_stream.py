@@ -209,10 +209,8 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
             "-e", f"@{temp_vars_path}",
         ]
 
-        # Add verbosity: -vvv for profiling, -v for normal
-        if PROFILER_ENABLED:
-            cmd.append("-vvv")  # Very verbose for detailed timing
-        else:
+        # Add verbosity only for normal mode (profiling uses callbacks for timing)
+        if not PROFILER_ENABLED:
             cmd.append("-v")  # Normal verbose
             
         # Set up environment with Ansible specific settings for real-time output
