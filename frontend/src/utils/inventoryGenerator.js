@@ -144,8 +144,8 @@ export function generateDynamicInventory() {
           }
         },
         
-        // ZeroTier nodes - all nodes that need ZeroTier
-        zerotier_nodes: {
+        // Overlay network nodes - all nodes that need overlay networking (ZeroTier or Tailscale)
+        overlay_nodes: {
           hosts: {}
         },
         
@@ -164,16 +164,25 @@ export function generateDynamicInventory() {
     }
   }
   
-  // Add ZeroTier configuration conditionally for overlay mode
+  // Add overlay network configuration conditionally for overlay mode
   if (config.networkMode === 'overlay') {
-    // Add ZeroTier-specific variables
-    inventory.all.vars.zerotier_network_id = config.zerotierNetworkId
-    inventory.all.vars.zerotier_api_token = config.zerotierApiToken
-    inventory.all.vars.zerotier_cidr = networkConfig.zerotierCIDR
-    
-    // ZeroTier subnet prefix - extract from ZeroTier CIDR
-    inventory.all.vars.zerotier_subnet_prefix = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.'
-    
+    // Overlay provider selection
+    const overlayProvider = config.overlayProvider || 'zerotier'
+    inventory.all.vars.overlay_provider = overlayProvider
+
+    // Common overlay network variables
+    inventory.all.vars.zerotier_cidr = networkConfig.zerotierCIDR  // Used for both providers (overlay CIDR)
+    inventory.all.vars.zerotier_subnet_prefix = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.'  // Used for both providers
+
+    // Provider-specific variables
+    if (overlayProvider === 'zerotier') {
+      inventory.all.vars.zerotier_network_id = config.zerotierNetworkId
+      inventory.all.vars.zerotier_api_token = config.zerotierApiToken
+    } else if (overlayProvider === 'tailscale') {
+      inventory.all.vars.tailscale_auth_key = config.tailscaleAuthKey
+      inventory.all.vars.tailscale_api_token = config.tailscaleApiToken
+    }
+
     // Ingress IP configuration for overlay network
     inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
     inventory.all.vars.secondary_ingress_ip_octet = networkConfig.secondaryIngressOctet || "201"
@@ -287,9 +296,9 @@ export function generateDynamicInventory() {
       inventory.all.children.baremetal.children.headless.hosts[hostname] = {}
     }
     
-    // Add to zerotier_nodes if zerotier is enabled (overlay mode)
-    if (serverDef.zerotier_enabled) {
-      inventory.all.children.zerotier_nodes.hosts[hostname] = {}
+    // Add to overlay_nodes if overlay networking is enabled
+    if (serverDef.zerotier_enabled) {  // Note: variable name kept for backward compatibility
+      inventory.all.children.overlay_nodes.hosts[hostname] = {}
     }
   })
   
@@ -386,7 +395,7 @@ export function generateDynamicInventory() {
     // Add controller to inventory
     inventory.all.children.management.hosts.controller = controllerDef
     if (config.networkMode === 'overlay') {
-      inventory.all.children.zerotier_nodes.hosts.controller = {}
+      inventory.all.children.overlay_nodes.hosts.controller = {}
     }
     inventory.all.children.arch.children[controllerArch].hosts.controller = {}
     

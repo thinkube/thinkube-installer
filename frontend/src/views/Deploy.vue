@@ -257,8 +257,27 @@ const buildPlaybookQueue = () => {
   })
   
   // Phase 2: Networking (30_networking)
-  // ZeroTier is already configured as a prerequisite to run the installer
-  // MetalLB addresses are handled by the ingress installer
+  // Configure overlay network if in overlay mode
+  const networkMode = config.networkMode || 'overlay'
+  const overlayProvider = config.overlayProvider || 'zerotier'
+
+  if (networkMode === 'overlay') {
+    if (overlayProvider === 'zerotier') {
+      queue.push({
+        id: 'zerotier-setup',
+        phase: 'initial',
+        title: 'Configuring ZeroTier Overlay Network',
+        name: 'ansible/30_networking/10_setup_zerotier.yaml'
+      })
+    } else if (overlayProvider === 'tailscale') {
+      queue.push({
+        id: 'tailscale-setup',
+        phase: 'initial',
+        title: 'Configuring Tailscale Overlay Network',
+        name: 'ansible/30_networking/11_setup_tailscale.yaml'
+      })
+    }
+  }
   
   // Phase 3: Kubernetes Infrastructure (40_thinkube/core/infrastructure)
   // CRITICAL: Setup Python K8s libraries FIRST

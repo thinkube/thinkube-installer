@@ -102,24 +102,46 @@
         </div>
       </div>
 
-      <!-- ZeroTier Configuration (Only for Overlay Mode) -->
+      <!-- Overlay Network Configuration (Only for Overlay Mode) -->
       <div v-if="config.networkMode === 'overlay'" class="card bg-base-100 shadow-xl mb-6">
         <div class="card-body">
-          <h2 class="card-title mb-4">ZeroTier Configuration</h2>
+          <h2 class="card-title mb-4">Overlay Network Configuration</h2>
           <p class="text-sm text-base-content text-opacity-70 mb-4">
-            Configure ZeroTier overlay networking to connect distributed nodes securely over the internet.
+            Configure overlay networking to connect distributed nodes securely over the internet.
           </p>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <!-- Overlay Provider Selection -->
+          <div class="form-control mb-6">
+            <label class="label">
+              <span class="label-text">Overlay Network Provider</span>
+              <span class="label-text-alt">Choose your preferred overlay network</span>
+            </label>
+            <select
+              v-model="config.overlayProvider"
+              class="select select-bordered w-full"
+            >
+              <option value="zerotier">ZeroTier</option>
+              <option value="tailscale">Tailscale</option>
+            </select>
+            <label class="label">
+              <span class="label-text-alt">
+                <span v-if="config.overlayProvider === 'zerotier'">ZeroTier: Software-defined networking with centralized control</span>
+                <span v-else>Tailscale: WireGuard-based mesh VPN (recommended for DGX Spark)</span>
+              </span>
+            </label>
+          </div>
+
+          <!-- ZeroTier Credentials -->
+          <div v-if="config.overlayProvider === 'zerotier'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-control">
               <label class="label">
                 <span class="label-text">ZeroTier Network ID</span>
                 <span class="label-text-alt">16-character network ID from ZeroTier Central</span>
               </label>
-              <input 
-                v-model="config.zerotierNetworkId" 
-                type="text" 
-                placeholder="16-character network ID" 
+              <input
+                v-model="config.zerotierNetworkId"
+                type="text"
+                placeholder="16-character network ID"
                 class="input input-bordered"
                 :class="{ 'input-error': errors.zerotierNetworkId }"
               />
@@ -134,15 +156,15 @@
                 <span class="label-text-alt">For automatic node authorization</span>
               </label>
               <div class="relative">
-                <input 
-                  v-model="config.zerotierApiToken" 
-                  :type="showZerotierToken ? 'text' : 'password'" 
-                  placeholder="ZeroTier Central API Token" 
+                <input
+                  v-model="config.zerotierApiToken"
+                  :type="showZerotierToken ? 'text' : 'password'"
+                  placeholder="ZeroTier Central API Token"
                   class="input input-bordered w-full pr-24"
                   :class="{ 'input-error': errors.zerotierApiToken }"
                 />
                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
-                  <button 
+                  <button
                     v-if="config.zerotierApiToken && config.zerotierNetworkId"
                     type="button"
                     class="btn btn-xs btn-ghost"
@@ -153,7 +175,7 @@
                     <span v-else-if="zerotierVerified" class="text-success">✓</span>
                     <span v-else>Verify</span>
                   </button>
-                  <button 
+                  <button
                     type="button"
                     class="btn btn-ghost btn-xs btn-square"
                     @click="showZerotierToken = !showZerotierToken"
@@ -173,6 +195,89 @@
               </label>
               <label v-else-if="zerotierVerified" class="label">
                 <span class="label-text-alt text-success">✓ Token verified with network access</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Tailscale Credentials -->
+          <div v-if="config.overlayProvider === 'tailscale'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Tailscale Auth Key</span>
+                <span class="label-text-alt">Auth key from Tailscale admin console</span>
+              </label>
+              <div class="relative">
+                <input
+                  v-model="config.tailscaleAuthKey"
+                  :type="showTailscaleAuthKey ? 'text' : 'password'"
+                  placeholder="tskey-auth-..."
+                  class="input input-bordered w-full pr-10"
+                  :class="{ 'input-error': errors.tailscaleAuthKey }"
+                />
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs btn-square absolute inset-y-0 right-0 mr-3"
+                  @click="showTailscaleAuthKey = !showTailscaleAuthKey"
+                >
+                  <svg v-if="showTailscaleAuthKey" class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                  </svg>
+                  <svg v-else class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                  </svg>
+                </button>
+              </div>
+              <label v-if="errors.tailscaleAuthKey" class="label">
+                <span class="label-text-alt text-error">{{ errors.tailscaleAuthKey }}</span>
+              </label>
+            </div>
+
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text">Tailscale API Token</span>
+                <span class="label-text-alt">For automatic route approval</span>
+              </label>
+              <div class="relative">
+                <input
+                  v-model="config.tailscaleApiToken"
+                  :type="showTailscaleApiToken ? 'text' : 'password'"
+                  placeholder="tskey-api-..."
+                  class="input input-bordered w-full pr-24"
+                  :class="{ 'input-error': errors.tailscaleApiToken }"
+                />
+                <div class="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
+                  <button
+                    v-if="config.tailscaleAuthKey && config.tailscaleApiToken"
+                    type="button"
+                    class="btn btn-xs btn-ghost"
+                    @click="verifyTailscale"
+                    :disabled="verifyingTailscale"
+                  >
+                    <span v-if="verifyingTailscale" class="loading loading-spinner loading-xs"></span>
+                    <span v-else-if="tailscaleVerified" class="text-success">✓</span>
+                    <span v-else>Verify</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs btn-square"
+                    @click="showTailscaleApiToken = !showTailscaleApiToken"
+                  >
+                    <svg v-if="showTailscaleApiToken" class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                    </svg>
+                    <svg v-else class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <label v-if="errors.tailscaleApiToken" class="label">
+                <span class="label-text-alt text-error">{{ errors.tailscaleApiToken }}</span>
+              </label>
+              <label v-else-if="tailscaleVerified" class="label">
+                <span class="label-text-alt text-success">✓ API token verified</span>
               </label>
             </div>
           </div>
@@ -300,12 +405,15 @@ const router = useRouter()
 
 
 const config = ref({
-  networkMode: 'overlay', // Default to overlay mode (ZeroTier)
+  networkMode: 'overlay', // Default to overlay mode
+  overlayProvider: 'zerotier', // Default to ZeroTier
   clusterName: 'thinkube',  // Keep thinkube as default
   domainName: '',            // Empty - no annoying default to delete
   cloudflareToken: '',
   zerotierNetworkId: '',
   zerotierApiToken: '',
+  tailscaleAuthKey: '',
+  tailscaleApiToken: '',
   githubToken: '',
   githubOrg: ''
 })
@@ -316,15 +424,23 @@ const errors = ref({
   cloudflareToken: '',
   zerotierNetworkId: '',
   zerotierApiToken: '',
+  tailscaleAuthKey: '',
+  tailscaleApiToken: '',
   githubToken: '',
   githubOrg: ''
 })
 
 const showCloudflareToken = ref(false)
 const showZerotierToken = ref(false)
+const showTailscaleAuthKey = ref(false)
+const showTailscaleApiToken = ref(false)
 const showGithubToken = ref(false)
 const verifyingCloudflare = ref(false)
 const cloudflareVerified = ref(false)
+const verifyingZerotier = ref(false)
+const zerotierVerified = ref(false)
+const verifyingTailscale = ref(false)
+const tailscaleVerified = ref(false)
 const verifyingGithub = ref(false)
 const githubVerified = ref(false)
 
@@ -341,10 +457,13 @@ onMounted(async () => {
       if (savedConfig.cloudflareToken) config.value.cloudflareToken = savedConfig.cloudflareToken
       if (savedConfig.zerotierApiToken) config.value.zerotierApiToken = savedConfig.zerotierApiToken
       if (savedConfig.zerotierNetworkId) config.value.zerotierNetworkId = savedConfig.zerotierNetworkId
+      if (savedConfig.tailscaleAuthKey) config.value.tailscaleAuthKey = savedConfig.tailscaleAuthKey
+      if (savedConfig.tailscaleApiToken) config.value.tailscaleApiToken = savedConfig.tailscaleApiToken
       if (savedConfig.githubToken) config.value.githubToken = savedConfig.githubToken
       if (savedConfig.githubOrg) config.value.githubOrg = savedConfig.githubOrg
       if (savedConfig.clusterName) config.value.clusterName = savedConfig.clusterName
       if (savedConfig.domainName) config.value.domainName = savedConfig.domainName
+      if (savedConfig.overlayProvider) config.value.overlayProvider = savedConfig.overlayProvider
 
       console.log('Prepopulated fields:', Object.keys(savedConfig))
     }
@@ -398,14 +517,27 @@ watch(() => config.value.domainName, (val) => {
     : ''
 })
 
-// Clear ZeroTier verification when switching network modes
+// Clear overlay verification when switching network modes or providers
 watch(() => config.value.networkMode, (newMode) => {
   if (newMode === 'local') {
-    // Clear ZeroTier verification status when switching to local mode
+    // Clear verification status when switching to local mode
     zerotierVerified.value = false
+    tailscaleVerified.value = false
     errors.value.zerotierApiToken = ''
     errors.value.zerotierNetworkId = ''
+    errors.value.tailscaleAuthKey = ''
+    errors.value.tailscaleApiToken = ''
   }
+})
+
+// Clear verification when switching overlay providers
+watch(() => config.value.overlayProvider, () => {
+  zerotierVerified.value = false
+  tailscaleVerified.value = false
+  errors.value.zerotierApiToken = ''
+  errors.value.zerotierNetworkId = ''
+  errors.value.tailscaleAuthKey = ''
+  errors.value.tailscaleApiToken = ''
 })
 
 
@@ -419,14 +551,20 @@ const isValid = computed(() => {
                    !errors.value.domainName &&
                    !errors.value.githubOrg
 
-  // If overlay mode is selected, ZeroTier fields are required
+  // If overlay mode is selected, overlay provider credentials are required
   if (config.value.networkMode === 'overlay') {
-    return baseValid &&
-           config.value.zerotierNetworkId &&
-           config.value.zerotierApiToken
+    if (config.value.overlayProvider === 'zerotier') {
+      return baseValid &&
+             config.value.zerotierNetworkId &&
+             config.value.zerotierApiToken
+    } else if (config.value.overlayProvider === 'tailscale') {
+      return baseValid &&
+             config.value.tailscaleAuthKey &&
+             config.value.tailscaleApiToken
+    }
   }
-  
-  // For local mode, ZeroTier fields are not required
+
+  // For local mode, overlay fields are not required
   return baseValid
 })
 
@@ -480,9 +618,6 @@ const storeCloudflareToken = async () => {
   }
 }
 
-const zerotierVerified = ref(false)
-const verifyingZerotier = ref(false)
-
 const verifyZerotier = async () => {
   if (!config.value.zerotierApiToken || !config.value.zerotierNetworkId) {
     errors.value.zerotierApiToken = 'Both API token and Network ID are required'
@@ -521,6 +656,46 @@ const verifyZerotier = async () => {
 watch([() => config.value.zerotierApiToken, () => config.value.zerotierNetworkId], () => {
   zerotierVerified.value = false
   errors.value.zerotierApiToken = ''
+})
+
+const verifyTailscale = async () => {
+  if (!config.value.tailscaleAuthKey || !config.value.tailscaleApiToken) {
+    errors.value.tailscaleApiToken = 'Both auth key and API token are required'
+    tailscaleVerified.value = false
+    return false
+  }
+
+  verifyingTailscale.value = true
+  errors.value.tailscaleApiToken = ''
+
+  try {
+    const response = await axios.post('/api/verify-tailscale', {
+      auth_key: config.value.tailscaleAuthKey,
+      api_token: config.value.tailscaleApiToken
+    })
+
+    if (response.data.valid) {
+      tailscaleVerified.value = true
+      errors.value.tailscaleApiToken = ''
+      return true
+    } else {
+      errors.value.tailscaleApiToken = response.data.message || 'Invalid credentials'
+      tailscaleVerified.value = false
+      return false
+    }
+  } catch (error) {
+    errors.value.tailscaleApiToken = error.response?.data?.detail || 'Failed to verify Tailscale credentials'
+    tailscaleVerified.value = false
+    return false
+  } finally {
+    verifyingTailscale.value = false
+  }
+}
+
+// Reset Tailscale verification when credentials change
+watch([() => config.value.tailscaleAuthKey, () => config.value.tailscaleApiToken], () => {
+  tailscaleVerified.value = false
+  errors.value.tailscaleApiToken = ''
 })
 
 // GitHub token verification
@@ -623,18 +798,33 @@ const saveAndContinue = async () => {
     }
   }
   
-  // Verify ZeroTier credentials only if overlay mode is selected
+  // Verify overlay credentials only if overlay mode is selected
   if (config.value.networkMode === 'overlay') {
-    if (!config.value.zerotierApiToken || !config.value.zerotierNetworkId) {
-      alert('ZeroTier API token and Network ID are both required for overlay mode')
-      return
-    }
-    
-    if (!zerotierVerified.value) {
-      const zerotierValid = await verifyZerotier()
-      if (!zerotierValid) {
-        alert('Please provide valid ZeroTier credentials with network access')
+    if (config.value.overlayProvider === 'zerotier') {
+      if (!config.value.zerotierApiToken || !config.value.zerotierNetworkId) {
+        alert('ZeroTier API token and Network ID are both required for overlay mode')
         return
+      }
+
+      if (!zerotierVerified.value) {
+        const zerotierValid = await verifyZerotier()
+        if (!zerotierValid) {
+          alert('Please provide valid ZeroTier credentials with network access')
+          return
+        }
+      }
+    } else if (config.value.overlayProvider === 'tailscale') {
+      if (!config.value.tailscaleAuthKey || !config.value.tailscaleApiToken) {
+        alert('Tailscale auth key and API token are both required for overlay mode')
+        return
+      }
+
+      if (!tailscaleVerified.value) {
+        const tailscaleValid = await verifyTailscale()
+        if (!tailscaleValid) {
+          alert('Please provide valid Tailscale credentials')
+          return
+        }
       }
     }
   }
@@ -655,9 +845,12 @@ const saveAndContinue = async () => {
       githubToken: config.value.githubToken,
       zerotierApiToken: config.value.zerotierApiToken,
       zerotierNetworkId: config.value.zerotierNetworkId,
+      tailscaleAuthKey: config.value.tailscaleAuthKey,
+      tailscaleApiToken: config.value.tailscaleApiToken,
       githubOrg: config.value.githubOrg,
       clusterName: config.value.clusterName,
-      domainName: config.value.domainName
+      domainName: config.value.domainName,
+      overlayProvider: config.value.overlayProvider
     })
     console.log('Configuration saved to ~/.env')
   } catch (error) {
@@ -674,28 +867,40 @@ const saveAndContinue = async () => {
   // Save config WITHOUT the sensitive tokens (they're stored securely in ~/.env)
   const configToSave = {
     networkMode: config.value.networkMode,
+    overlayProvider: config.value.overlayProvider,
     clusterName: config.value.clusterName,
     domainName: config.value.domainName,
     githubOrg: config.value.githubOrg,
     sudoPassword: sudoPassword,
     systemUsername: systemUsername
   }
-  
-  // Only include ZeroTier config if overlay mode is selected
+
+  // Only include overlay credentials if overlay mode is selected
   if (config.value.networkMode === 'overlay') {
-    configToSave.zerotierNetworkId = config.value.zerotierNetworkId
-    configToSave.zerotierApiToken = config.value.zerotierApiToken
+    if (config.value.overlayProvider === 'zerotier') {
+      configToSave.zerotierNetworkId = config.value.zerotierNetworkId
+      configToSave.zerotierApiToken = config.value.zerotierApiToken
+    } else if (config.value.overlayProvider === 'tailscale') {
+      configToSave.tailscaleAuthKey = config.value.tailscaleAuthKey
+      configToSave.tailscaleApiToken = config.value.tailscaleApiToken
+    }
   }
   localStorage.setItem('thinkube-config', JSON.stringify(configToSave))
-  
+
   // Also save tokens to sessionStorage for immediate use in deployment
   sessionStorage.setItem('networkMode', config.value.networkMode)
+  sessionStorage.setItem('overlayProvider', config.value.overlayProvider)
   sessionStorage.setItem('cloudflareToken', config.value.cloudflareToken)
-  
-  // Only store ZeroTier tokens if overlay mode is selected
+
+  // Only store overlay credentials if overlay mode is selected
   if (config.value.networkMode === 'overlay') {
-    sessionStorage.setItem('zerotierApiToken', config.value.zerotierApiToken)
-    sessionStorage.setItem('zerotierNetworkId', config.value.zerotierNetworkId)
+    if (config.value.overlayProvider === 'zerotier') {
+      sessionStorage.setItem('zerotierApiToken', config.value.zerotierApiToken)
+      sessionStorage.setItem('zerotierNetworkId', config.value.zerotierNetworkId)
+    } else if (config.value.overlayProvider === 'tailscale') {
+      sessionStorage.setItem('tailscaleAuthKey', config.value.tailscaleAuthKey)
+      sessionStorage.setItem('tailscaleApiToken', config.value.tailscaleApiToken)
+    }
   }
   
   if (config.value.githubToken) {
@@ -703,7 +908,7 @@ const saveAndContinue = async () => {
     sessionStorage.setItem('githubOrg', config.value.githubOrg)
   }
 
-  // Navigate to GPU driver check instead of network configuration
-  router.push('/gpu-driver-check')
+  // Navigate to network configuration (GPU driver status is now shown in Hardware Detection)
+  router.push('/network-configuration')
 }
 </script>
