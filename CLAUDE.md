@@ -12,6 +12,37 @@ Thinkube Installer is a desktop application for deploying Thinkube (Kubernetes h
 
 The installer runs locally (Linux/macOS) and remotely deploys to Ubuntu servers via SSH and Ansible.
 
+# ⚠️ CRITICAL PATH RULES ⚠️
+
+**BEFORE ANY EDIT/WRITE/GIT OPERATION - CHECK THIS:**
+
+## Allowed Paths for Edits
+
+✅ **ALLOWED** - These are source of truth:
+- `/home/alexmc/thinkube/` - Ansible playbooks repository
+- `/home/alexmc/thinkube-installer/` - Installer application code
+
+❌ **FORBIDDEN** - Changes will be lost:
+- `/tmp/thinkube-installer/` - TEMPORARY CLONE, never edit here
+- `/tmp/*` - Any temporary files, never edit
+
+## Pre-Commit Verification Checklist
+
+**Before ANY `git commit` or `git push` command:**
+
+1. ✅ Run `pwd` - Am I in `~/thinkube/` or `~/thinkube-installer/`?
+2. ❌ If in `/tmp/*` → **STOP IMMEDIATELY**, cd to correct directory
+3. ✅ If in `~/thinkube/` or `~/thinkube-installer/` → Proceed
+
+**Always use full paths in git commands:**
+```bash
+# CORRECT - Explicit directory change
+cd ~/thinkube && git add ... && git commit -m "..." && git push
+
+# WRONG - Uses current directory
+git commit -m "..."  # Where am I? Unknown!
+```
+
 ## Development Commands
 
 ### Running in Development Mode
@@ -352,6 +383,74 @@ cd /tmp/thinkube-installer
 git pull
 
 # 4. Click "Retry" in installer UI
+```
+
+### Common Mistakes - LEARN FROM THESE
+
+#### ❌ MISTAKE #1: Editing in /tmp/thinkube-installer
+
+**What happened:**
+```bash
+cd /tmp/thinkube-installer
+# Edit ansible/40_thinkube/core/seaweedfs/10_deploy.yaml
+git commit -m "Fix SeaweedFS"
+git push
+```
+
+**Why wrong:** `/tmp/thinkube-installer/` is a temporary clone. Changes pushed from here bypass the source of truth workflow.
+
+**Correct approach:**
+```bash
+cd ~/thinkube  # Edit source of truth
+# Edit ansible/40_thinkube/core/seaweedfs/10_deploy.yaml
+git commit -m "Fix SeaweedFS"
+git push
+cd /tmp/thinkube-installer && git pull  # Update temp clone if needed
+```
+
+#### ❌ MISTAKE #2: Running git commands without checking pwd
+
+**What happened:**
+```bash
+# Currently in /tmp/thinkube-installer, but don't realize it
+git commit -m "Fix something"
+# Just committed in wrong directory!
+```
+
+**Why wrong:** Git operates on current directory. If you're in `/tmp/`, you're editing the wrong repo.
+
+**Correct approach:**
+```bash
+pwd  # Check where I am
+# Output: /tmp/thinkube-installer
+# STOP! Wrong directory!
+cd ~/thinkube  # Go to correct directory
+pwd  # Verify
+# Output: /home/alexmc/thinkube
+# NOW safe to commit
+git commit -m "Fix something"
+```
+
+#### ❌ MISTAKE #3: Not pulling into /tmp after pushing from ~/thinkube
+
+**What happened:**
+```bash
+cd ~/thinkube
+# Edit and commit changes
+git push
+# Click "Retry" in installer UI
+# Installer still uses old code from /tmp/thinkube-installer!
+```
+
+**Why wrong:** The installer runs from `/tmp/thinkube-installer/`, which doesn't automatically update.
+
+**Correct approach:**
+```bash
+cd ~/thinkube
+# Edit and commit changes
+git push
+cd /tmp/thinkube-installer && git pull  # Update temp clone
+# NOW click "Retry" in installer UI
 ```
 
 ## Common Tasks
