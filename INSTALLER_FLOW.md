@@ -51,10 +51,19 @@ The installer follows this sequential flow:
    └─> inventory: minimalInventory.js (basic ansible_host + ansible_user only)
    └─> playbook: ansible/00_initial_setup/10_setup_ssh_keys.yaml
 
-6. Hardware Detection
+6. Hardware Detection (includes GPU driver detection)
    └─> router: /hardware-detection
    └─> component: frontend/src/views/HardwareDetection.vue
-   └─> purpose: Detect CPUs, GPUs, memory, storage on each server
+   └─> purpose: Detect CPUs, GPUs, memory, storage, and NVIDIA driver versions on each server
+   └─> bash script: Collects hardware info via single SSH call per server
+   └─> driver detection:
+       - Detects NVIDIA driver version via nvidia-smi
+       - Classifies driver status: compatible (>=580.x), old (<580.x), missing, none
+       - Shows driver badges and summary on UI
+   └─> user decisions (if old drivers detected):
+       - "Stop Installation": Exit to manually upgrade drivers
+       - "Continue Without GPU Nodes": Proceed, exclude servers with old drivers from GPU workloads
+   └─> stores: sessionStorage.serverHardware (includes driver_status field)
 
 7. Role Assignment
    └─> router: /role-assignment
@@ -67,35 +76,24 @@ The installer follows this sequential flow:
    └─> purpose: Configure cluster name, domain, admin credentials
    └─> stores: localStorage.thinkube-config, ~/.env (tokens)
 
-9. GPU Driver Check
-   └─> router: /gpu-driver-check
-   └─> component: frontend/src/views/GpuDriverCheck.vue
-   └─> purpose: Detect GPUs, check driver versions, decide install/exclude
-   └─> api: POST /api/gpu/detect-drivers
-   └─> stores: localStorage.thinkube-config.gpuNodes
-   └─> decisions:
-       - Compatible drivers (>=580.x): Auto-enable for GPU workloads
-       - Missing drivers: User chooses "Install automatically" or "Exclude"
-       - Old drivers (<580.x): User chooses "Upgrade manually (abort)" or "Exclude"
+9. Network Configuration
+   └─> router: /network-configuration
+   └─> component: frontend/src/views/NetworkConfiguration.vue
+   └─> purpose: Configure network mode, ZeroTier, MetalLB IP pool
 
-10. Network Configuration
-    └─> router: /network-configuration
-    └─> component: frontend/src/views/NetworkConfiguration.vue
-    └─> purpose: Configure network mode, ZeroTier, MetalLB IP pool
-
-11. Review
+10. Review
     └─> router: /review
     └─> component: frontend/src/views/Review.vue
     └─> purpose: Review all configuration before deployment
 
-12. Deploy ⚠️ USES FULL INVENTORY
+11. Deploy ⚠️ USES FULL INVENTORY
     └─> router: /deploy
     └─> component: frontend/src/views/Deploy.vue
     └─> purpose: Execute all deployment playbooks
     └─> inventory: inventoryGenerator.js (complete inventory with roles, network, tokens, GPU config)
     └─> stores: ~/.thinkube-installer/inventory.yaml (persisted to disk)
 
-13. Complete
+12. Complete
     └─> router: /complete
     └─> component: frontend/src/views/Complete.vue
     └─> purpose: Show completion status and next steps

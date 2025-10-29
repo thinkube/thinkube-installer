@@ -14,8 +14,8 @@
     
     <div class="navbar-center">
       <!-- Progress indicator -->
-      <div v-if="currentStep" class="text-sm text-base-content text-opacity-70">
-        Step {{ currentStepIndex + 1 }} of {{ totalSteps }}
+      <div v-if="currentStep && showStartOver" class="text-sm text-base-content text-opacity-70">
+        Step {{ currentStepIndex }} of {{ totalSteps }}
       </div>
     </div>
     
@@ -58,7 +58,6 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { clearAllCheckpoints } from '@/utils/installerState'
 
 const router = useRouter()
 const route = useRoute()
@@ -103,18 +102,17 @@ const confirmStartOver = () => {
 
 const startOver = async () => {
   try {
-    // Clear all stored state
-    clearAllCheckpoints()
-    
-    // Clear deployment state through the manager
-    const { deploymentState } = await import('@/utils/deploymentState')
-    await deploymentState.clearState()
-    
+    // Clear session data (passwords, temporary data)
+    sessionStorage.clear()
+
+    // Note: We intentionally DO NOT clear localStorage items like 'thinkube-config'
+    // because those are user configuration settings that should persist
+
     // Call backend to clean up files
     const response = await fetch('/api/cleanup-installer-state', {
       method: 'POST'
     })
-    
+
     if (!response.ok) {
       console.error('Failed to clean up backend state')
     } else {
@@ -124,10 +122,10 @@ const startOver = async () => {
   } catch (error) {
     console.error('Error during cleanup:', error)
   }
-  
+
   // Close modal
   showConfirmModal.value = false
-  
+
   // Force a page reload to ensure all state is cleared
   window.location.href = '/'
 }

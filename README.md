@@ -155,13 +155,47 @@ The installer automatically sets up its environment on first run:
 
 ### Environment Variables
 
+**Build and Deployment**:
+
 - `THINKUBE_BRANCH`: Clone specific branch/tag for testing (default: `main`)
   ```bash
-  THINKUBE_BRANCH=feature/my-test ./test-dev.sh
+  THINKUBE_BRANCH=feature/my-test thinkube-installer
   ```
 
-- `SKIP_CONFIG`: Skip configuration screens, use existing inventory
-- `CLEAN_STATE`: Clean deployment state but preserve inventory
+**Runtime Behavior**:
+
+- `TK_TEST=1`: Enable test mode with manual playbook control
+  - Disables automatic 3-second advance between playbooks
+  - Requires manual button click to proceed to next playbook
+  - Adds "Test (18)" button to run test playbook
+  - Adds "Rollback (19)" button to run rollback playbook
+  ```bash
+  TK_TEST=1 thinkube-installer
+  ```
+
+- `TK_SHELL_CONFIG=1`: Include shell configuration playbook in deployment
+  - Adds `ansible/misc/00_setup_shells.yml` to the deployment queue
+  - Configures bash/zsh environments on target servers
+  ```bash
+  TK_SHELL_CONFIG=1 thinkube-installer
+  ```
+
+- `TK_PROFILER=1`: Enable Ansible profiling and detailed logging
+  - Enables `profile_tasks` and `timer` callbacks
+  - Shows execution time for each task
+  - Useful for performance debugging
+  ```bash
+  TK_PROFILER=1 thinkube-installer
+  ```
+
+**Combined Usage**:
+```bash
+# Example: Test mode with profiling
+TK_TEST=1 TK_PROFILER=1 thinkube-installer
+
+# Example: Full deployment with shell config
+TK_SHELL_CONFIG=1 thinkube-installer
+```
 
 ## Platform Support
 

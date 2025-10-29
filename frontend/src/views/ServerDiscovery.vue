@@ -91,19 +91,14 @@
     <!-- Scanning Progress -->
     <div v-if="isScanning" class="card bg-base-100 shadow-xl mb-6">
       <div class="card-body">
-        <div class="flex items-center gap-4">
-          <div
-            class="radial-progress text-primary"
-            :style="`--value:${Math.round(scanProgress)}; --size:5rem; --thickness:0.5rem;`"
-            role="progressbar"
-          >
-            {{ Math.round(scanProgress) }}%
-          </div>
-          <div class="flex-1">
+        <div class="flex justify-between items-center mb-4">
+          <div>
             <p class="text-lg font-semibold">Scanning Network...</p>
             <p class="text-sm text-base-content text-opacity-70">{{ scanStatus }}</p>
           </div>
+          <div class="text-2xl font-bold text-primary">{{ Math.round(scanProgress) }}%</div>
         </div>
+        <progress class="progress progress-primary w-full" :value="scanProgress" max="100"></progress>
       </div>
     </div>
     

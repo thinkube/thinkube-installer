@@ -380,7 +380,6 @@ async function continueToDeployment() {
       // Clear state and go back to welcome
       localStorage.removeItem('thinkube-config')
       localStorage.removeItem('discoveredServers')
-      localStorage.removeItem('thinkube-deployment-state-v2')
       router.push('/')
     }
     return

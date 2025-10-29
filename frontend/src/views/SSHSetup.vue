@@ -86,7 +86,7 @@
       </div>
     </div>
     
-    <!-- SSH Setup Complete -->
+    <!-- SSH Setup and Testing Status -->
     <div v-if="!isChecking && sshSetupComplete" class="card bg-success bg-opacity-10 border border-success/20 shadow-xl mb-6">
       <div class="card-body">
         <div class="flex items-center gap-3 mb-4">
@@ -95,45 +95,20 @@
           </svg>
           <div>
             <h3 class="font-bold text-lg text-base-content">SSH Setup Complete!</h3>
-            <div class="text-sm text-base-content text-opacity-80">Passwordless SSH has been configured between all servers.</div>
+            <div class="text-sm text-base-content text-opacity-80">
+              {{ isTestRunning ? 'Running connectivity test...' : 'Passwordless SSH has been configured between all servers.' }}
+            </div>
           </div>
         </div>
-        
-        <div class="flex gap-3 flex-wrap">
-          <button 
-            class="btn btn-outline gap-2"
-            @click="runTestPlaybook"
-            :disabled="isTestRunning || !sshSetupComplete"
-          >
-            <svg v-if="isTestRunning" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-            </svg>
-            {{ isTestRunning ? 'Testing...' : 'Test SSH Connectivity' }}
-          </button>
-          
-          <button 
-            class="btn btn-primary gap-2"
-            @click="continueToNext"
-            :disabled="!sshSetupComplete || !testResult?.success"
-          >
-            Continue to Next Step
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
-            </svg>
-          </button>
-        </div>
-        
-        <div v-if="testResult" class="mt-4">
-          <div class="alert" :class="testResult.success ? 'alert-success' : 'alert-error'">
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-              <path v-if="testResult.success" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+
+        <div v-if="testResult" class="alert" :class="testResult.success ? 'alert-success' : 'alert-error'">
+          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path v-if="testResult.success" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
             <span>{{ testResult.message }}</span>
+            <div v-if="testResult.success" class="text-sm mt-1">Proceeding to hardware detection...</div>
           </div>
         </div>
       </div>
@@ -176,7 +151,6 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from '@/utils/axios'
 import PlaybookExecutorStream from '@/components/PlaybookExecutorStream.vue'
-import { saveCheckpoint, getCheckpoint, STEPS } from '@/utils/installerState'
 
 const router = useRouter()
 
@@ -284,16 +258,19 @@ const handlePlaybookComplete = (result) => {
     servers.value.forEach(server => {
       server.status = 'connected'
     })
-    
+
     // Store SSH info for later use
     sessionStorage.setItem('sshCredentials', JSON.stringify({
       username: currentUser.value,
       password: sessionStorage.getItem('sudoPassword')
     }))
-    
+
     sshSetupComplete.value = true
-    
-    // DON'T save checkpoint here - only save after test passes
+
+    // Automatically run test after setup succeeds
+    setTimeout(() => {
+      runTestPlaybook()
+    }, 500)
   } else {
     // Mark servers as failed
     servers.value.forEach(server => {
@@ -322,23 +299,17 @@ const runTestPlaybook = () => {
 // Handle test playbook completion
 const handleTestComplete = (result) => {
   isTestRunning.value = false
-  
+
   if (result.status === 'success') {
     testResult.value = {
       success: true,
       message: 'SSH connectivity test passed! All servers are accessible via SSH keys.'
     }
-    
-    // NOW save checkpoint after successful test
-    saveCheckpoint(STEPS.SSH_SETUP, {
-      servers: servers.value.map(s => ({
-        hostname: s.hostname,
-        ip: s.ip,
-        status: 'configured'
-      })),
-      username: currentUser.value,
-      completedAt: new Date().toISOString()
-    })
+
+    // Automatically proceed to next screen after short delay
+    setTimeout(() => {
+      router.push('/hardware-detection')
+    }, 2000)
   } else {
     testResult.value = {
       success: false,
@@ -354,7 +325,7 @@ const continueToNext = () => {
 
 // Load discovered servers and check state
 onMounted(async () => {
-  // Always load discovered servers fresh - don't trust checkpoints
+  // Load discovered servers from session storage
   const discoveredServers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
   servers.value = discoveredServers.map(s => ({
     hostname: s.hostname,

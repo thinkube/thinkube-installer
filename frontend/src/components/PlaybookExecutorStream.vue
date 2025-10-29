@@ -63,16 +63,20 @@
         <!-- Status Summary -->
         <div v-if="taskSummary.total > 0" class="stats stats-horizontal w-full mb-4">
           <div class="stat place-items-center py-2">
-            <div class="stat-title text-xs">Tasks</div>
+            <div class="stat-title text-xs">Total</div>
             <div class="stat-value text-lg">{{ taskSummary.total }}</div>
           </div>
-          <div class="stat place-items-center py-2">
+          <div v-if="taskSummary.ok > 0" class="stat place-items-center py-2">
             <div class="stat-title text-xs">OK</div>
             <div class="stat-value text-lg text-success">{{ taskSummary.ok }}</div>
           </div>
-          <div class="stat place-items-center py-2">
+          <div v-if="taskSummary.changed > 0" class="stat place-items-center py-2">
             <div class="stat-title text-xs">Changed</div>
             <div class="stat-value text-lg text-warning">{{ taskSummary.changed }}</div>
+          </div>
+          <div v-if="taskSummary.skipped > 0" class="stat place-items-center py-2">
+            <div class="stat-title text-xs">Skipped</div>
+            <div class="stat-value text-lg text-info">{{ taskSummary.skipped }}</div>
           </div>
           <div v-if="taskSummary.failed > 0" class="stat place-items-center py-2">
             <div class="stat-title text-xs">Failed</div>
@@ -128,12 +132,14 @@
         </div>
         
         <!-- Final Summary -->
-        <div v-if="taskSummary.totalTasks > 0" class="mb-4">
+        <div v-if="taskSummary.total > 0" class="mb-4">
           <p class="text-sm text-gray-600 mb-2">Execution Summary:</p>
           <div class="text-sm">
-            <p>Total Tasks: {{ taskSummary.totalTasks }}</p>
-            <p class="text-success">Completed: {{ taskSummary.completedTasks }}</p>
-            <p v-if="taskSummary.failedTasks > 0" class="text-error">Failed: {{ taskSummary.failedTasks }}</p>
+            <p>Total Tasks: {{ taskSummary.total }}</p>
+            <p v-if="taskSummary.ok > 0" class="text-success">OK: {{ taskSummary.ok }}</p>
+            <p v-if="taskSummary.changed > 0" class="text-warning">Changed: {{ taskSummary.changed }}</p>
+            <p v-if="taskSummary.skipped > 0" class="text-info">Skipped: {{ taskSummary.skipped }}</p>
+            <p v-if="taskSummary.failed > 0" class="text-error">Failed: {{ taskSummary.failed }}</p>
           </div>
         </div>
         
@@ -146,7 +152,7 @@
         
         <!-- Actions -->
         <div class="modal-action">
-          <button 
+          <button
             class="btn btn-ghost btn-sm gap-1"
             @click="copyOutput"
             :class="{ 'btn-success': copySuccess }"
@@ -159,6 +165,17 @@
             </svg>
             {{ copySuccess ? 'Copied!' : 'Copy Log' }}
           </button>
+
+          <!-- Test Mode buttons - only show on success -->
+          <template v-if="testMode && status === 'success'">
+            <button class="btn btn-info btn-sm" @click="emitTestPlaybook">
+              🧪 Run Test (18)
+            </button>
+            <button class="btn btn-warning btn-sm" @click="emitRollback">
+              🔄 Rollback (19)
+            </button>
+          </template>
+
           <button class="btn btn-primary" @click="closeResult">
             {{ status === 'success' ? 'Continue' : 'Close' }}
           </button>
@@ -177,6 +194,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 interface PlaybookExecutorProps {
   title: string
   playbookName: string
+  testMode?: boolean
   onRetry?: () => void
   onComplete?: (result: any) => void
 }
@@ -189,7 +207,7 @@ interface LogEntry {
 }
 
 const props = defineProps<PlaybookExecutorProps>()
-const emit = defineEmits(['complete', 'continue'])
+const emit = defineEmits(['complete', 'continue', 'test-playbook', 'rollback'])
 
 // Reactive state
 const isExecuting = ref(false)
@@ -209,9 +227,11 @@ const copySuccess = ref(false)
 
 // Task summary - track unique tasks rather than host executions
 const taskSummary = ref({
-  totalTasks: 0,
-  completedTasks: 0,
-  failedTasks: 0
+  total: 0,
+  ok: 0,
+  changed: 0,
+  skipped: 0,
+  failed: 0
 })
 const seenTasks = ref(new Set())
 
@@ -226,7 +246,7 @@ const startExecution = (params: any = {}) => {
   duration.value = null
   isCancelling.value = false
   logOutput.value = []
-  taskSummary.value = { totalTasks: 0, completedTasks: 0, failedTasks: 0 }
+  taskSummary.value = { total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 }
   seenTasks.value = new Set()
   startTime.value = Date.now()
   
@@ -410,28 +430,43 @@ const handleWebSocketMessage = (data: any) => {
     case 'task':
       currentTask.value = data.task_name
       taskCount.value = data.task_number
-      
+
       // Track unique tasks only
       if (data.task_name && !seenTasks.value.has(data.task_name)) {
         seenTasks.value.add(data.task_name)
-        taskSummary.value.totalTasks++
+        taskSummary.value.total++
       }
       break
-      
+
     case 'ok':
-    case 'changed':
-      // Mark task as completed (count unique tasks, not individual host results)
-      if (data.task && !seenTasks.value.has(data.task + '_completed')) {
-        seenTasks.value.add(data.task + '_completed')
-        taskSummary.value.completedTasks++
+      // Count ok tasks separately (not changed)
+      if (data.task && !seenTasks.value.has(data.task + '_ok')) {
+        seenTasks.value.add(data.task + '_ok')
+        taskSummary.value.ok++
       }
       break
-      
+
+    case 'changed':
+      // Count changed tasks separately
+      if (data.task && !seenTasks.value.has(data.task + '_changed')) {
+        seenTasks.value.add(data.task + '_changed')
+        taskSummary.value.changed++
+      }
+      break
+
+    case 'skipped':
+      // Count skipped tasks
+      if (data.task && !seenTasks.value.has(data.task + '_skipped')) {
+        seenTasks.value.add(data.task + '_skipped')
+        taskSummary.value.skipped++
+      }
+      break
+
     case 'failed':
       // Mark task as failed
       if (data.task && !seenTasks.value.has(data.task + '_failed')) {
         seenTasks.value.add(data.task + '_failed')
-        taskSummary.value.failedTasks++
+        taskSummary.value.failed++
       }
       break
       
@@ -458,17 +493,17 @@ const completeExecution = (result: any) => {
   showResult.value = true
   websocket.value?.close()
   websocket.value = null
-  
+
   // Emit completion event
   emit('complete', result)
-  
+
   // Call onComplete prop if provided
   if (props.onComplete) {
     props.onComplete(result)
   }
-  
-  // Auto-continue on success after a short delay
-  if (result.status === 'success') {
+
+  // Auto-continue on success after a short delay (unless in test mode)
+  if (result.status === 'success' && !props.testMode) {
     setTimeout(() => {
       // Only auto-continue if the modal is still showing (user hasn't manually closed it)
       if (showResult.value && status.value === 'success') {
@@ -516,7 +551,7 @@ const closeResult = () => {
   taskCount.value = 0
   duration.value = null
   logOutput.value = []
-  taskSummary.value = { totalTasks: 0, completedTasks: 0, failedTasks: 0 }
+  taskSummary.value = { total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 }
   seenTasks.value = new Set()
 }
 
@@ -532,12 +567,22 @@ const retry = () => {
     taskCount.value = 0
     duration.value = null
     logOutput.value = []
-    taskSummary.value = { totalTasks: 0, completedTasks: 0, failedTasks: 0 }
+    taskSummary.value = { total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 }
     seenTasks.value = new Set()
-    
+
     // Call the retry handler
     props.onRetry()
   }
+}
+
+const emitTestPlaybook = () => {
+  showResult.value = false
+  emit('test-playbook')
+}
+
+const emitRollback = () => {
+  showResult.value = false
+  emit('rollback')
 }
 
 const copyOutput = async () => {
@@ -596,6 +641,8 @@ const getLogClass = (type: string): string => {
       return 'text-success'
     case 'changed':
       return 'text-warning'
+    case 'skipped':
+      return 'text-info text-opacity-60'
     case 'failed':
       return 'text-error'
     case 'error':
@@ -618,6 +665,8 @@ const getLogPrefix = (type: string): string => {
       return '✓'
     case 'changed':
       return '~'
+    case 'skipped':
+      return '○'
     case 'failed':
       return '✗'
     case 'error':

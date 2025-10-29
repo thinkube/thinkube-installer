@@ -10,21 +10,18 @@
     <!-- Progress Overview -->
     <div class="card bg-base-100 shadow-xl mb-6">
       <div class="card-body">
-        <div class="text-center mb-6">
-          <div class="radial-progress text-primary" 
-               :style="`--value:${status.progress}; --size:12rem; --thickness:1rem;`">
-            <span class="text-4xl font-bold progress-text">{{ status.progress }}%</span>
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <div class="badge" :class="getPhaseClass(status.phase)">
+                {{ status.phase }}
+              </div>
+              <span class="text-lg font-semibold">{{ status.current_task }}</span>
+            </div>
           </div>
+          <div class="text-4xl font-bold text-primary">{{ status.progress }}%</div>
         </div>
-        
-        <div class="flex justify-center gap-2 mb-4">
-          <div class="badge" :class="getPhaseClass(status.phase)">
-            {{ status.phase }}
-          </div>
-        </div>
-        
-        <p class="text-center text-lg mb-4">{{ status.current_task }}</p>
-        
+
         <progress class="progress progress-primary w-full" :value="status.progress" max="100"></progress>
       </div>
     </div>
@@ -34,30 +31,31 @@
       <div class="card-body">
         <div class="flex items-center justify-between mb-4">
           <h2 class="card-title">Installation Logs</h2>
-          <button 
-            class="btn btn-ghost btn-sm btn-circle"
-            @click="autoScroll = !autoScroll"
-            :class="{ 'btn-active': autoScroll }"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                    :d="autoScroll ? 'M19 14l-7 7m0 0l-7-7m7 7V3' : 'M5 10l7-7m0 0l7 7m-7-7v18'"></path>
-            </svg>
-          </button>
+          <label class="label cursor-pointer gap-2">
+            <span class="label-text text-xs">Auto-scroll</span>
+            <input type="checkbox" v-model="autoScroll" class="checkbox checkbox-xs" />
+          </label>
         </div>
-        
-        <div ref="logContainer" class="log-container bg-base-200 rounded-lg p-4 h-96 overflow-y-auto font-mono text-sm">
-          <div v-for="(log, index) in status.logs" :key="index" class="mb-1">
-            <span class="text-base-content text-opacity-60">{{ formatTime(new Date()) }}</span>
-            <span class="ml-2">{{ log }}</span>
+
+        <div
+          class="mockup-code h-96 overflow-y-auto text-xs"
+          ref="logContainer"
+        >
+          <div v-if="status.logs.length === 0" class="text-base-content text-opacity-50">
+            <pre data-prefix="$"><code>Waiting for output...</code></pre>
           </div>
-          
-          <div v-if="status.errors.length > 0" class="mt-4 border-t border-error pt-4">
-            <div v-for="(error, index) in status.errors" :key="`error-${index}`" class="text-error mb-1">
-              <span class="text-error text-opacity-60">{{ formatTime(new Date()) }}</span>
-              <span class="ml-2">ERROR: {{ error }}</span>
-            </div>
-          </div>
+          <pre
+            v-for="(log, index) in status.logs"
+            :key="index"
+            :data-prefix="getLogPrefix(log)"
+            :class="getLogClass(log)"
+          ><code>{{ log }}</code></pre>
+          <pre
+            v-for="(error, index) in status.errors"
+            :key="`error-${index}`"
+            data-prefix="!"
+            class="text-error font-semibold"
+          ><code>ERROR: {{ error }}</code></pre>
         </div>
       </div>
     </div>
@@ -120,8 +118,22 @@ const getPhaseClass = (phase) => {
   return classes[phase] || 'badge-ghost'
 }
 
-const formatTime = (date) => {
-  return date.toTimeString().split(' ')[0]
+const getLogPrefix = (log) => {
+  // Determine prefix based on log content
+  if (log.includes('ERROR') || log.includes('failed')) return '✗'
+  if (log.includes('WARNING')) return '!'
+  if (log.includes('INSTALLER_STATUS')) return '>'
+  if (log.includes('✅') || log.includes('complete')) return '✓'
+  return '$'
+}
+
+const getLogClass = (log) => {
+  // Add color classes based on log content
+  if (log.includes('ERROR') || log.includes('failed')) return 'text-error font-semibold'
+  if (log.includes('WARNING')) return 'text-warning'
+  if (log.includes('INSTALLER_STATUS')) return 'text-info'
+  if (log.includes('✅') || log.includes('complete')) return 'text-success'
+  return 'text-base-content'
 }
 
 const connectWebSocket = () => {
@@ -212,20 +224,63 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.progress-text {
-  animation: fade-pulse 1.5s ease-in-out infinite;
+/* Custom scrollbar for log container */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
 }
 
-@keyframes fade-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
-.log-container {
-  font-family: 'Courier New', monospace;
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Override mockup-code background for better contrast */
+.mockup-code {
+  background-color: #1a1a1a !important;
+  color: #e0e0e0 !important;
+}
+
+.mockup-code pre {
+  color: inherit !important;
+}
+
+.mockup-code code {
+  color: inherit !important;
+  background: transparent !important;
+}
+
+/* Ensure prefix symbols are visible */
+.mockup-code pre::before {
+  color: #666 !important;
+}
+
+/* Adjust semantic colors for dark background */
+.mockup-code .text-info {
+  color: #60a5fa !important; /* Bright blue */
+}
+
+.mockup-code .text-success {
+  color: #4ade80 !important; /* Bright green */
+}
+
+.mockup-code .text-warning {
+  color: #fbbf24 !important; /* Bright yellow */
+}
+
+.mockup-code .text-error {
+  color: #f87171 !important; /* Bright red */
+}
+
+.mockup-code .text-base-content {
+  color: #e0e0e0 !important; /* Light gray for regular text */
 }
 </style>

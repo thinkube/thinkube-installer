@@ -47,27 +47,23 @@ git commit -m "..."  # Where am I? Unknown!
 
 ### Running in Development Mode
 
-**Primary development command**:
+**Development approach**:
 ```bash
-./test-dev.sh
+cd frontend
+npm run tauri:dev
 ```
-This script:
-- Checks system memory and warns about OOM killer
-- Creates backend Python venv (`backend/venv-test`)
-- Prompts to run Tauri app (which starts backend + frontend + desktop window)
-- Sets environment variables for webkit compatibility
+This starts Tauri in development mode, which:
+- Starts the FastAPI backend from `frontend/src-tauri/backend/`
+- Starts Vite dev server for the frontend
+- Opens the desktop window
+- Uses `venv-test` for backend Python dependencies
 
-**Development flags**:
+**Runtime environment variables**:
 ```bash
-./test-dev.sh --clean-state      # Clear deployment state, keep inventory
-./test-dev.sh --skip-config      # Skip config screens, use existing inventory
-```
-
-**Environment variables** (set before running):
-```bash
-THINKUBE_BRANCH=feature-x ./test-dev.sh  # Clone specific thinkube branch
-SKIP_CONFIG=true ./test-dev.sh            # Skip configuration
-CLEAN_STATE=true ./test-dev.sh            # Clean state before start
+THINKUBE_BRANCH=feature-x npm run tauri:dev  # Clone specific thinkube branch
+TK_TEST=1 npm run tauri:dev                   # Enable test mode
+TK_SHELL_CONFIG=1 npm run tauri:dev           # Include shell configuration
+TK_PROFILER=1 npm run tauri:dev               # Enable Ansible profiling
 ```
 
 ### Configuration Persistence
@@ -195,10 +191,11 @@ frontend/src/
 └── App.vue
 ```
 
-**Deployment state persistence**:
-- Frontend stores deployment progress in `localStorage` as `thinkube-deployment-state-v2`
-- Router guard (`router/index.js:95-149`) redirects to `/deploy` if deployment is in progress
-- Backend stores inventory at `~/.thinkube-installer/inventory.yaml` and state in `deployment-state.json`
+**Deployment approach**:
+- Installer always starts fresh - no state persistence across restarts
+- Deployment progress tracked in memory only during active session
+- Configuration saved to `~/.env` for reuse
+- Backend stores inventory at `~/.thinkube-installer/inventory.yaml`
 
 ### Tauri Integration
 
@@ -211,7 +208,7 @@ frontend/src/
 **Important**: In development mode, cargo runs from `frontend/src-tauri/` directory (due to `npm run dev` → `cd frontend && npm run tauri:dev`), so the backend path is just `./backend` relative to that location.
 
 **Commands** (`lib.rs:10-15`):
-- `get_config_flags()`: Returns `(SKIP_CONFIG, CLEAN_STATE)` env vars to frontend
+- `get_config_flags()`: Returns `(TK_TEST, TK_SHELL_CONFIG)` runtime flags to frontend
 
 ### Ansible Deployment Flow
 
@@ -512,13 +509,13 @@ Edit `frontend/src-tauri/backend/app/services/ansible_environment.py`:
 
 4. **Tauri v2 requires Rust 1.82+**: The build script checks and upgrades if needed.
 
-5. **Node.js version**: Development tested with Node 22.16.0 via nvm. `test-dev.sh` looks for it in `~/.nvm/` or `~/.local/share/nvm/`.
+5. **Node.js version**: Development tested with Node 22.16.0 via nvm. Install from `~/.nvm/` or `~/.local/share/nvm/`.
 
-6. **WebKit environment variables**: `test-dev.sh` sets `WEBKIT_DISABLE_COMPOSITING_MODE=1` and `GDK_BACKEND=x11` for compatibility.
+6. **WebKit environment variables**: Set `WEBKIT_DISABLE_COMPOSITING_MODE=1` and `GDK_BACKEND=x11` for compatibility if running into graphics issues.
 
-7. **Inventory persistence**: The `--skip-config` mode relies on `~/.thinkube-installer/inventory.yaml` existing. Use with `--clean-state` to reset deployment progress but keep configuration.
+7. **Inventory persistence**: Configuration saved to `~/.env` for reuse. Inventory stored at `~/.thinkube-installer/inventory.yaml`.
 
-8. **Router guard redirects**: If you modify deployment state structure, update the router guard in `frontend/src/router/index.js` to handle it correctly.
+8. **No deployment resume**: Installer always starts fresh. If deployment fails, user must restart from configuration.
 
 9. **Product name uses dash**: The `productName` in `tauri.conf.json` is `thinkube-installer` (with dash) to avoid path issues. The window title uses "Thinkube Installer" (with space and capitalization) for display purposes only.
 

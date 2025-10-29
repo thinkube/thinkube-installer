@@ -57,6 +57,8 @@
         :on-retry="retryCurrentPlaybook"
         @complete="handlePlaybookComplete"
         @continue="handlePlaybookContinue"
+        @test-playbook="runTestPlaybook"
+        @rollback="runRollbackPlaybook"
       />
     </div>
 
@@ -476,13 +478,26 @@ const handlePlaybookComplete = async (result) => {
   // Success - clear any previous error
   deploymentError.value = ''
 
-  // Increment completed counter
-  completedPlaybooks.value++
+  // Handle test/rollback playbooks differently (they're outside the queue)
+  const isTest = currentPlaybook.value?.id === 'test-18'
+  const isRollback = currentPlaybook.value?.id === 'rollback-19'
 
-  // Move to next playbook
-  currentPlaybookIndex.value++
-
-  console.log('Playbook succeeded, waiting for continue click...')
+  if (isTest) {
+    // Test playbook - don't advance queue, allows continuing to next playbook
+    console.log('Test playbook succeeded, queue index unchanged')
+  } else if (isRollback) {
+    // Rollback playbook - move back one step to retry the rolled-back playbook
+    if (currentPlaybookIndex.value > 0) {
+      currentPlaybookIndex.value--
+      completedPlaybooks.value--
+    }
+    console.log('Rollback playbook succeeded, moved back to retry previous playbook')
+  } else {
+    // Normal playbook - increment counters to move forward
+    completedPlaybooks.value++
+    currentPlaybookIndex.value++
+    console.log('Main playbook succeeded, advancing to next')
+  }
 }
 
 // Handle user clicking Continue

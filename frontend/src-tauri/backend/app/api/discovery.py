@@ -104,6 +104,23 @@ lspci -nn 2>/dev/null | grep -i nvidia | grep -E '\[030[0-2]\]' | while IFS= rea
 done
 echo "],"
 
+# NVIDIA driver version detection
+echo -n '"nvidia_driver_installed": '
+if command -v nvidia-smi >/dev/null 2>&1; then
+    echo -n "true"
+else
+    echo -n "false"
+fi
+echo ","
+
+echo -n '"nvidia_driver_version": "'
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d '\n' || echo -n ""
+else
+    echo -n ""
+fi
+echo '",'
+
 # VFIO info
 echo -n '"vfio_info": "'
 lspci -k 2>/dev/null | grep -A 3 -i nvidia | tr '\n' ' ' | tr '\t' ' ' | sed 's/"/\\"/g' | sed 's/  */ /g' | tr -d '\n' || echo -n ""
@@ -286,7 +303,10 @@ echo "}"
             "gpu_detected": False,
             "gpu_model": None,
             "gpu_count": 0,
-            "architecture": raw_data.get("architecture", "unknown")
+            "architecture": raw_data.get("architecture", "unknown"),
+            "nvidia_driver_installed": raw_data.get("nvidia_driver_installed", False),
+            "nvidia_driver_version": raw_data.get("nvidia_driver_version", ""),
+            "driver_status": "none"  # Will be set below: compatible/old/missing/none
         }
         
         # Process GPU information
@@ -407,7 +427,33 @@ echo "}"
                     hardware_info["gpu_model"] = f"{vfio_count} NVIDIA GPUs (all VFIO-bound)"
             
             logger.info(f"GPU Summary: {visible_count} visible, {vfio_count} VFIO-bound, {total_gpu_count} total")
-        
+
+        # Determine driver status based on GPU detection and driver version
+        if total_gpu_count > 0:
+            # GPU detected - check driver status
+            if hardware_info["nvidia_driver_installed"] and hardware_info["nvidia_driver_version"]:
+                driver_version = hardware_info["nvidia_driver_version"]
+                try:
+                    # Extract major version (e.g., "580.95.05" -> 580)
+                    major_version = int(driver_version.split('.')[0])
+                    if major_version >= 580:
+                        hardware_info["driver_status"] = "compatible"
+                        logger.info(f"Driver {driver_version} is compatible (>= 580.x)")
+                    else:
+                        hardware_info["driver_status"] = "old"
+                        logger.warning(f"Driver {driver_version} is outdated (< 580.x)")
+                except (ValueError, IndexError):
+                    # Can't parse version, assume compatible if installed
+                    hardware_info["driver_status"] = "compatible"
+                    logger.warning(f"Could not parse driver version: {driver_version}, assuming compatible")
+            else:
+                # No driver installed
+                hardware_info["driver_status"] = "missing"
+                logger.info("GPU detected but no NVIDIA driver installed")
+        else:
+            # No GPU detected
+            hardware_info["driver_status"] = "none"
+
         # Process IOMMU information for GPU passthrough
         iommu_enabled = raw_data.get("iommu_enabled", False)
         iommu_groups = raw_data.get("iommu_groups", [])

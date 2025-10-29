@@ -52,9 +52,9 @@
           </div>
         </div>
         
-        <!-- Tools to be Installed -->
+        <!-- Tools Required -->
         <div v-if="toolRequirements.length > 0">
-          <h3 class="font-semibold mb-3 text-base-content">Tools to be Installed</h3>
+          <h3 class="font-semibold mb-3 text-base-content">Tools Required</h3>
           <div class="space-y-3">
             <div v-for="req in toolRequirements" :key="req.name" 
                  class="flex items-center gap-4 p-3 rounded-lg bg-base-200">
