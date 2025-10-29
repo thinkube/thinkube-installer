@@ -220,7 +220,10 @@ const getPhaseClass = (phase) => {
 const buildPlaybookQueue = () => {
   const queue = []
   console.log('Building playbook queue...')
-  
+
+  // Load config from localStorage
+  const config = JSON.parse(localStorage.getItem('thinkube-config') || '{}')
+
   // Phase 1: Initial Setup (00_initial_setup)
   // Skip SSH keys - already done in SSHSetup step
   queue.push({
