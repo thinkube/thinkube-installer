@@ -143,6 +143,14 @@ export function generateDynamicInventory() {
             }
           }
         },
+
+        // k8s_cluster group - includes all k8s nodes (control plane + workers)
+        k8s_cluster: {
+          children: {
+            k8s_control_plane: {},
+            k8s_workers: {}
+          }
+        },
         
         // Overlay network nodes - all nodes that need overlay networking (ZeroTier or Tailscale)
         overlay_nodes: {
