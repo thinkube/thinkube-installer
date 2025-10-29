@@ -535,17 +535,17 @@ const handlePlaybookComplete = async (result) => {
     }
     console.log('Rollback playbook succeeded, moved back to retry previous playbook')
   } else {
-    // Normal playbook - increment counters to move forward
+    // Normal playbook - increment completed counter only (index incremented in Continue handler)
     completedPlaybooks.value++
-    currentPlaybookIndex.value++
-    console.log('Main playbook succeeded, advancing to next')
+    console.log('Main playbook succeeded')
   }
 }
 
 // Handle user clicking Continue
 const handlePlaybookContinue = () => {
-  console.log('User clicked Continue')
+  console.log('User clicked Continue - advancing to next playbook')
   currentPlaybook.value = null
+  currentPlaybookIndex.value++
   executeNextPlaybook()
 }
 
