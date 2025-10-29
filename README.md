@@ -73,13 +73,14 @@ Output: `frontend/src-tauri/target/release/bundle/`
 ### Quick Start
 
 ```bash
-./test-dev.sh
+cd frontend
+npm run tauri:dev
 ```
 
 This will:
-- Check dependencies
-- Create backend venv if needed
-- Start Tauri in development mode (launches backend + frontend)
+- Start Tauri in development mode (launches backend + frontend + desktop window)
+- Backend runs from `frontend/src-tauri/backend/` with `venv-test`
+- Frontend runs via Vite dev server
 
 ### Development Requirements
 
@@ -88,7 +89,7 @@ Same as build requirements, plus the backend test venv is created automatically.
 ### How It Works
 
 **Development Mode**:
-- Backend runs from `backend/` with `venv-test`
+- Backend runs from `frontend/src-tauri/backend/` with `venv-test`
 - Frontend runs on `http://localhost:5173` (Vite dev server)
 - Tauri creates desktop window
 
@@ -122,7 +123,6 @@ thinkube-installer/
 ├── scripts/
 │   ├── setup-build-env.sh   # Install build dependencies
 │   └── build.sh             # Build installer for current platform
-├── test-dev.sh              # Run in development mode
 └── README.md
 ```
 

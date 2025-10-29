@@ -5,25 +5,27 @@ The installer now supports two command-line options for faster re-runs:
 ## Usage
 
 ```bash
-# Clean deployment state but keep inventory
-./test-dev.sh --clean-state
+# Set environment variables before running
+export CLEAN_STATE=true     # Clean deployment state but keep inventory
+export SKIP_CONFIG=true      # Skip configuration screens and reuse existing inventory
 
-# Skip configuration screens and reuse existing inventory
-./test-dev.sh --skip-config
+# Then run the installer
+cd frontend
+npm run tauri:dev
 
-# Both options together - start fresh deployment with existing configuration
-./test-dev.sh --clean-state --skip-config
+# Or set them inline
+CLEAN_STATE=true SKIP_CONFIG=true npm run tauri:dev
 ```
 
 ## How it works
 
-### --clean-state
+### CLEAN_STATE
 - Removes the Tauri app data directory (`~/.config/thinkube-installer`)
 - Clears localStorage and sessionStorage (deployment progress, etc.)
 - **Preserves `inventory.yaml`** so configuration can be reused
 - Allows starting a fresh deployment without re-entering all configuration
 
-### --skip-config
+### SKIP_CONFIG
 1. On startup, checks if `inventory.yaml` exists
 2. If found, loads it via the backend API
 3. Skips all configuration screens
@@ -39,7 +41,7 @@ The installer now supports two command-line options for faster re-runs:
    - Updated SudoPassword.vue to route correctly after verification
    - Updated Installation.vue to route to deployment in skip-config mode
 3. **Tauri**: Added command to check environment variables
-4. **Script**: Updated test-dev.sh to parse command-line arguments
+4. **Runtime**: Environment variables TK_TEST, SKIP_CONFIG, CLEAN_STATE control behavior
 
 ## Notes
 

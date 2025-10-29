@@ -133,7 +133,7 @@ python main.py --reload  # With hot reload
 
 Backend runs on `http://localhost:8000` with API docs at `/docs`.
 
-**Note**: `test-dev.sh` handles backend setup automatically at the correct path.
+**Note**: `npm run tauri:dev` handles backend setup automatically at the correct path.
 
 ### Frontend Development
 
@@ -256,12 +256,12 @@ Frontend connects via WebSocket and updates UI reactively.
 
 ### Memory and OOM Considerations
 
-The installer can be memory-intensive during builds. `test-dev.sh` checks available memory and warns if <2GB, with option to disable `systemd-oomd`.
+The installer can be memory-intensive during builds.
 
 ## Testing
 
 **No formal test suite exists yet**. Testing is done via:
-1. Running `./test-dev.sh` and manually testing the wizard flow
+1. Running `npm run tauri:dev` and manually testing the wizard flow
 2. Testing deployment to actual Ubuntu VMs/servers
 3. Building packages and testing installation on clean systems
 
