@@ -92,7 +92,11 @@
     <div v-if="isScanning" class="card bg-base-100 shadow-xl mb-6">
       <div class="card-body">
         <div class="flex items-center gap-4">
-          <div class="radial-progress text-primary" :style="`--value:${Math.round(scanProgress)};`">
+          <div
+            class="radial-progress text-primary"
+            :style="`--value:${Math.round(scanProgress)}; --size:5rem; --thickness:0.5rem;`"
+            role="progressbar"
+          >
             {{ Math.round(scanProgress) }}%
           </div>
           <div class="flex-1">
