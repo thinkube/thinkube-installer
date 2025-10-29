@@ -5,20 +5,16 @@
 
 import { invoke } from '@tauri-apps/api/core'
 
-let cachedFlags = null
-
+// Don't cache - always read fresh from Rust to handle environment variable changes
 export async function getConfigFlags() {
-  if (cachedFlags === null) {
-    try {
-      const [testMode, shellConfig] = await invoke('get_config_flags')
-      console.log('🔍 DEBUG getConfigFlags from Rust:', { testMode, shellConfig })
-      cachedFlags = { testMode, shellConfig }
-    } catch (error) {
-      console.error('Failed to get config flags:', error)
-      cachedFlags = { testMode: false, shellConfig: false }
-    }
+  try {
+    const [testMode, shellConfig] = await invoke('get_config_flags')
+    console.log('🔍 DEBUG getConfigFlags from Rust:', { testMode, shellConfig })
+    return { testMode, shellConfig }
+  } catch (error) {
+    console.error('Failed to get config flags:', error)
+    return { testMode: false, shellConfig: false }
   }
-  return cachedFlags
 }
 
 export async function isTestMode() {
