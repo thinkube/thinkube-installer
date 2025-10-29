@@ -285,6 +285,9 @@ const startDiscovery = async () => {
       if (scanProgress.value < 90) {
         scanProgress.value = Math.min(90, scanProgress.value + Math.random() * 20)
         scanStatus.value = `Scanning ZeroTier network ${networkCIDR.value} - Checking ${Math.floor(scanProgress.value * 2.54)} of 254 hosts`
+      } else {
+        // At 90%, show that backend is still processing
+        scanStatus.value = 'Processing results...'
       }
     }, 500)
     
@@ -320,6 +323,9 @@ const startDiscovery = async () => {
       if (scanProgress.value < 90) {
         scanProgress.value = Math.min(90, scanProgress.value + Math.random() * 20)
         scanStatus.value = `Scanning ${networkCIDR.value} - Checking ${Math.floor(scanProgress.value * 2.54)} of 254 hosts`
+      } else {
+        // At 90%, show that backend is still processing
+        scanStatus.value = 'Processing results...'
       }
     }, 500)
     
