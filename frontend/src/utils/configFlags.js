@@ -10,22 +10,23 @@ let cachedFlags = null
 export async function getConfigFlags() {
   if (cachedFlags === null) {
     try {
-      const [skipConfig, cleanState] = await invoke('get_config_flags')
-      cachedFlags = { skipConfig, cleanState }
+      const [testMode, shellConfig] = await invoke('get_config_flags')
+      console.log('🔍 DEBUG getConfigFlags from Rust:', { testMode, shellConfig })
+      cachedFlags = { testMode, shellConfig }
     } catch (error) {
       console.error('Failed to get config flags:', error)
-      cachedFlags = { skipConfig: false, cleanState: false }
+      cachedFlags = { testMode: false, shellConfig: false }
     }
   }
   return cachedFlags
 }
 
-export async function shouldSkipConfig() {
+export async function isTestMode() {
   const flags = await getConfigFlags()
-  return flags.skipConfig
+  return flags.testMode
 }
 
-export async function shouldCleanState() {
+export async function shouldEnableShellConfig() {
   const flags = await getConfigFlags()
-  return flags.cleanState
+  return flags.shellConfig
 }
