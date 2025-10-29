@@ -4,20 +4,47 @@
  */
 
 <template>
-  <div class="max-w-6xl mx-auto">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-3xl font-bold">Deploying Thinkube Infrastructure</h1>
-      <button
-        class="btn btn-ghost btn-sm gap-2"
-        @click="resetDeployment"
-        title="Start over from configuration"
-      >
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-        </svg>
-        Reset
-      </button>
+  <div class="flex gap-4 h-screen p-4">
+    <!-- Debug Sidebar (Fixed, Always Visible) -->
+    <div class="w-80 flex-shrink-0">
+      <div class="card bg-warning bg-opacity-10 border-2 border-warning shadow-xl sticky top-4">
+        <div class="card-body p-4">
+          <h2 class="card-title text-warning text-sm">Debug Info</h2>
+          <div class="space-y-1 text-xs font-mono">
+            <div><strong>Queue:</strong> {{ debugInfo.queueBuilt ? 'Yes' : 'No' }}</div>
+            <div><strong>Total:</strong> {{ debugInfo.queueLength }}</div>
+            <div><strong>Start:</strong> {{ debugInfo.startIndex }}</div>
+            <div><strong>Current:</strong> {{ debugInfo.currentIndex }}</div>
+            <div><strong>ID:</strong> {{ debugInfo.currentPlaybookId || 'None' }}</div>
+            <div class="mt-2">
+              <strong>Queue:</strong>
+              <div class="max-h-96 overflow-y-auto bg-base-200 p-1 rounded mt-1 text-xs">
+                <div v-for="(id, idx) in debugInfo.queueIds" :key="idx"
+                     :class="{ 'text-success font-bold': idx === debugInfo.currentIndex, 'text-base-content opacity-50': idx < debugInfo.currentIndex }">
+                  {{ idx }}: {{ id }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Deploying Thinkube Infrastructure</h1>
+        <button
+          class="btn btn-ghost btn-sm gap-2"
+          @click="resetDeployment"
+          title="Start over from configuration"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Reset
+        </button>
+      </div>
 
     <!-- Deployment Progress Overview -->
     <div class="card bg-base-100 shadow-xl mb-6">
@@ -42,29 +69,6 @@
 
         <progress class="progress progress-primary w-full" :value="overallProgress" max="100"></progress>
         <p class="text-sm text-center mt-2">{{ completedPlaybooks }} / {{ totalPlaybooks }} playbooks ({{ overallProgress }}%)</p>
-      </div>
-    </div>
-
-    <!-- Debug Information Panel -->
-    <div class="card bg-warning bg-opacity-10 border-2 border-warning shadow-xl mb-6">
-      <div class="card-body">
-        <h2 class="card-title text-warning">Debug Information</h2>
-        <div class="space-y-2 text-sm font-mono">
-          <div><strong>Queue Built:</strong> {{ debugInfo.queueBuilt ? 'Yes' : 'No' }}</div>
-          <div><strong>Total Playbooks:</strong> {{ debugInfo.queueLength }}</div>
-          <div><strong>Start Index:</strong> {{ debugInfo.startIndex }}</div>
-          <div><strong>Current Index:</strong> {{ debugInfo.currentIndex }}</div>
-          <div><strong>Current Playbook ID:</strong> {{ debugInfo.currentPlaybookId || 'None' }}</div>
-          <div class="mt-4">
-            <strong>Queue IDs:</strong>
-            <div class="max-h-40 overflow-y-auto bg-base-200 p-2 rounded mt-1">
-              <div v-for="(id, idx) in debugInfo.queueIds" :key="idx"
-                   :class="{ 'text-success font-bold': idx === debugInfo.currentIndex, 'text-base-content opacity-50': idx < debugInfo.currentIndex }">
-                {{ idx }}: {{ id }}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -145,7 +149,8 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>  <!-- End Main Content Area -->
+  </div>  <!-- End Flex Container -->
 </template>
 
 <script setup>
