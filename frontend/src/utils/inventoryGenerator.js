@@ -402,9 +402,8 @@ export function generateDynamicInventory() {
     
     // Add controller to inventory
     inventory.all.children.management.hosts.controller = controllerDef
-    if (config.networkMode === 'overlay') {
-      inventory.all.children.overlay_nodes.hosts.controller = {}
-    }
+    // DO NOT add controller to overlay_nodes - it shouldn't run ZeroTier setup
+    // The controller only manages the cluster, it doesn't need ZeroTier if it's external
     inventory.all.children.arch.children[controllerArch].hosts.controller = {}
     
     console.log('External controller detected, added to inventory:', controllerDef)
