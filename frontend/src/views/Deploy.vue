@@ -45,6 +45,29 @@
       </div>
     </div>
 
+    <!-- Debug Information Panel -->
+    <div class="card bg-warning bg-opacity-10 border-2 border-warning shadow-xl mb-6">
+      <div class="card-body">
+        <h2 class="card-title text-warning">Debug Information</h2>
+        <div class="space-y-2 text-sm font-mono">
+          <div><strong>Queue Built:</strong> {{ debugInfo.queueBuilt ? 'Yes' : 'No' }}</div>
+          <div><strong>Total Playbooks:</strong> {{ debugInfo.queueLength }}</div>
+          <div><strong>Start Index:</strong> {{ debugInfo.startIndex }}</div>
+          <div><strong>Current Index:</strong> {{ debugInfo.currentIndex }}</div>
+          <div><strong>Current Playbook ID:</strong> {{ debugInfo.currentPlaybookId || 'None' }}</div>
+          <div class="mt-4">
+            <strong>Queue IDs:</strong>
+            <div class="max-h-40 overflow-y-auto bg-base-200 p-2 rounded mt-1">
+              <div v-for="(id, idx) in debugInfo.queueIds" :key="idx"
+                   :class="{ 'text-success font-bold': idx === debugInfo.currentIndex, 'text-base-content opacity-50': idx < debugInfo.currentIndex }">
+                {{ idx }}: {{ id }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Current Playbook Execution -->
     <div v-if="currentPlaybook">
       <PlaybookExecutorStream
@@ -144,6 +167,16 @@ const playbookQueue = ref([])
 const currentPlaybookIndex = ref(0)
 const completedPlaybooks = ref(0)
 const totalPlaybooks = ref(0)
+
+// Debug info
+const debugInfo = ref({
+  queueBuilt: false,
+  queueLength: 0,
+  queueIds: [],
+  startIndex: 0,
+  currentIndex: 0,
+  currentPlaybookId: null
+})
 
 // State variables
 const currentPlaybook = ref(null)
@@ -421,12 +454,20 @@ const buildPlaybookQueue = async () => {
   console.log('Final playbook queue:', queue.map(p => `${p.id}: ${p.title}`))
   console.log('Total playbooks in queue:', queue.length)
 
+  // Capture debug info
+  debugInfo.value.queueBuilt = true
+  debugInfo.value.queueLength = queue.length
+  debugInfo.value.queueIds = queue.map(p => p.id)
+
   return queue
 }
 
 // Execute next playbook in queue
 const executeNextPlaybook = async () => {
   console.log('executeNextPlaybook called, current index:', currentPlaybookIndex.value)
+
+  // Update debug info
+  debugInfo.value.currentIndex = currentPlaybookIndex.value
 
   if (currentPlaybookIndex.value >= playbookQueue.value.length) {
     console.log('All playbooks completed!')
@@ -438,6 +479,7 @@ const executeNextPlaybook = async () => {
   const playbook = playbookQueue.value[currentPlaybookIndex.value]
   console.log('Next playbook:', playbook.id, '-', playbook.title)
   currentPlaybook.value = playbook
+  debugInfo.value.currentPlaybookId = playbook.id
 
   // Update current phase
   if (currentPhase.value !== playbook.phase) {
@@ -587,6 +629,9 @@ onMounted(async () => {
   totalPlaybooks.value = queue.length
   currentPlaybookIndex.value = 0
   completedPlaybooks.value = 0
+
+  // Capture start index in debug info
+  debugInfo.value.startIndex = 0
 
   // Start deployment
   setTimeout(() => {
