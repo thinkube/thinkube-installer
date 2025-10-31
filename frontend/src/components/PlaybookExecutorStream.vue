@@ -728,30 +728,37 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Compact steps visualization */
+/* Compact steps visualization - thin line with tiny dots */
 .steps-compact {
-  gap: 0.25rem;
+  gap: 0.1rem;
+  min-height: 0.5rem;
 }
 
 .step-xs::before {
-  width: 1rem;
-  height: 1rem;
-  font-size: 0.6rem;
-  line-height: 1rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  font-size: 0.4rem;
+  line-height: 0.5rem;
+  min-width: 0.5rem;
+  min-height: 0.5rem;
 }
 
 .step-xs::after {
-  min-width: 0.5rem;
+  min-width: 0.25rem;
+  height: 1px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Hover effect for playbook steps to indicate tooltips */
 .step.cursor-help:hover {
-  transform: scale(1.15);
+  transform: scale(2);
   transition: transform 0.2s ease-in-out;
+  z-index: 10;
 }
 
 .step.cursor-help:hover::before {
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.8);
 }
 
 /* Custom scrollbar for log container */
