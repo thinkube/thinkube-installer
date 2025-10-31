@@ -5,15 +5,15 @@
 
 <template>
   <div class="playbook-executor">
-    <!-- Progress Card (not a modal, stays in flow) -->
-    <div v-if="isExecuting" class="card bg-base-100 shadow-xl mb-6">
-      <div class="card-body">
-        <!-- Playbook Queue Steps -->
-        <div v-if="playbookQueue && playbookQueue.length > 0" class="mb-4 overflow-x-auto">
-          <ul class="steps steps-horizontal w-full">
+    <!-- Execution Modal -->
+    <div v-if="isExecuting" class="modal modal-open">
+      <div class="modal-box max-w-4xl">
+        <!-- Playbook Queue Steps (Compact) -->
+        <div v-if="playbookQueue && playbookQueue.length > 0" class="mb-3 overflow-x-auto">
+          <ul class="steps steps-horizontal w-full steps-compact">
             <li v-for="(playbook, idx) in playbookQueue"
                 :key="playbook.id"
-                class="step text-xs"
+                class="step step-xs cursor-help"
                 :class="{
                   'step-primary': idx < currentPlaybookIndex,
                   'step-warning': idx === currentPlaybookIndex,
@@ -21,8 +21,6 @@
                 }"
                 :data-content="idx < currentPlaybookIndex ? '✓' : (idx === currentPlaybookIndex ? '●' : '')"
                 :title="playbook.title">
-              <span class="hidden lg:inline">{{ playbook.title }}</span>
-              <span class="lg:hidden">{{ idx + 1 }}</span>
             </li>
           </ul>
         </div>
@@ -111,17 +109,20 @@
           </button>
         </div>
       </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
     </div>
 
     <!-- Result Modal -->
     <div v-if="showResult" class="modal modal-open">
       <div class="modal-box max-w-2xl">
-        <!-- Playbook Queue Steps -->
-        <div v-if="playbookQueue && playbookQueue.length > 0" class="mb-4 overflow-x-auto">
-          <ul class="steps steps-horizontal w-full">
+        <!-- Playbook Queue Steps (Compact) -->
+        <div v-if="playbookQueue && playbookQueue.length > 0" class="mb-3 overflow-x-auto">
+          <ul class="steps steps-horizontal w-full steps-compact">
             <li v-for="(playbook, idx) in playbookQueue"
                 :key="playbook.id"
-                class="step text-xs"
+                class="step step-xs cursor-help"
                 :class="{
                   'step-primary': idx < currentPlaybookIndex,
                   'step-warning': idx === currentPlaybookIndex,
@@ -129,8 +130,6 @@
                 }"
                 :data-content="idx < currentPlaybookIndex ? '✓' : (idx === currentPlaybookIndex ? '●' : '')"
                 :title="playbook.title">
-              <span class="hidden lg:inline">{{ playbook.title }}</span>
-              <span class="lg:hidden">{{ idx + 1 }}</span>
             </li>
           </ul>
         </div>
@@ -729,6 +728,32 @@ defineExpose({
 </script>
 
 <style scoped>
+/* Compact steps visualization */
+.steps-compact {
+  gap: 0.25rem;
+}
+
+.step-xs::before {
+  width: 1rem;
+  height: 1rem;
+  font-size: 0.6rem;
+  line-height: 1rem;
+}
+
+.step-xs::after {
+  min-width: 0.5rem;
+}
+
+/* Hover effect for playbook steps to indicate tooltips */
+.step.cursor-help:hover {
+  transform: scale(1.15);
+  transition: transform 0.2s ease-in-out;
+}
+
+.step.cursor-help:hover::before {
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
 /* Custom scrollbar for log container */
 .overflow-y-auto::-webkit-scrollbar {
   width: 8px;
