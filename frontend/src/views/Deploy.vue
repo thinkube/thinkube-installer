@@ -4,34 +4,9 @@
  */
 
 <template>
-  <div class="flex gap-4 h-screen p-4">
-    <!-- Debug Sidebar (Fixed, Always Visible) -->
-    <div class="w-80 flex-shrink-0">
-      <div class="card bg-warning bg-opacity-10 border-2 border-warning shadow-xl sticky top-4">
-        <div class="card-body p-4">
-          <h2 class="card-title text-warning text-sm">Debug Info</h2>
-          <div class="space-y-1 text-xs font-mono">
-            <div><strong>Queue:</strong> {{ debugInfo.queueBuilt ? 'Yes' : 'No' }}</div>
-            <div><strong>Total:</strong> {{ debugInfo.queueLength }}</div>
-            <div><strong>Start:</strong> {{ debugInfo.startIndex }}</div>
-            <div><strong>Current:</strong> {{ debugInfo.currentIndex }}</div>
-            <div><strong>ID:</strong> {{ debugInfo.currentPlaybookId || 'None' }}</div>
-            <div class="mt-2">
-              <strong>Queue:</strong>
-              <div class="max-h-96 overflow-y-auto bg-base-200 p-1 rounded mt-1 text-xs">
-                <div v-for="(id, idx) in debugInfo.queueIds" :key="idx"
-                     :class="{ 'text-success font-bold': idx === debugInfo.currentIndex, 'text-base-content opacity-50': idx < debugInfo.currentIndex }">
-                  {{ idx }}: {{ id }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+  <div class="h-screen p-4">
     <!-- Main Content Area -->
-    <div class="flex-1 overflow-y-auto">
+    <div class="w-full overflow-y-auto">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Deploying Thinkube Infrastructure</h1>
         <button
@@ -82,6 +57,8 @@
         :extra-vars="currentPlaybook.extraVars"
         :test-mode="testMode"
         :on-retry="retryCurrentPlaybook"
+        :playbook-queue="playbookQueue"
+        :current-playbook-index="currentPlaybookIndex"
         @complete="handlePlaybookComplete"
         @continue="handlePlaybookContinue"
         @test-playbook="runTestPlaybook"
@@ -150,7 +127,7 @@
       </div>
     </div>
     </div>  <!-- End Main Content Area -->
-  </div>  <!-- End Flex Container -->
+  </div>  <!-- End Screen Container -->
 </template>
 
 <script setup>

@@ -5,9 +5,28 @@
 
 <template>
   <div class="playbook-executor">
-    <!-- Progress Modal -->
-    <div v-if="isExecuting" class="modal modal-open">
-      <div class="modal-box max-w-4xl max-h-[90vh]">
+    <!-- Progress Card (not a modal, stays in flow) -->
+    <div v-if="isExecuting" class="card bg-base-100 shadow-xl mb-6">
+      <div class="card-body">
+        <!-- Playbook Queue Steps -->
+        <div v-if="playbookQueue && playbookQueue.length > 0" class="mb-4 overflow-x-auto">
+          <ul class="steps steps-horizontal w-full">
+            <li v-for="(playbook, idx) in playbookQueue"
+                :key="playbook.id"
+                class="step text-xs"
+                :class="{
+                  'step-primary': idx < currentPlaybookIndex,
+                  'step-warning': idx === currentPlaybookIndex,
+                  'step-neutral': idx > currentPlaybookIndex
+                }"
+                :data-content="idx < currentPlaybookIndex ? '✓' : (idx === currentPlaybookIndex ? '●' : '')"
+                :title="playbook.title">
+              <span class="hidden lg:inline">{{ playbook.title }}</span>
+              <span class="lg:hidden">{{ idx + 1 }}</span>
+            </li>
+          </ul>
+        </div>
+
         <h3 class="font-bold text-lg mb-4">{{ title }}</h3>
         
         <!-- Task Progress -->
@@ -97,6 +116,25 @@
     <!-- Result Modal -->
     <div v-if="showResult" class="modal modal-open">
       <div class="modal-box max-w-2xl">
+        <!-- Playbook Queue Steps -->
+        <div v-if="playbookQueue && playbookQueue.length > 0" class="mb-4 overflow-x-auto">
+          <ul class="steps steps-horizontal w-full">
+            <li v-for="(playbook, idx) in playbookQueue"
+                :key="playbook.id"
+                class="step text-xs"
+                :class="{
+                  'step-primary': idx < currentPlaybookIndex,
+                  'step-warning': idx === currentPlaybookIndex,
+                  'step-neutral': idx > currentPlaybookIndex
+                }"
+                :data-content="idx < currentPlaybookIndex ? '✓' : (idx === currentPlaybookIndex ? '●' : '')"
+                :title="playbook.title">
+              <span class="hidden lg:inline">{{ playbook.title }}</span>
+              <span class="lg:hidden">{{ idx + 1 }}</span>
+            </li>
+          </ul>
+        </div>
+
         <h3 class="font-bold text-lg mb-4">{{ title }} - Complete</h3>
         
         <!-- Success Result -->
@@ -197,6 +235,8 @@ interface PlaybookExecutorProps {
   testMode?: boolean
   onRetry?: () => void
   onComplete?: (result: any) => void
+  playbookQueue?: Array<{ id: string; title: string; name: string; phase: string }>
+  currentPlaybookIndex?: number
 }
 
 interface LogEntry {
