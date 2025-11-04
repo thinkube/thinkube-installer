@@ -4,14 +4,15 @@
   "version": "0.1.0",
   "identifier": "org.thinkube.installer",
   "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
+    "frontendDist": "../out",
+    "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Thinkube Installer",
         "width": 1200,
         "height": 800,
@@ -24,11 +25,12 @@
         "decorations": true,
         "alwaysOnTop": false,
         "skipTaskbar": false,
-        "devtools": true
+        "devtools": true,
+        "url": "index.html"
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: https://asset.localhost; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*"
     }
   },
   "bundle": {

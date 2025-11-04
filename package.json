@@ -13,6 +13,7 @@
     "@heroicons/vue": "^2.1.1",
     "axios": "^1.6.5",
     "pinia": "^2.1.7",
+    "thinkube-style": "github:thinkube/thinkube-style",
     "vue": "^3.4.15",
     "vue-router": "^4.2.5"
   },
