@@ -3,12 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkButton } from "thinkube-style/components/buttons-badges"
+import { tkToast } from "thinkube-style/components/feedback"
 import { TkBadge } from "thinkube-style/components/buttons-badges"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
 import {
@@ -50,7 +49,7 @@ interface Config {
 }
 
 export default function Review() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [config, setConfig] = useState<Config>({})
   const [allNodes, setAllNodes] = useState<Node[]>([])
   const [deploymentType, setDeploymentType] = useState("baremetal")
@@ -185,9 +184,9 @@ export default function Review() {
   const copyInventory = async () => {
     try {
       await navigator.clipboard.writeText(generatedInventory)
-      alert("Inventory copied to clipboard!")
+      tkToast.success("Inventory copied to clipboard!")
     } catch (error: any) {
-      alert("Failed to copy to clipboard: " + error.message)
+      tkToast.error("Failed to copy to clipboard: " + error.message)
     }
   }
 
@@ -208,7 +207,7 @@ export default function Review() {
   }
 
   const startDeployment = () => {
-    router.push("/deploy")
+    navigate("/deploy")
   }
 
   return (
@@ -362,7 +361,7 @@ export default function Review() {
         <TkButton
           variant="ghost"
           className="gap-2"
-          onClick={() => router.push("/network-configuration")}
+          onClick={() => navigate("/network-configuration")}
         >
           <ChevronLeft className="w-5 h-5" />
           Back to Network Configuration

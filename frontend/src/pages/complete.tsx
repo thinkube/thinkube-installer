@@ -3,12 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
-import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
+import { TkAlert, TkAlertDescription, tkToast } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { TkLabel } from "thinkube-style/components/forms-inputs"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
@@ -16,7 +14,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Home,
-  Sparkles,
   Code2,
   Terminal,
   BookOpen,
@@ -36,7 +33,7 @@ interface DeploymentData {
 }
 
 export default function Complete() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [dataLoaded, setDataLoaded] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [deploymentData, setDeploymentData] = useState<DeploymentData>({
@@ -59,14 +56,14 @@ export default function Complete() {
     const currentUser = sessionStorage.getItem("currentUser")
     const sudoPassword = sessionStorage.getItem("sudoPassword")
 
-    // Get domain name from network configuration
-    const domainName = networkConfig.domainName || "thinkube.local"
+    // Get domain name from configuration (saved in configuration page)
+    const domainName = sessionStorage.getItem("domainName") || networkConfig.domainName || ""
 
-    // Admin username is always tkadmin
-    const adminUsername = "tkadmin"
+    // SSO realm username for all services (Thinkube Control, Argo, Code Server)
+    const adminUsername = "thinkube"
 
-    // Admin password is the sudo password
-    const adminPassword = sudoPassword || "ChangeMeNow123!"
+    // SSO password is the sudo password used during installation
+    const adminPassword = sudoPassword || ""
 
     // System username
     const systemUsername = currentUser || "thinkube"
@@ -116,11 +113,9 @@ export default function Complete() {
   }
 
   const closeInstaller = () => {
-    if ((window as any).electronAPI) {
-      ;(window as any).electronAPI.close()
-    } else {
-      // For web version, just show a message
-      alert("Installation complete! You can now close this browser tab.")
+    // This is a Tauri desktop application
+    if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      ;(window as any).__TAURI__.window.getCurrent().close()
     }
   }
 
@@ -135,7 +130,7 @@ export default function Complete() {
             The deployment configuration could not be loaded. Please ensure you've
             completed all previous steps.
           </p>
-          <TkButton onClick={() => router.push("/")}>Start Over</TkButton>
+          <TkButton onClick={() => navigate("/")}>Start Over</TkButton>
         </div>
       </TkPageWrapper>
     )
@@ -181,26 +176,6 @@ export default function Complete() {
 
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0 w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">Argo Workflows</h3>
-              <a
-                href={`https://argo.${deploymentData.domainName}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                https://argo.{deploymentData.domainName}
-              </a>
-              <p className="text-sm text-muted-foreground mt-1">
-                Run and manage AI workflows and CI/CD pipelines
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
               <Code2 className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
@@ -236,22 +211,22 @@ export default function Complete() {
         </TkCardContent>
       </TkCard>
 
-      {/* Admin Credentials */}
+      {/* SSO Credentials */}
       <TkCard className="mb-6">
         <TkCardHeader>
-          <TkCardTitle>Administrator Credentials</TkCardTitle>
+          <TkCardTitle>Single Sign-On Credentials</TkCardTitle>
         </TkCardHeader>
         <TkCardContent className="space-y-4">
           <TkAlert className="bg-warning/10 text-warning border-warning/20">
             <AlertCircle className="h-4 w-4" />
             <TkAlertDescription>
-              Save these credentials securely. They will not be shown again.
+              Save these credentials securely. Use them to access all services (Thinkube Control, Argo Workflows, Code Server). They will not be shown again.
             </TkAlertDescription>
           </TkAlert>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <TkLabel className="font-semibold mb-2 block">Admin Username</TkLabel>
+              <TkLabel className="font-semibold mb-2 block">SSO Username (Keycloak Realm)</TkLabel>
               <div className="flex items-center justify-between border rounded-md px-3 py-2">
                 <span>{deploymentData.adminUsername}</span>
                 <TkButton
@@ -265,7 +240,7 @@ export default function Complete() {
             </div>
 
             <div>
-              <TkLabel className="font-semibold mb-2 block">Admin Password</TkLabel>
+              <TkLabel className="font-semibold mb-2 block">SSO Password</TkLabel>
               <div className="flex items-center justify-between border rounded-md px-3 py-2">
                 <span className="font-mono">
                   {showPassword ? deploymentData.adminPassword : "••••••••"}
@@ -305,7 +280,7 @@ export default function Complete() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <TkButton variant="outline" className="gap-2" asChild>
               <a
-                href="https://docs.thinkube.org"
+                href="https://thinkube.org"
                 target="_blank"
                 rel="noopener noreferrer"
               >

@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -25,7 +23,7 @@ interface Requirement {
 }
 
 export default function Requirements() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [requirements, setRequirements] = useState<Requirement[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -202,7 +200,7 @@ export default function Requirements() {
           <TkButton
             variant="ghost"
             className="gap-2"
-            onClick={() => router.push('/welcome')}
+            onClick={() => navigate('/welcome')}
           >
             <ChevronLeft className="w-5 h-5" />
             Back
@@ -211,9 +209,9 @@ export default function Requirements() {
           {allRequirementsMet && (
             <TkButton
               className="gap-2"
-              onClick={() => router.push('/sudo-password')}
+              onClick={() => navigate('/sudo-password')}
             >
-              Continue
+              Administrator Access
               <ChevronRight className="w-5 h-5" />
             </TkButton>
           )}
@@ -221,9 +219,9 @@ export default function Requirements() {
           {canInstallTools && (
             <TkButton
               className="gap-2"
-              onClick={() => router.push('/sudo-password')}
+              onClick={() => navigate('/sudo-password')}
             >
-              Install Tools & Continue
+              Install Tools & Provide Access
               <ChevronRight className="w-5 h-5" />
             </TkButton>
           )}

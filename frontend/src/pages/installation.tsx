@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useRef, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { TkBadge } from "thinkube-style/components/buttons-badges"
@@ -26,7 +24,7 @@ interface InstallationStatus {
 }
 
 export default function Installation() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   // Check if we're in skip-config mode
   const skipConfigMode = typeof window !== 'undefined'
@@ -149,9 +147,9 @@ export default function Installation() {
 
   const continueNext = () => {
     if (skipConfigMode) {
-      router.push('/deploy')
+      navigate('/deploy')
     } else {
-      router.push('/server-discovery')
+      navigate('/server-discovery')
     }
   }
 

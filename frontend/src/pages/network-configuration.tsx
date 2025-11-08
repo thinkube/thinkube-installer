@@ -3,11 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client";
-
 import * as React from "react";
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router-dom";
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data";
 import { TkAlert, TkAlertDescription, TkAlertTitle } from "thinkube-style/components/feedback";
 import { TkInput } from "thinkube-style/components/forms-inputs";
@@ -134,7 +132,7 @@ function setLastOctet(baseNetwork: string, octet: string): string {
 }
 
 export default function NetworkConfigurationPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // Client-side only rendering flag
   const [mounted, setMounted] = useState(false);
@@ -639,7 +637,7 @@ export default function NetworkConfigurationPage() {
       })
     );
 
-    router.push("/review");
+    navigate("/review");
   };
 
   // Update network config handlers
@@ -1503,7 +1501,7 @@ export default function NetworkConfigurationPage() {
       <div className="flex justify-between">
         <TkButton
           variant="ghost"
-          onClick={() => router.push("/configuration")}
+          onClick={() => navigate("/configuration")}
           className="gap-2"
         >
           <ChevronLeft className="w-5 h-5" />
@@ -1515,7 +1513,7 @@ export default function NetworkConfigurationPage() {
           disabled={!isConfigurationValid}
           className="gap-2"
         >
-          Continue to Review
+          Review Configuration
           <ChevronRight className="w-5 h-5" />
         </TkButton>
       </div>

@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -17,7 +15,7 @@ import { Info, ChevronLeft, Eye, EyeOff, Loader2 } from "lucide-react"
 import axios from "@/utils/axios"
 
 export default function SudoPassword() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [currentUser, setCurrentUser] = useState("")
   const [sudoPassword, setSudoPassword] = useState("")
   const [verifying, setVerifying] = useState(false)
@@ -80,20 +78,20 @@ export default function SudoPassword() {
             // If tools were already installed or we're in skip-config mode,
             // check where to go next
             if (skipConfigMode) {
-              router.push("/deploy")
+              navigate("/deploy")
             } else {
-              router.push("/server-discovery")
+              navigate("/server-discovery")
             }
           } else {
             // Redirect to installation progress page
-            router.push("/installation")
+            navigate("/installation")
           }
         } else if (skipConfigMode) {
           // All tools already installed and in skip-config mode
-          router.push("/deploy")
+          navigate("/deploy")
         } else {
           // All tools are already installed, proceed normally
-          router.push("/server-discovery")
+          navigate("/server-discovery")
         }
       } else {
         setError("Invalid password. Please try again.")
@@ -210,7 +208,7 @@ export default function SudoPassword() {
         <TkButton
           variant="ghost"
           className="gap-2"
-          onClick={() => router.push("/requirements")}
+          onClick={() => navigate("/requirements")}
         >
           <ChevronLeft className="w-5 h-5" />
           Back
@@ -227,7 +225,7 @@ export default function SudoPassword() {
               Verifying...
             </>
           ) : (
-            "Verify & Continue"
+            "Discover Servers"
           )}
         </TkButton>
       </div>

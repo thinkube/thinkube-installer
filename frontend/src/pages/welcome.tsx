@@ -3,29 +3,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardFooter, TkCardHeader } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { Info, CheckCircle2, ChevronRight } from "lucide-react"
 
 export default function Welcome() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-center min-h-screen">
+    <div className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-center h-full">
       <div className="w-full flex items-center justify-center">
         <TkCard className="max-w-2xl w-full shadow-xl">
           <TkCardHeader className="text-center">
             <div className="flex justify-center mb-6">
-              <Image
+              <img
                 src="/tk_full_logo.svg"
                 alt="Thinkube"
-                width={128}
-                height={128}
                 className="h-32 w-auto"
               />
             </div>
@@ -65,7 +60,7 @@ export default function Welcome() {
             <TkButton
               size="lg"
               className="gap-2"
-              onClick={() => router.push('/requirements')}
+              onClick={() => navigate('/requirements')}
             >
               Get Started
               <ChevronRight className="h-5 w-5" />

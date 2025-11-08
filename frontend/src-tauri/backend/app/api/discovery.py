@@ -348,16 +348,20 @@ echo "}"
                         gpu_model = model_part.split('[')[0].strip()
                         logger.info(f"Fallback GPU model (no opening bracket): {gpu_model}")
 
-                    # If lspci shows "Device" (GPU not in pciids database), use our fallback
-                    if gpu_model == "Device" or gpu_model.startswith("Device "):
-                        # Extract PCI ID from the line (format: [10de:2e12])
-                        import re
-                        pci_match = re.search(r'\[([0-9a-f]{4}:[0-9a-f]{4})\]', line)
-                        if pci_match:
-                            pci_id = pci_match.group(1)
+                    # Always try to extract PCI ID and use fallback names
+                    import re
+                    pci_match = re.search(r'\[([0-9a-f]{4}:[0-9a-f]{4})\]', line)
+                    if pci_match:
+                        pci_id = pci_match.group(1)
+                        # If it's a device ID pattern (vendor:device), check fallback table
+                        if ':' in pci_id and pci_id in GPU_FALLBACK_NAMES:
+                            gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
+                            logger.info(f"Using fallback name for {pci_id}: {gpu_model}")
+                        elif gpu_model == "Device" or gpu_model.startswith("Device ") or len(gpu_model) == 4:
+                            # If gpu_model is "Device" or just a hex number like "2e12", use PCI ID
                             if pci_id in GPU_FALLBACK_NAMES:
                                 gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
-                                logger.info(f"Using fallback name for {pci_id}: {gpu_model}")
+                                logger.info(f"Using fallback name for generic device {pci_id}: {gpu_model}")
                             else:
                                 gpu_model = f"NVIDIA GPU ({pci_id})"
                                 logger.info(f"No fallback name for {pci_id}, showing PCI ID")

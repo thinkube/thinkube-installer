@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -56,7 +54,7 @@ interface Server {
 }
 
 export default function HardwareDetection() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const [servers, setServers] = useState<Server[]>([])
   const [isDetecting, setIsDetecting] = useState(false)
@@ -206,7 +204,7 @@ export default function HardwareDetection() {
       )
     ) {
       sessionStorage.clear()
-      router.push("/")
+      navigate("/")
     }
   }
 
@@ -225,7 +223,7 @@ export default function HardwareDetection() {
       }))
     sessionStorage.setItem("serverNetworkInfo", JSON.stringify(networkInfo))
 
-    router.push("/role-assignment")
+    navigate("/role-assignment")
   }
 
   return (
@@ -478,7 +476,7 @@ export default function HardwareDetection() {
             <TkButton
               variant="ghost"
               className="gap-2"
-              onClick={() => router.push("/ssh-setup")}
+              onClick={() => navigate("/ssh-setup")}
             >
               <ChevronLeft className="w-5 h-5" />
               Back
@@ -505,7 +503,7 @@ export default function HardwareDetection() {
               >
                 {oldDriverServers.length > 0
                   ? "Continue Without GPU Nodes"
-                  : "Continue to Role Assignment"}
+                  : "Assign Roles"}
                 <ChevronRight className="w-5 h-5" />
               </TkButton>
             </div>

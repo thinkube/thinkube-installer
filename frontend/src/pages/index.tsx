@@ -3,17 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-'use client';
-
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 
 export default function Home() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    router.replace('/welcome');
-  }, [router]);
+    navigate('/welcome', { replace: true });
+  }, [navigate]);
 
   return null;
 }

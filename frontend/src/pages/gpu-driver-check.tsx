@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -43,7 +41,7 @@ interface Summary {
 }
 
 export default function GpuDriverCheck() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [nodes, setNodes] = useState<Node[]>([])
@@ -185,7 +183,7 @@ export default function GpuDriverCheck() {
   }, [allDecisionsMade])
 
   const goBack = () => {
-    router.push("/configuration")
+    navigate("/configuration")
   }
 
   const continueToDeployment = async () => {
@@ -203,7 +201,7 @@ export default function GpuDriverCheck() {
         // Clear state and go back to welcome
         localStorage.removeItem("thinkube-config")
         localStorage.removeItem("discoveredServers")
-        router.push("/")
+        navigate("/")
       }
       return
     }
@@ -254,7 +252,7 @@ export default function GpuDriverCheck() {
       })
 
       // Continue to deployment
-      router.push("/deploy")
+      navigate("/deploy")
     } catch (e: any) {
       setError(
         e.response?.data?.detail || e.message || "Failed to save GPU configuration"

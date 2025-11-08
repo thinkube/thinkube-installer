@@ -3,12 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect, useMemo, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
-import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
+import { TkAlert, TkAlertDescription, tkToast } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { TkBadge } from "thinkube-style/components/buttons-badges"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
@@ -33,7 +31,7 @@ interface TestResult {
 }
 
 export default function SSHSetup() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [servers, setServers] = useState<Server[]>([])
   const [currentUser, setCurrentUser] = useState("")
   const [sshSetupComplete, setSshSetupComplete] = useState(false)
@@ -101,7 +99,7 @@ export default function SSHSetup() {
     const sudoPassword = sessionStorage.getItem("sudoPassword")
 
     if (!sudoPassword) {
-      alert("Sudo password not found. Please go back and enter your password.")
+      tkToast.error("Sudo password not found. Please go back and enter your password.")
       return
     }
 
@@ -180,7 +178,7 @@ export default function SSHSetup() {
 
       // Automatically proceed to next screen after short delay
       setTimeout(() => {
-        router.push("/hardware-detection")
+        navigate("/hardware-detection")
       }, 2000)
     } else {
       setTestResult({
@@ -331,22 +329,30 @@ export default function SSHSetup() {
       )}
 
       {/* Streaming Playbook Executor */}
-      <PlaybookExecutorStream
-        ref={playbookExecutorRef}
-        title="SSH Key Setup"
-        playbookName="setup-ssh-keys"
-        onRetry={setupSSH}
-        onComplete={handlePlaybookComplete}
-      />
+      <TkCard className="mb-6">
+        <TkCardContent className="pt-6">
+          <PlaybookExecutorStream
+            ref={playbookExecutorRef}
+            title="SSH Key Setup"
+            playbookName="setup-ssh-keys"
+            onRetry={setupSSH}
+            onComplete={handlePlaybookComplete}
+          />
+        </TkCardContent>
+      </TkCard>
 
       {/* Test Playbook Executor */}
-      <PlaybookExecutorStream
-        ref={testPlaybookExecutorRef}
-        title="SSH Connectivity Test"
-        playbookName="test-ssh-connectivity"
-        onRetry={runTestPlaybook}
-        onComplete={handleTestComplete}
-      />
+      <TkCard className="mb-6">
+        <TkCardContent className="pt-6">
+          <PlaybookExecutorStream
+            ref={testPlaybookExecutorRef}
+            title="SSH Connectivity Test"
+            playbookName="test-ssh-connectivity"
+            onRetry={runTestPlaybook}
+            onComplete={handleTestComplete}
+          />
+        </TkCardContent>
+      </TkCard>
     </TkPageWrapper>
   )
 }

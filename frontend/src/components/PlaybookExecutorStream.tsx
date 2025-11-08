@@ -6,14 +6,6 @@
 "use client"
 
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
-import {
-  TkDialog,
-  TkDialogRoot,
-  TkDialogContent,
-  TkDialogFooter,
-  TkDialogHeader,
-  TkDialogTitle
-} from "thinkube-style/components/modals-overlays"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { TkBadge } from "thinkube-style/components/buttons-badges"
 import { TkCheckbox } from "thinkube-style/components/forms-inputs"
@@ -76,7 +68,6 @@ export const PlaybookExecutorStream = forwardRef<PlaybookExecutorRef, PlaybookEx
   ) => {
     // Reactive state
     const [isExecuting, setIsExecuting] = useState(false)
-    const [showResult, setShowResult] = useState(false)
     const [status, setStatus] = useState<'pending' | 'running' | 'success' | 'error' | 'cancelled'>('pending')
     const [message, setMessage] = useState('')
     const [currentTask, setCurrentTask] = useState('')
@@ -128,7 +119,6 @@ ${logOutput.map(log => log.message).join('\n')}`
     // Methods
     const startExecution = (params: any = {}) => {
       setIsExecuting(true)
-      setShowResult(false)
       setStatus('running')
       setMessage('')
       setCurrentTask('Connecting...')
@@ -381,23 +371,15 @@ ${logOutput.map(log => log.message).join('\n')}`
 
     const completeExecution = (result: any) => {
       setIsExecuting(false)
-      setShowResult(true)
       websocketRef.current?.close()
       websocketRef.current = null
 
       // Call onComplete prop if provided
       if (onComplete) {
-        onComplete(result)
-      }
-
-      // Auto-continue on success after a short delay (unless in test mode)
-      if (result.status === 'success' && !testMode) {
-        setTimeout(() => {
-          // Only auto-continue if the modal is still showing (user hasn't manually closed it)
-          if (showResult && status === 'success') {
-            closeResult()
-          }
-        }, 3000) // 3 second delay to show success message
+        onComplete({
+          ...result,
+          logs: logOutput.map(log => log.message).join('\n')
+        })
       }
     }
 
@@ -407,56 +389,17 @@ ${logOutput.map(log => log.message).join('\n')}`
       setStatus('cancelled')
       setMessage('Execution was cancelled')
       setIsExecuting(false)
-      setShowResult(true)
       setIsCancelling(false)
 
       // Call onComplete prop if provided
       const result = {
         status: 'cancelled',
         message: 'Execution was cancelled by user',
-        duration
+        duration,
+        logs: logOutput.map(log => log.message).join('\n')
       }
       if (onComplete) {
         onComplete(result)
-      }
-    }
-
-    const closeResult = () => {
-      setShowResult(false)
-
-      // Only emit continue if the playbook was successful
-      if (status === 'success' && onContinue) {
-        onContinue()
-      }
-
-      // Reset state
-      setStatus('pending')
-      setMessage('')
-      setCurrentTask('')
-      setTaskCount(0)
-      setDuration(null)
-      setLogOutput([])
-      setTaskSummary({ total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 })
-      seenTasksRef.current = new Set()
-    }
-
-    const retry = () => {
-      if (onRetry) {
-        // Close the result modal without emitting continue
-        setShowResult(false)
-
-        // Reset state
-        setStatus('pending')
-        setMessage('')
-        setCurrentTask('')
-        setTaskCount(0)
-        setDuration(null)
-        setLogOutput([])
-        setTaskSummary({ total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 })
-        seenTasksRef.current = new Set()
-
-        // Call the retry handler
-        onRetry()
       }
     }
 
@@ -522,17 +465,13 @@ ${logOutput.map(log => log.message).join('\n')}`
 
     return (
       <div className="playbook-executor">
-        {/* Execution Modal */}
-        <TkDialogRoot open={isExecuting} onOpenChange={() => {}}>
-          <TkDialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Only show when executing */}
+        {isExecuting && (
+          <div>
             {renderPlaybookQueue()}
 
-            <TkDialogHeader>
-              <TkDialogTitle>{title}</TkDialogTitle>
-            </TkDialogHeader>
-
-            {/* Task TkProgress */}
-            {currentTask && (
+            {/* Current Task */}
+            {isExecuting && currentTask && (
               <div className="mb-4">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="font-semibold">{currentTask}</span>
@@ -544,201 +483,71 @@ ${logOutput.map(log => log.message).join('\n')}`
             )}
 
             {/* Live Output Log */}
-            <div className="mb-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-muted-foreground">Live Output:</span>
-                <div className="flex items-center gap-2">
-                  <TkButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={copy}
-                    className={copied ? 'text-success' : ''}
-                  >
-                    {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-                    {copied ? 'Copied!' : 'Copy'}
-                  </TkButton>
+            {isExecuting && (
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-muted-foreground">Live Output:</span>
                   <div className="flex items-center gap-2">
-                    <TkCheckbox
-                      id="auto-scroll-exec"
-                      checked={autoScroll}
-                      onCheckedChange={(checked: boolean) => setAutoScroll(checked as boolean)}
-                    />
-                    <TkLabel htmlFor="auto-scroll-exec" className="text-xs cursor-pointer">
-                      Auto-scroll
-                    </TkLabel>
-                  </div>
-                </div>
-              </div>
-              <div
-                ref={logContainerRef}
-                className="h-96 overflow-y-auto overflow-x-auto p-4 bg-muted/30 rounded-lg font-mono text-xs"
-              >
-                {logOutput.length === 0 && (
-                  <div className="text-muted-foreground">
-                    <div className="flex items-start">
-                      <span className="mr-2 shrink-0">$</span>
-                      <code className="break-all">Waiting for output...</code>
+                    <TkButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={copy}
+                      className={copied ? 'text-success' : ''}
+                    >
+                      {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+                      {copied ? 'Copied!' : 'Copy'}
+                    </TkButton>
+                    <div className="flex items-center gap-2">
+                      <TkCheckbox
+                        id="auto-scroll-exec"
+                        checked={autoScroll}
+                        onCheckedChange={(checked: boolean) => setAutoScroll(checked as boolean)}
+                      />
+                      <TkLabel htmlFor="auto-scroll-exec" className="text-xs cursor-pointer">
+                        Auto-scroll
+                      </TkLabel>
                     </div>
                   </div>
-                )}
-                {logOutput.map((log, idx) => {
-                  const logType = log.type || getLogTypeFromMessage(log.message)
-                  return (
-                    <div key={idx} className={`flex items-start ${getAnsibleLogClassName(logType)}`}>
-                      <span className="text-muted-foreground mr-2 shrink-0">
-                        {getAnsibleLogPrefix(logType)}
-                      </span>
-                      <code className="break-all">{log.message}</code>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Status Summary */}
-            {taskSummary.total > 0 && (
-              <div className="grid grid-cols-5 gap-2 mb-4">
-                <div className="text-center">
-                  <div className="text-xs text-muted-foreground">Total</div>
-                  <div className="text-lg font-bold">{taskSummary.total}</div>
                 </div>
-                {taskSummary.ok > 0 && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">OK</div>
-                    <div className="text-lg font-bold text-success">{taskSummary.ok}</div>
-                  </div>
-                )}
-                {taskSummary.changed > 0 && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Changed</div>
-                    <div className="text-lg font-bold text-warning">{taskSummary.changed}</div>
-                  </div>
-                )}
-                {taskSummary.skipped > 0 && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Skipped</div>
-                    <div className="text-lg font-bold text-info">{taskSummary.skipped}</div>
-                  </div>
-                )}
-                {taskSummary.failed > 0 && (
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground">Failed</div>
-                    <div className="text-lg font-bold text-destructive">{taskSummary.failed}</div>
-                  </div>
-                )}
+                <div
+                  ref={logContainerRef}
+                  className="h-96 overflow-y-auto overflow-x-auto p-4 bg-muted/30 rounded-lg font-mono text-xs"
+                >
+                  {logOutput.length === 0 && (
+                    <div className="text-muted-foreground">
+                      <div className="flex items-start">
+                        <span className="mr-2 shrink-0">$</span>
+                        <code className="break-all">Waiting for output...</code>
+                      </div>
+                    </div>
+                  )}
+                  {logOutput.map((log, idx) => {
+                    const logType = log.type || getLogTypeFromMessage(log.message)
+                    return (
+                      <div key={idx} className={`flex items-start ${getAnsibleLogClassName(logType)}`}>
+                        <span className="text-muted-foreground mr-2 shrink-0">
+                          {getAnsibleLogPrefix(logType)}
+                        </span>
+                        <code className="break-all">{log.message}</code>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Cancel TkButton (only during execution) */}
+
+            {/* Cancel Button (only during execution) */}
             {status === 'running' && (
-              <TkDialogFooter>
+              <div className="flex justify-end mb-4">
                 <TkButton variant="outline" size="sm" onClick={cancelExecution} disabled={isCancelling}>
                   {isCancelling && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   {isCancelling ? 'Cancelling...' : 'Cancel'}
                 </TkButton>
-              </TkDialogFooter>
-            )}
-          </TkDialogContent>
-        </TkDialogRoot>
-
-        {/* Result Modal */}
-        <TkDialogRoot open={showResult} onOpenChange={closeResult}>
-          <TkDialogContent className="max-w-2xl">
-            {renderPlaybookQueue()}
-
-            <TkDialogHeader>
-              <TkDialogTitle>{title} - Complete</TkDialogTitle>
-            </TkDialogHeader>
-
-            {/* Success Result */}
-            {status === 'success' && (
-              <div className="bg-success/10 border border-success text-success rounded-lg p-4 flex gap-3 mb-4">
-                <Check className="h-6 w-6 shrink-0" />
-                <div>
-                  <span>{message || 'Playbook completed successfully'}</span>
-                  <div className="text-sm mt-1 opacity-80">Continuing automatically in 3 seconds...</div>
-                </div>
               </div>
             )}
-
-            {/* Error Result */}
-            {status === 'error' && (
-              <>
-                <div className="bg-destructive/10 border border-destructive text-destructive rounded-lg p-4 flex gap-3 mb-4">
-                  <XCircle className="h-6 w-6 shrink-0" />
-                  <span>{message || 'Playbook execution failed'}</span>
-                </div>
-
-                {/* GitHub Issue Helper */}
-                <div className="bg-info/10 border border-info text-info rounded-lg p-4 flex gap-3 mb-4">
-                  <Info className="h-6 w-6 shrink-0" />
-                  <div>
-                    <p className="font-semibold">Need help?</p>
-                    <p className="text-sm">Copy the log output and create an issue on GitHub for assistance.</p>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Final Summary */}
-            {taskSummary.total > 0 && (
-              <div className="mb-4">
-                <p className="text-sm text-muted-foreground mb-2">Execution Summary:</p>
-                <div className="text-sm">
-                  <p>Total Tasks: {taskSummary.total}</p>
-                  {taskSummary.ok > 0 && <p className="text-success">OK: {taskSummary.ok}</p>}
-                  {taskSummary.changed > 0 && <p className="text-warning">Changed: {taskSummary.changed}</p>}
-                  {taskSummary.skipped > 0 && <p className="text-info">Skipped: {taskSummary.skipped}</p>}
-                  {taskSummary.failed > 0 && <p className="text-destructive">Failed: {taskSummary.failed}</p>}
-                </div>
-              </div>
-            )}
-
-            {/* Execution Time */}
-            {duration && (
-              <div className="mb-4">
-                <div className="text-sm text-muted-foreground">Completed in {formatDuration(duration)}</div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <TkDialogFooter>
-              <TkButton variant="ghost" size="sm" onClick={copy} className={copied ? 'text-success' : ''}>
-                {copied ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-                {copied ? 'Copied!' : 'Copy Log'}
-              </TkButton>
-
-              {/* Test Mode buttons - only show on success */}
-              {testMode && status === 'success' && (
-                <>
-                  <TkButton
-                    variant="outline"
-                    size="sm"
-                    className="bg-info text-info-foreground"
-                    onClick={onTestPlaybook}
-                  >
-                    Run Test (18)
-                  </TkButton>
-                  <TkButton
-                    variant="outline"
-                    size="sm"
-                    className="bg-warning text-warning-foreground"
-                    onClick={onRollback}
-                  >
-                    Rollback (19)
-                  </TkButton>
-                </>
-              )}
-
-              <TkButton onClick={closeResult}>{status === 'success' ? 'Continue' : 'Close'}</TkButton>
-              {status === 'error' && onRetry && (
-                <TkButton variant="outline" onClick={retry}>
-                  Retry
-                </TkButton>
-              )}
-            </TkDialogFooter>
-          </TkDialogContent>
-        </TkDialogRoot>
+          </div>
+        )}
       </div>
     )
   }

@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -43,7 +41,7 @@ interface DiscoveredServer extends Server {
 }
 
 export default function ServerDiscovery() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const [config] = useState(() => {
     if (typeof window !== "undefined") {
@@ -237,7 +235,7 @@ export default function ServerDiscovery() {
     sessionStorage.setItem("testMode", "false")
     sessionStorage.setItem("discoveredServers", JSON.stringify(selectedServers))
     sessionStorage.setItem("networkCIDR", networkCIDR)
-    router.push("/ssh-setup")
+    navigate("/ssh-setup")
   }
 
   const getConfidenceIcon = (confidence?: string) => {
@@ -479,7 +477,7 @@ export default function ServerDiscovery() {
         <TkButton
           variant="ghost"
           className="gap-2"
-          onClick={() => router.push("/installation")}
+          onClick={() => navigate("/installation")}
         >
           <ChevronLeft className="w-5 h-5" />
           Back
@@ -489,8 +487,7 @@ export default function ServerDiscovery() {
           onClick={proceedToNodeConfig}
           disabled={selectedServers.length === 0}
         >
-          Continue with {selectedServers.length} Server
-          {selectedServers.length !== 1 ? "s" : ""}
+          Setup SSH Connectivity
           <ChevronRight className="w-5 h-5" />
         </TkButton>
       </div>

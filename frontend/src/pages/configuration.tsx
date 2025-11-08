@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkInput } from "thinkube-style/components/forms-inputs"
@@ -60,7 +58,7 @@ interface ValidationErrors {
 }
 
 export default function Configuration() {
-  const router = useRouter()
+  const navigate = useNavigate()
 
   const [config, setConfig] = useState<ConfigData>({
     networkMode: 'overlay',
@@ -510,6 +508,8 @@ export default function Configuration() {
     sessionStorage.setItem('networkMode', config.networkMode)
     sessionStorage.setItem('overlayProvider', config.overlayProvider)
     sessionStorage.setItem('cloudflareToken', config.cloudflareToken)
+    sessionStorage.setItem('domainName', config.domainName)
+    sessionStorage.setItem('clusterName', config.clusterName)
 
     if (config.networkMode === 'overlay') {
       if (config.overlayProvider === 'zerotier') {
@@ -526,7 +526,7 @@ export default function Configuration() {
       sessionStorage.setItem('githubOrg', config.githubOrg)
     }
 
-    router.push('/network-configuration')
+    navigate('/network-configuration')
   }
 
   return (
@@ -958,7 +958,7 @@ export default function Configuration() {
           <TkButton
             type="button"
             variant="ghost"
-            onClick={() => router.push('/role-assignment')}
+            onClick={() => navigate('/role-assignment')}
           >
             <ChevronLeft className="w-5 h-5 mr-2" />
             Back to Role Assignment
@@ -967,7 +967,7 @@ export default function Configuration() {
             type="submit"
             disabled={!isValid}
           >
-            Review Configuration
+            Configure Network
             <ChevronRight className="w-5 h-5 ml-2" />
           </TkButton>
         </div>

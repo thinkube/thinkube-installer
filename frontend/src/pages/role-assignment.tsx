@@ -3,10 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-"use client"
-
 import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -42,7 +40,7 @@ interface NodeData {
 }
 
 export default function RoleAssignment() {
-  const router = useRouter()
+  const navigate = useNavigate()
   const [allNodes, setAllNodes] = useState<NodeData[]>([])
   const [validationErrors, setValidationErrors] = useState<string[]>([])
 
@@ -116,7 +114,7 @@ export default function RoleAssignment() {
     }))
 
     sessionStorage.setItem('clusterNodes', JSON.stringify(clusterNodes))
-    router.push('/configuration')
+    navigate('/configuration')
   }
 
   useEffect(() => {
@@ -262,7 +260,7 @@ export default function RoleAssignment() {
         <TkButton
           variant="ghost"
           className="gap-2"
-          onClick={() => router.push('/hardware-detection')}
+          onClick={() => navigate('/hardware-detection')}
         >
           <ChevronLeft className="w-5 h-5" />
           Back
@@ -273,7 +271,7 @@ export default function RoleAssignment() {
           onClick={saveAndContinue}
           disabled={!isValid}
         >
-          Continue to Configuration
+          Configure Cluster
           <ChevronRight className="w-5 h-5" />
         </TkButton>
       </div>
