@@ -387,26 +387,29 @@ export default function Deploy() {
       name: 'ansible/40_thinkube/core/thinkube-control/19_rollback.yaml'
     }
 
-    if (executorRef.current?.startExecution) {
-      const sudoPassword = sessionStorage.getItem('sudoPassword')
-
-      executorRef.current.startExecution({
-        environment: {
-          ANSIBLE_BECOME_PASSWORD: sudoPassword,
-          ANSIBLE_SSH_PASSWORD: sudoPassword
-        }
-      })
-    }
+    // Add rollback playbook to queue and start execution
+    dispatch({ type: 'INIT_QUEUE', queue: [rollbackPlaybook] })
+    dispatch({ type: 'START_PLAYBOOK', index: 0 })
   }
 
   // Download all logs
   const downloadLogs = () => {
+    if (state.logs.size === 0) {
+      tkToast.error('No logs available to download')
+      return
+    }
+
     let allLogs = ''
     state.logs.forEach((log, playbookId) => {
       allLogs += `\n\n=== ${playbookId} (${log.status}) ===\n`
       allLogs += `Timestamp: ${log.timestamp.toISOString()}\n`
       allLogs += log.logs
     })
+
+    if (!allLogs.trim()) {
+      tkToast.error('Logs are empty')
+      return
+    }
 
     const blob = new Blob([allLogs], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -415,6 +418,7 @@ export default function Deploy() {
     a.download = `thinkube-deploy-logs-${new Date().toISOString()}.txt`
     a.click()
     URL.revokeObjectURL(url)
+    tkToast.success('Logs downloaded successfully!')
   }
 
   // Initialize on mount
@@ -461,10 +465,23 @@ export default function Deploy() {
 
   // Copy only the failed playbook logs
   const copyFailedLog = () => {
-    if (!state.failedPlaybook) return
+    if (!state.failedPlaybook) {
+      tkToast.error('No failed playbook found')
+      return
+    }
 
     const log = state.logs.get(state.failedPlaybook.id)
-    if (!log) return
+    if (!log) {
+      tkToast.error(`No log found for playbook: ${state.failedPlaybook.id}`)
+      console.error('Available log keys:', Array.from(state.logs.keys()))
+      console.error('Looking for:', state.failedPlaybook.id)
+      return
+    }
+
+    if (!log.logs || !log.logs.trim()) {
+      tkToast.error('Failed playbook log is empty')
+      return
+    }
 
     const failedLog = `=== ${state.failedPlaybook.title} (FAILED) ===
 Playbook ID: ${state.failedPlaybook.id}
