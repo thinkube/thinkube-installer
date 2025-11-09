@@ -418,17 +418,18 @@ export default function Deploy() {
 
   // Rollback
   const handleRollback = () => {
-    // Build list of rollback playbooks for successfully deployed components
+    // Build list of rollback playbooks for deployed components (including failed one)
     // Execute in reverse order (LIFO - last deployed, first rolled back)
     const rollbackQueue: Playbook[] = []
 
-    // Get all successfully deployed playbooks up to the current index
-    for (let i = state.currentIndex - 1; i >= 0; i--) {
+    // Start from currentIndex (failed component) and go backwards
+    // Include both successful AND failed components (failed ones might be partially deployed)
+    for (let i = state.currentIndex; i >= 0; i--) {
       const playbook = state.queue[i]
       const logEntry = state.logs.get(playbook.id)
 
-      // Only rollback if it was successfully deployed
-      if (logEntry && logEntry.status === 'success') {
+      // Rollback if component was attempted (success or failed status)
+      if (logEntry && (logEntry.status === 'success' || logEntry.status === 'failed')) {
         const rollbackPath = getRollbackPlaybook(playbook.id)
         if (rollbackPath) {
           rollbackQueue.push({
@@ -442,7 +443,7 @@ export default function Deploy() {
     }
 
     if (rollbackQueue.length === 0) {
-      tkToast.info('No components to rollback')
+      console.log('No components to rollback')
       return
     }
 
