@@ -345,13 +345,25 @@ export default function Deploy() {
     // Extract logs from result or use ref
     const logs = result.logs || result.output || currentLogsRef.current
 
+    // Check if this is a rollback playbook
+    const isRollback = currentPlaybook.phase === 'rollback' || currentPlaybook.id.startsWith('rollback-')
+
     if (result.status === 'error' || result.status === 'failed') {
-      dispatch({
-        type: 'PLAYBOOK_FAILED',
-        playbookId: currentPlaybook.id,
-        logs,
-        error: result.message || 'Playbook execution failed'
-      })
+      // For rollback failures, just record the log but don't change failed state
+      if (isRollback) {
+        dispatch({
+          type: 'PLAYBOOK_SUCCESS',
+          playbookId: currentPlaybook.id,
+          logs
+        })
+      } else {
+        dispatch({
+          type: 'PLAYBOOK_FAILED',
+          playbookId: currentPlaybook.id,
+          logs,
+          error: result.message || 'Playbook execution failed'
+        })
+      }
     } else {
       dispatch({
         type: 'PLAYBOOK_SUCCESS',
@@ -359,14 +371,17 @@ export default function Deploy() {
         logs
       })
 
-      // Auto-continue to next playbook
-      const nextIndex = state.currentIndex + 1
-      if (nextIndex < state.queue.length) {
-        setTimeout(() => {
-          dispatch({ type: 'START_PLAYBOOK', index: nextIndex })
-        }, 100)
-      } else {
-        dispatch({ type: 'COMPLETE' })
+      // For rollback success, don't auto-continue - stay in failed state
+      if (!isRollback) {
+        // Auto-continue to next playbook for normal deployment
+        const nextIndex = state.currentIndex + 1
+        if (nextIndex < state.queue.length) {
+          setTimeout(() => {
+            dispatch({ type: 'START_PLAYBOOK', index: nextIndex })
+          }, 100)
+        } else {
+          dispatch({ type: 'COMPLETE' })
+        }
       }
     }
   }
@@ -418,36 +433,35 @@ export default function Deploy() {
 
   // Rollback
   const handleRollback = () => {
-    // Build list of rollback playbooks for deployed components (including failed one)
-    // Execute in reverse order (LIFO - last deployed, first rolled back)
-    const rollbackQueue: Playbook[] = []
-
-    // Start from currentIndex (failed component) and go backwards
-    // Include both successful AND failed components (failed ones might be partially deployed)
-    for (let i = state.currentIndex; i >= 0; i--) {
-      const playbook = state.queue[i]
-      const logEntry = state.logs.get(playbook.id)
-
-      // Rollback if component was attempted (success or failed status)
-      if (logEntry && (logEntry.status === 'success' || logEntry.status === 'failed')) {
-        const rollbackPath = getRollbackPlaybook(playbook.id)
-        if (rollbackPath) {
-          rollbackQueue.push({
-            id: `rollback-${playbook.id}`,
-            phase: 'rollback',
-            title: `Rolling back ${playbook.title}`,
-            name: rollbackPath
-          })
-        }
-      }
-    }
-
-    if (rollbackQueue.length === 0) {
-      console.log('No components to rollback')
+    // Rollback only the single failed component at currentIndex
+    const playbook = state.queue[state.currentIndex]
+    if (!playbook) {
+      console.log('No component at currentIndex to rollback')
       return
     }
 
-    // Execute rollback playbooks
+    const logEntry = state.logs.get(playbook.id)
+
+    // Only rollback if component was attempted (failed status)
+    if (!logEntry || logEntry.status !== 'failed') {
+      console.log('Component was not failed, nothing to rollback')
+      return
+    }
+
+    const rollbackPath = getRollbackPlaybook(playbook.id)
+    if (!rollbackPath) {
+      console.log('No rollback playbook found for', playbook.id)
+      return
+    }
+
+    // Execute single rollback playbook
+    const rollbackQueue: Playbook[] = [{
+      id: `rollback-${playbook.id}`,
+      phase: 'rollback',
+      title: `Rolling back ${playbook.title}`,
+      name: rollbackPath
+    }]
+
     dispatch({ type: 'INIT_QUEUE', queue: rollbackQueue })
     dispatch({ type: 'START_PLAYBOOK', index: 0 })
   }
