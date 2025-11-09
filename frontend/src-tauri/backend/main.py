@@ -33,6 +33,7 @@ from app.api.github import router as github_router
 from app.api.configuration import router as configuration_router
 from app.api.ansible_setup import router as ansible_setup_router
 from app.api.gpu_detection import router as gpu_detection_router
+from app.api.logs import router as logs_router
 
 # Configure logging
 logging.basicConfig(
@@ -71,6 +72,7 @@ app.include_router(tokens_router)
 app.include_router(github_router)
 app.include_router(configuration_router)
 app.include_router(gpu_detection_router)
+app.include_router(logs_router)
 
 
 @app.get("/")

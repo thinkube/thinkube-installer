@@ -358,7 +358,7 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         
         # Wait for process to complete
         return_code = await process.wait()
-        
+
         # Send completion message
         if return_code == 0:
             await websocket.send_json({
@@ -368,6 +368,30 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
                 "return_code": return_code
             })
         else:
+            # Copy log file to failures directory if logging is enabled
+            if PROFILER_ENABLED and 'log_file' in locals() and log_file.exists():
+                try:
+                    failures_dir = Path.home() / ".thinkube-installer" / "logs" / "failures"
+                    failures_dir.mkdir(parents=True, exist_ok=True)
+
+                    # Copy log file to failures directory with FAILED prefix
+                    failure_log = failures_dir / f"FAILED_{log_file.name}"
+
+                    # Close the log file first to ensure all content is written
+                    if 'log_fh' in locals() and log_fh and not log_fh.closed:
+                        log_fh.write(f"\n{'='*80}\n")
+                        log_fh.write(f"FAILED with return code: {return_code}\n")
+                        log_fh.write(f"Completed: {datetime.datetime.now().isoformat()}\n")
+                        log_fh.flush()
+                        log_fh.close()
+
+                    # Copy to failures directory
+                    import shutil
+                    shutil.copy2(log_file, failure_log)
+                    logger.error(f"Playbook failed - log copied to: {failure_log}")
+                except Exception as e:
+                    logger.error(f"Failed to copy failure log: {e}")
+
             await websocket.send_json({
                 "type": "complete",
                 "status": "error",
@@ -388,8 +412,8 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         })
         await websocket.close()
     finally:
-        # Close profiler log file if open
-        if PROFILER_ENABLED and 'log_fh' in locals() and log_fh:
+        # Close profiler log file if open (and not already closed in failure handling)
+        if PROFILER_ENABLED and 'log_fh' in locals() and log_fh and not log_fh.closed:
             try:
                 log_fh.write(f"\n{'='*80}\n")
                 log_fh.write(f"Completed: {datetime.datetime.now().isoformat()}\n")
