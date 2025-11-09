@@ -378,17 +378,76 @@ export default function Deploy() {
     }
   }
 
-  // Rollback
-  const handleRollback = () => {
-    const rollbackPlaybook: Playbook = {
-      id: 'rollback-19',
-      phase: 'rollback',
-      title: 'Rolling Back Changes',
-      name: 'ansible/40_thinkube/core/thinkube-control/19_rollback.yaml'
+  // Rollback mapping: deployment playbook id -> rollback playbook path
+  const getRollbackPlaybook = (deploymentId: string): string | null => {
+    const rollbackMap: Record<string, string> = {
+      // Initial setup - no rollback
+      'env-setup': null,
+      'python-setup': null,
+      'github-cli': null,
+      'zerotier-setup': null,
+      'tailscale-setup': null,
+
+      // Kubernetes infrastructure
+      'setup-python-k8s': null,
+      'k8s': 'ansible/40_thinkube/core/infrastructure/k8s/19_rollback_control.yaml',
+      'k8s-join-workers': 'ansible/40_thinkube/core/infrastructure/k8s/29_rollback_workers.yaml',
+      'gpu-operator': 'ansible/40_thinkube/core/infrastructure/gpu_operator/19_rollback.yaml',
+      'dns-server': 'ansible/40_thinkube/core/infrastructure/dns-server/19_rollback.yaml',
+      'coredns': 'ansible/40_thinkube/core/infrastructure/coredns/19_rollback.yaml',
+      'coredns-configure-nodes': null,
+      'acme-certificates': 'ansible/40_thinkube/core/infrastructure/acme-certificates/19_rollback.yaml',
+      'ingress': 'ansible/40_thinkube/core/infrastructure/ingress/19_rollback.yaml',
+
+      // Core services
+      'postgresql': 'ansible/40_thinkube/core/postgresql/19_rollback.yaml',
+      'keycloak': 'ansible/40_thinkube/core/keycloak/19_rollback.yaml',
+      'harbor': 'ansible/40_thinkube/core/harbor/19_rollback.yaml',
+      'seaweedfs': 'ansible/40_thinkube/core/seaweedfs/19_rollback.yaml',
+      'juicefs': 'ansible/40_thinkube/core/juicefs/19_rollback.yaml',
+      'argo-workflows': 'ansible/40_thinkube/core/argo-workflows/19_rollback.yaml',
+      'argocd': 'ansible/40_thinkube/core/argocd/19_rollback.yaml',
+      'devpi': 'ansible/40_thinkube/core/devpi/19_rollback.yaml',
+      'gitea': 'ansible/40_thinkube/core/gitea/19_rollback.yaml',
+      'code-server': 'ansible/40_thinkube/core/code-server/19_rollback.yaml',
+      'thinkube-control': 'ansible/40_thinkube/core/thinkube-control/19_rollback.yaml'
     }
 
-    // Add rollback playbook to queue and start execution
-    dispatch({ type: 'INIT_QUEUE', queue: [rollbackPlaybook] })
+    return rollbackMap[deploymentId] || null
+  }
+
+  // Rollback
+  const handleRollback = () => {
+    // Build list of rollback playbooks for successfully deployed components
+    // Execute in reverse order (LIFO - last deployed, first rolled back)
+    const rollbackQueue: Playbook[] = []
+
+    // Get all successfully deployed playbooks up to the current index
+    for (let i = state.currentIndex - 1; i >= 0; i--) {
+      const playbook = state.queue[i]
+      const logEntry = state.logs.get(playbook.id)
+
+      // Only rollback if it was successfully deployed
+      if (logEntry && logEntry.status === 'success') {
+        const rollbackPath = getRollbackPlaybook(playbook.id)
+        if (rollbackPath) {
+          rollbackQueue.push({
+            id: `rollback-${playbook.id}`,
+            phase: 'rollback',
+            title: `Rolling back ${playbook.title}`,
+            name: rollbackPath
+          })
+        }
+      }
+    }
+
+    if (rollbackQueue.length === 0) {
+      tkToast.info('No components to rollback')
+      return
+    }
+
+    // Execute rollback playbooks
+    dispatch({ type: 'INIT_QUEUE', queue: rollbackQueue })
     dispatch({ type: 'START_PLAYBOOK', index: 0 })
   }
 
