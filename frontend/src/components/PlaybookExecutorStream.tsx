@@ -75,6 +75,7 @@ export const PlaybookExecutorStream = forwardRef<PlaybookExecutorRef, PlaybookEx
     const [duration, setDuration] = useState<number | null>(null)
     const [isCancelling, setIsCancelling] = useState(false)
     const [logOutput, setLogOutput] = useState<LogEntry[]>([])
+    const logOutputRef = useRef<LogEntry[]>([]) // Ref to track logs synchronously
     const logContainerRef = useRef<HTMLDivElement>(null)
     const [autoScroll, setAutoScroll] = useState(true)
     const websocketRef = useRef<WebSocket | null>(null)
@@ -126,6 +127,7 @@ ${logOutput.map(log => log.message).join('\n')}`
       setDuration(null)
       setIsCancelling(false)
       setLogOutput([])
+      logOutputRef.current = [] // Reset ref as well
       setTaskSummary({ total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 })
       seenTasksRef.current = new Set()
       startTimeRef.current = Date.now()
@@ -290,16 +292,19 @@ ${logOutput.map(log => log.message).join('\n')}`
     }
 
     const handleWebSocketMessage = (data: any) => {
-      // Add to log
-      setLogOutput((prev) => [
-        ...prev,
-        {
-          type: data.type,
-          message: data.message,
-          task: data.task,
-          task_number: data.task_number
-        }
-      ])
+      // Add to log (both state and ref for synchronous access)
+      const newLogEntry = {
+        type: data.type,
+        message: data.message,
+        task: data.task,
+        task_number: data.task_number
+      }
+
+      // Update ref synchronously
+      logOutputRef.current = [...logOutputRef.current, newLogEntry]
+
+      // Update state for rendering
+      setLogOutput((prev) => [...prev, newLogEntry])
 
       // Handle different message types
       switch (data.type) {
@@ -375,10 +380,11 @@ ${logOutput.map(log => log.message).join('\n')}`
       websocketRef.current = null
 
       // Call onComplete prop if provided
+      // Use logOutputRef instead of logOutput state to get synchronous access to latest logs
       if (onComplete) {
         onComplete({
           ...result,
-          logs: logOutput.map(log => log.message).join('\n')
+          logs: logOutputRef.current.map(log => log.message).join('\n')
         })
       }
     }
@@ -392,11 +398,12 @@ ${logOutput.map(log => log.message).join('\n')}`
       setIsCancelling(false)
 
       // Call onComplete prop if provided
+      // Use logOutputRef instead of logOutput state to get synchronous access to latest logs
       const result = {
         status: 'cancelled',
         message: 'Execution was cancelled by user',
         duration,
-        logs: logOutput.map(log => log.message).join('\n')
+        logs: logOutputRef.current.map(log => log.message).join('\n')
       }
       if (onComplete) {
         onComplete(result)
