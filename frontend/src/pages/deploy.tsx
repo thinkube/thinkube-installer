@@ -34,20 +34,36 @@ interface DeployState {
   logs: Map<string, PlaybookLog>
   error: string | null
   failedPlaybook: Playbook | null
+  // Pre-rollback state for restoration
+  preRollbackQueue: Playbook[] | null
+  preRollbackIndex: number | null
+  preRollbackError: string | null
 }
 
 type DeployAction =
-  | { type: 'INIT_QUEUE'; queue: Playbook[] }
+  | { type: 'INIT_QUEUE'; queue: Playbook[]; savePreRollbackState?: boolean }
   | { type: 'START_PLAYBOOK'; index: number }
   | { type: 'PLAYBOOK_SUCCESS'; playbookId: string; logs: string }
   | { type: 'PLAYBOOK_FAILED'; playbookId: string; logs: string; error: string }
   | { type: 'COMPLETE' }
   | { type: 'RESET' }
+  | { type: 'RESTORE_AFTER_ROLLBACK' }
 
 // Reducer
 function deployReducer(state: DeployState, action: DeployAction): DeployState {
   switch (action.type) {
     case 'INIT_QUEUE':
+      // If savePreRollbackState is true, save the current state for restoration
+      if (action.savePreRollbackState) {
+        return {
+          ...state,
+          queue: action.queue,
+          status: 'idle',
+          preRollbackQueue: state.queue,
+          preRollbackIndex: state.currentIndex,
+          preRollbackError: state.error
+        }
+      }
       return { ...state, queue: action.queue, status: 'idle' }
 
     case 'START_PLAYBOOK':
@@ -89,8 +105,28 @@ function deployReducer(state: DeployState, action: DeployAction): DeployState {
         status: 'idle',
         logs: new Map(),
         error: null,
-        failedPlaybook: null
+        failedPlaybook: null,
+        preRollbackQueue: null,
+        preRollbackIndex: null,
+        preRollbackError: null
       }
+
+    case 'RESTORE_AFTER_ROLLBACK':
+      // Restore the pre-rollback state to show error UI with retry/rollback buttons
+      if (state.preRollbackQueue && state.preRollbackIndex !== null) {
+        return {
+          ...state,
+          queue: state.preRollbackQueue,
+          currentIndex: state.preRollbackIndex,
+          status: 'failed',
+          error: state.preRollbackError,
+          failedPlaybook: state.preRollbackQueue[state.preRollbackIndex],
+          preRollbackQueue: null,
+          preRollbackIndex: null,
+          preRollbackError: null
+        }
+      }
+      return state
 
     default:
       return state
@@ -103,7 +139,10 @@ const initialState: DeployState = {
   status: 'idle',
   logs: new Map(),
   error: null,
-  failedPlaybook: null
+  failedPlaybook: null,
+  preRollbackQueue: null,
+  preRollbackIndex: null,
+  preRollbackError: null
 }
 
 export default function Deploy() {
@@ -202,7 +241,7 @@ export default function Deploy() {
         id: 'gpu-operator',
         phase: 'kubernetes',
         title: 'Installing NVIDIA GPU Operator',
-        name: 'ansible/40_thinkube/core/infrastructure/gpu_operator/10_deploy.yaml'
+        name: 'ansible/40_thinkube/core/infrastructure/gpu_operator/00_install.yaml'
       })
     }
 
@@ -349,13 +388,17 @@ export default function Deploy() {
     const isRollback = currentPlaybook.phase === 'rollback' || currentPlaybook.id.startsWith('rollback-')
 
     if (result.status === 'error' || result.status === 'failed') {
-      // For rollback failures, just record the log but don't change failed state
+      // For rollback failures, record the log and restore pre-rollback state
       if (isRollback) {
         dispatch({
           type: 'PLAYBOOK_SUCCESS',
           playbookId: currentPlaybook.id,
           logs
         })
+        // Restore the failed deployment state to show retry/rollback buttons
+        setTimeout(() => {
+          dispatch({ type: 'RESTORE_AFTER_ROLLBACK' })
+        }, 100)
       } else {
         dispatch({
           type: 'PLAYBOOK_FAILED',
@@ -371,8 +414,12 @@ export default function Deploy() {
         logs
       })
 
-      // For rollback success, don't auto-continue - stay in failed state
-      if (!isRollback) {
+      // For rollback success, restore pre-rollback state to show retry/rollback buttons
+      if (isRollback) {
+        setTimeout(() => {
+          dispatch({ type: 'RESTORE_AFTER_ROLLBACK' })
+        }, 100)
+      } else {
         // Auto-continue to next playbook for normal deployment
         const nextIndex = state.currentIndex + 1
         if (nextIndex < state.queue.length) {
@@ -462,7 +509,8 @@ export default function Deploy() {
       name: rollbackPath
     }]
 
-    dispatch({ type: 'INIT_QUEUE', queue: rollbackQueue })
+    // Save pre-rollback state so we can restore it after rollback completes
+    dispatch({ type: 'INIT_QUEUE', queue: rollbackQueue, savePreRollbackState: true })
     dispatch({ type: 'START_PLAYBOOK', index: 0 })
   }
 
