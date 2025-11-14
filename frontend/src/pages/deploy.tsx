@@ -303,6 +303,34 @@ export default function Deploy() {
     })
 
     queue.push({
+      id: 'harbor-mirror-images',
+      phase: 'kubernetes',
+      title: 'Mirroring Public Images',
+      name: 'ansible/40_thinkube/core/harbor-images/13_mirror_public_images.yaml'
+    })
+
+    queue.push({
+      id: 'harbor-build-base',
+      phase: 'kubernetes',
+      title: 'Building Base Images',
+      name: 'ansible/40_thinkube/core/harbor-images/14_build_base_images.yaml'
+    })
+
+    queue.push({
+      id: 'harbor-build-jupyter',
+      phase: 'kubernetes',
+      title: 'Building Jupyter Images',
+      name: 'ansible/40_thinkube/core/harbor-images/15_build_jupyter_images.yaml'
+    })
+
+    queue.push({
+      id: 'harbor-build-codeserver',
+      phase: 'kubernetes',
+      title: 'Building Code-Server Image',
+      name: 'ansible/40_thinkube/core/harbor-images/16_build_codeserver_image.yaml'
+    })
+
+    queue.push({
       id: 'seaweedfs',
       phase: 'kubernetes',
       title: 'Installing SeaweedFS',
@@ -479,6 +507,10 @@ export default function Deploy() {
       'postgresql': 'ansible/40_thinkube/core/postgresql/19_rollback.yaml',
       'keycloak': 'ansible/40_thinkube/core/keycloak/19_rollback.yaml',
       'harbor': 'ansible/40_thinkube/core/harbor/19_rollback.yaml',
+      'harbor-mirror-images': null,
+      'harbor-build-base': null,
+      'harbor-build-jupyter': null,
+      'harbor-build-codeserver': null,
       'seaweedfs': 'ansible/40_thinkube/core/seaweedfs/19_rollback.yaml',
       'juicefs': 'ansible/40_thinkube/core/juicefs/19_rollback.yaml',
       'argo-workflows': 'ansible/40_thinkube/core/argo-workflows/19_rollback.yaml',
