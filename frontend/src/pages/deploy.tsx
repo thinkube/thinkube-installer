@@ -358,6 +358,20 @@ export default function Deploy() {
       name: 'ansible/40_thinkube/core/thinkube-control/00_install.yaml'
     })
 
+    queue.push({
+      id: 'mlflow',
+      phase: 'kubernetes',
+      title: 'Installing MLflow',
+      name: 'ansible/40_thinkube/core/mlflow/00_install.yaml'
+    })
+
+    queue.push({
+      id: 'jupyterhub',
+      phase: 'kubernetes',
+      title: 'Installing JupyterHub',
+      name: 'ansible/40_thinkube/core/jupyterhub/00_install.yaml'
+    })
+
     return queue
   }
 
@@ -472,7 +486,9 @@ export default function Deploy() {
       'devpi': 'ansible/40_thinkube/core/devpi/19_rollback.yaml',
       'gitea': 'ansible/40_thinkube/core/gitea/19_rollback.yaml',
       'code-server': 'ansible/40_thinkube/core/code-server/19_rollback.yaml',
-      'thinkube-control': 'ansible/40_thinkube/core/thinkube-control/19_rollback.yaml'
+      'thinkube-control': 'ansible/40_thinkube/core/thinkube-control/19_rollback.yaml',
+      'mlflow': 'ansible/40_thinkube/core/mlflow/19_rollback.yaml',
+      'jupyterhub': 'ansible/40_thinkube/core/jupyterhub/19_rollback.yaml'
     }
 
     return rollbackMap[deploymentId] || null
