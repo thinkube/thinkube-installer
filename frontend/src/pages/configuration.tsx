@@ -43,6 +43,7 @@ interface ConfigData {
   tailscaleApiToken: string
   githubToken: string
   githubOrg: string
+  hfToken: string
 }
 
 interface ValidationErrors {
@@ -55,6 +56,7 @@ interface ValidationErrors {
   tailscaleApiToken: string
   githubToken: string
   githubOrg: string
+  hfToken: string
 }
 
 export default function Configuration() {
@@ -71,7 +73,8 @@ export default function Configuration() {
     tailscaleAuthKey: '',
     tailscaleApiToken: '',
     githubToken: '',
-    githubOrg: ''
+    githubOrg: '',
+    hfToken: ''
   })
 
   const [errors, setErrors] = useState<ValidationErrors>({
@@ -83,7 +86,8 @@ export default function Configuration() {
     tailscaleAuthKey: '',
     tailscaleApiToken: '',
     githubToken: '',
-    githubOrg: ''
+    githubOrg: '',
+    hfToken: ''
   })
 
   const [showCloudflareToken, setShowCloudflareToken] = useState(false)
@@ -91,6 +95,7 @@ export default function Configuration() {
   const [showTailscaleAuthKey, setShowTailscaleAuthKey] = useState(false)
   const [showTailscaleApiToken, setShowTailscaleApiToken] = useState(false)
   const [showGithubToken, setShowGithubToken] = useState(false)
+  const [showHfToken, setShowHfToken] = useState(false)
 
   const [verifyingCloudflare, setVerifyingCloudflare] = useState(false)
   const [cloudflareVerified, setCloudflareVerified] = useState(false)
@@ -118,6 +123,7 @@ export default function Configuration() {
             ...(savedConfig.tailscaleApiToken && { tailscaleApiToken: savedConfig.tailscaleApiToken }),
             ...(savedConfig.githubToken && { githubToken: savedConfig.githubToken }),
             ...(savedConfig.githubOrg && { githubOrg: savedConfig.githubOrg }),
+            ...(savedConfig.hfToken && { hfToken: savedConfig.hfToken }),
             ...(savedConfig.clusterName && { clusterName: savedConfig.clusterName }),
             ...(savedConfig.domainName && { domainName: savedConfig.domainName }),
             ...(savedConfig.overlayProvider && { overlayProvider: savedConfig.overlayProvider }),
@@ -524,6 +530,10 @@ export default function Configuration() {
     if (config.githubToken) {
       sessionStorage.setItem('githubToken', config.githubToken)
       sessionStorage.setItem('githubOrg', config.githubOrg)
+    }
+
+    if (config.hfToken) {
+      sessionStorage.setItem('hfToken', config.hfToken)
     }
 
     navigate('/network-configuration')
@@ -948,6 +958,71 @@ export default function Configuration() {
               )}
               <p className="text-xs text-muted-foreground">
                 The GitHub organization or username where repositories will be created
+              </p>
+            </div>
+          </TkCardContent>
+        </TkCard>
+
+        {/* HuggingFace Configuration */}
+        <TkCard>
+          <TkCardHeader>
+            <TkCardTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              HuggingFace Configuration
+            </TkCardTitle>
+          </TkCardHeader>
+          <TkCardContent>
+            <TkAlert className="mb-4">
+              <TkAlertDescription>
+                HuggingFace access is required for mirroring pre-optimized AI models to your local MLflow registry.
+              </TkAlertDescription>
+            </TkAlert>
+            <p className="text-sm mb-4">
+              Provide a HuggingFace access token to enable model mirroring from HuggingFace to your local MLflow model registry.
+            </p>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <TkLabel htmlFor="hfToken">HuggingFace Access Token</TkLabel>
+                <a
+                  href="https://huggingface.co/settings/tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline"
+                >
+                  Generate token →
+                </a>
+              </div>
+              <div className="relative">
+                <TkInput
+                  id="hfToken"
+                  type={showHfToken ? 'text' : 'password'}
+                  placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  value={config.hfToken}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, hfToken: e.target.value })}
+                  className={cn("pr-10 font-mono", errors.hfToken && "border-destructive")}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <TkButton
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto p-1"
+                    onClick={() => setShowHfToken(!showHfToken)}
+                  >
+                    {showHfToken ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </TkButton>
+                </div>
+              </div>
+              {errors.hfToken && (
+                <p className="text-xs text-destructive">{errors.hfToken}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Required for downloading models from HuggingFace Hub
               </p>
             </div>
           </TkCardContent>

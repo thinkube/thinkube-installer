@@ -227,6 +227,17 @@ ${logOutput.map(log => log.message).join('\n')}`
             }
           }
 
+          // Add HuggingFace token if needed
+          if (playbookName.includes('thinkube-control')) {
+            const hfToken = sessionStorage.getItem('hfToken')
+            if (hfToken) {
+              paramsWithInventory.environment = {
+                ...paramsWithInventory.environment,
+                HF_TOKEN: hfToken
+              }
+            }
+          }
+
           // Send execution parameters with dynamic inventory
           try {
             if (ws && ws.readyState === WebSocket.OPEN) {
