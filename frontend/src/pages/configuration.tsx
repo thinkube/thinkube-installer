@@ -474,6 +474,7 @@ export default function Configuration() {
       await axios.post('/api/save-configuration', {
         cloudflareToken: config.cloudflareToken,
         githubToken: config.githubToken,
+        hfToken: config.hfToken,
         zerotierApiToken: config.zerotierApiToken,
         zerotierNetworkId: config.zerotierNetworkId,
         tailscaleAuthKey: config.tailscaleAuthKey,
