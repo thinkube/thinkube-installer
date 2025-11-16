@@ -380,13 +380,6 @@ export default function Deploy() {
     })
 
     queue.push({
-      id: 'thinkube-control',
-      phase: 'kubernetes',
-      title: 'Deploying Thinkube Control',
-      name: 'ansible/40_thinkube/core/thinkube-control/00_install.yaml'
-    })
-
-    queue.push({
       id: 'mlflow',
       phase: 'kubernetes',
       title: 'Installing MLflow',
@@ -398,6 +391,13 @@ export default function Deploy() {
       phase: 'kubernetes',
       title: 'Installing JupyterHub',
       name: 'ansible/40_thinkube/core/jupyterhub/00_install.yaml'
+    })
+
+    queue.push({
+      id: 'thinkube-control',
+      phase: 'kubernetes',
+      title: 'Deploying Thinkube Control',
+      name: 'ansible/40_thinkube/core/thinkube-control/00_install.yaml'
     })
 
     return queue
