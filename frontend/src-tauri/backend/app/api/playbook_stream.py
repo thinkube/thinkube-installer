@@ -70,7 +70,6 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         playbook_mapping = {
             "setup-ssh-keys": "ansible/00_initial_setup/10_setup_ssh_keys.yaml",
             "test-ssh-connectivity": "ansible/00_initial_setup/18_test_ssh_connectivity.yaml",
-            "microk8s-setup": "ansible/20_lxd_setup/20_deploy_microk8s.yaml",
             "keycloak-deploy": "ansible/40_thinkube/core/keycloak/10_deploy.yaml",
             "harbor-deploy": "ansible/40_thinkube/core/harbor/10_deploy.yaml"
         }

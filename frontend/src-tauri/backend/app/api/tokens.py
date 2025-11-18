@@ -136,6 +136,8 @@ async def save_configuration(config: Dict) -> TokenResponse:
             env_vars['CLOUDFLARE_TOKEN'] = config['cloudflareToken']
         if config.get('githubToken'):
             env_vars['GITHUB_TOKEN'] = config['githubToken']
+        if config.get('hfToken'):
+            env_vars['HF_TOKEN'] = config['hfToken']
         if config.get('zerotierApiToken'):
             env_vars['ZEROTIER_API_TOKEN'] = config['zerotierApiToken']
         if config.get('zerotierNetworkId'):
@@ -170,6 +172,8 @@ async def load_configuration() -> Dict:
             config['cloudflareToken'] = env_vars['CLOUDFLARE_TOKEN']
         if 'GITHUB_TOKEN' in env_vars:
             config['githubToken'] = env_vars['GITHUB_TOKEN']
+        if 'HF_TOKEN' in env_vars:
+            config['hfToken'] = env_vars['HF_TOKEN']
         if 'ZEROTIER_API_TOKEN' in env_vars:
             config['zerotierApiToken'] = env_vars['ZEROTIER_API_TOKEN']
         if 'ZEROTIER_NETWORK_ID' in env_vars:

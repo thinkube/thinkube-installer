@@ -17,31 +17,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/playbooks", tags=["playbooks"])
 
 
-@router.post("/microk8s-setup")
-async def setup_microk8s(request: Dict[str, Any]):
-    """Set up MicroK8s cluster using Ansible playbook"""
-    servers = request.get("servers", [])
-    username = request.get("username", "thinkube")
-    password = request.get("password")
-    
-    # Define playbook path for MicroK8s setup
-    playbook_path = "ansible/20_lxd_setup/20_deploy_microk8s.yaml"
-    
-    # Set up environment variables for Ansible
-    environment = {}
-    if password:
-        environment["ANSIBLE_SUDO_PASS"] = password
-    
-    # Execute the playbook using the reusable service
-    result = await ansible_executor.execute_playbook(
-        playbook_path=playbook_path,
-        environment=environment,
-        timeout=600  # 10 minutes for MicroK8s setup
-    )
-    
-    return ansible_executor.format_result_for_api(result)
-
-
 @router.post("/keycloak-deploy")
 async def deploy_keycloak(request: Dict[str, Any]):
     """Deploy Keycloak using Ansible playbook"""

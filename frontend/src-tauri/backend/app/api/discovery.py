@@ -348,16 +348,20 @@ echo "}"
                         gpu_model = model_part.split('[')[0].strip()
                         logger.info(f"Fallback GPU model (no opening bracket): {gpu_model}")
 
-                    # If lspci shows "Device" (GPU not in pciids database), use our fallback
-                    if gpu_model == "Device" or gpu_model.startswith("Device "):
-                        # Extract PCI ID from the line (format: [10de:2e12])
-                        import re
-                        pci_match = re.search(r'\[([0-9a-f]{4}:[0-9a-f]{4})\]', line)
-                        if pci_match:
-                            pci_id = pci_match.group(1)
+                    # Always try to extract PCI ID and use fallback names
+                    import re
+                    pci_match = re.search(r'\[([0-9a-f]{4}:[0-9a-f]{4})\]', line)
+                    if pci_match:
+                        pci_id = pci_match.group(1)
+                        # If it's a device ID pattern (vendor:device), check fallback table
+                        if ':' in pci_id and pci_id in GPU_FALLBACK_NAMES:
+                            gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
+                            logger.info(f"Using fallback name for {pci_id}: {gpu_model}")
+                        elif gpu_model == "Device" or gpu_model.startswith("Device ") or len(gpu_model) == 4:
+                            # If gpu_model is "Device" or just a hex number like "2e12", use PCI ID
                             if pci_id in GPU_FALLBACK_NAMES:
                                 gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
-                                logger.info(f"Using fallback name for {pci_id}: {gpu_model}")
+                                logger.info(f"Using fallback name for generic device {pci_id}: {gpu_model}")
                             else:
                                 gpu_model = f"NVIDIA GPU ({pci_id})"
                                 logger.info(f"No fallback name for {pci_id}, showing PCI ID")
@@ -815,64 +819,3 @@ async def verify_cloudflare(request: Dict[str, Any]):
         return {"valid": False, "message": f"Verification error: {str(e)}"}
 
 
-@router.post("/save-cluster-config")
-async def save_cluster_config(config: Dict[str, Any]):
-    """Save the cluster configuration from node configuration UI"""
-    try:
-        # Validate the configuration
-        servers = config.get("servers", [])
-        if not servers:
-            raise ValueError("No servers configured")
-        
-        # Check for control plane
-        control_planes = []
-        workers = []
-        
-        for server in servers:
-            if server["role"] in ["hybrid", "direct"] and server.get("k8s_role") == "control_plane":
-                control_planes.append(server)
-            elif server["role"] in ["hybrid", "direct"] and server.get("k8s_role") == "worker":
-                workers.append(server)
-            
-            # Check containers
-            for container in server.get("containers", []):
-                if container.get("k8s_role") == "control_plane":
-                    control_planes.append(container)
-                elif container.get("k8s_role") == "worker":
-                    workers.append(container)
-        
-        if len(control_planes) != 1:
-            raise ValueError(f"Exactly one control plane required, found {len(control_planes)}")
-        
-        if len(workers) < 1:
-            raise ValueError("At least one worker node required")
-        
-        # Save configuration
-        # For now, save to a temporary location since we don't have get_project_root function
-        home_dir = Path.home()
-        config_dir = home_dir / "thinkube" / "inventory" / "installer_configs"
-        config_dir.mkdir(parents=True, exist_ok=True)
-        
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        config_file = config_dir / f"cluster_config_{timestamp}.json"
-        
-        with open(config_file, 'w') as f:
-            json.dump(config, f, indent=2)
-        
-        return {
-            "success": True,
-            "message": "Configuration saved successfully",
-            "config_file": str(config_file),
-            "summary": {
-                "servers": len(servers),
-                "control_planes": len(control_planes),
-                "workers": len(workers)
-            }
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to save cluster config: {e}")
-        return {
-            "success": False,
-            "message": str(e)
-        }
