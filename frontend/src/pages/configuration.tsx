@@ -1031,7 +1031,7 @@ export default function Configuration() {
         </TkCard>
 
         {/* Navigation */}
-        <div className="flex justify-between">
+        <div className="flex justify-between mt-6">
           <TkButton
             type="button"
             variant="ghost"
