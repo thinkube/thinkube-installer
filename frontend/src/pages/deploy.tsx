@@ -274,6 +274,13 @@ export default function Deploy() {
     })
 
     queue.push({
+      id: 'acme-renewal-hook',
+      phase: 'kubernetes',
+      title: 'Configuring Certificate Renewal Hook',
+      name: 'ansible/40_thinkube/core/infrastructure/acme-certificates/15_configure_renewal_hook.yaml'
+    })
+
+    queue.push({
       id: 'ingress',
       phase: 'kubernetes',
       title: 'Deploying Ingress Controller',
