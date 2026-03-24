@@ -281,10 +281,10 @@ export default function Deploy() {
     })
 
     queue.push({
-      id: 'ingress',
+      id: 'gateway-api',
       phase: 'kubernetes',
-      title: 'Deploying Ingress Controller',
-      name: 'ansible/40_thinkube/core/infrastructure/ingress/10_deploy.yaml'
+      title: 'Deploying Gateway API',
+      name: 'ansible/40_thinkube/core/infrastructure/gateway-api/10_deploy.yaml'
     })
 
     // Core Services
