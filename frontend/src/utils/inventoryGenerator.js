@@ -319,11 +319,24 @@ export function generateDynamicInventory() {
       console.warn(`Skipping VM node ${node.hostname} - VM support removed (no LXD)`)
       return
     }
-    
+
+    // clusterNodes.hostname comes from serverHardware discovery and may be null.
+    // Resolve the inventory key by matching against configuredPhysicalServers (which
+    // use the ZeroTier/LAN IP as hostname, consistent with the baremetal section).
+    const matchedServer = configuredPhysicalServers.find(s =>
+      (node.hostname && s.hostname === node.hostname) || s.ip === node.ip
+    )
+    const inventoryHostname = matchedServer?.hostname || node.hostname
+
+    if (!inventoryHostname) {
+      console.warn(`Skipping k8s node with no resolvable hostname:`, node)
+      return
+    }
+
     if (node.role === 'control_plane') {
-      inventory.all.children.k8s.children.k8s_control_plane.hosts[node.hostname] = {}
+      inventory.all.children.k8s.children.k8s_control_plane.hosts[inventoryHostname] = {}
     } else if (node.role === 'worker') {
-      inventory.all.children.k8s.children.k8s_workers.hosts[node.hostname] = {}
+      inventory.all.children.k8s.children.k8s_workers.hosts[inventoryHostname] = {}
     }
   })
   
