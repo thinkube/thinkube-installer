@@ -214,7 +214,8 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
             
         # Set up environment with Ansible specific settings for real-time output
         env = os.environ.copy()
-        env.update(environment)
+        # Filter out None values — JS null serializes to Python None and breaks subprocess
+        env.update({k: str(v) for k, v in environment.items() if v is not None})
         
         # Add venv to PATH if it exists
         if user_venv.exists():
