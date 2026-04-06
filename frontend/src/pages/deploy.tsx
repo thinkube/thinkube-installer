@@ -508,7 +508,7 @@ export default function Deploy() {
       'coredns': 'ansible/40_thinkube/core/infrastructure/coredns/19_rollback.yaml',
       'coredns-configure-nodes': null,
       'acme-certificates': 'ansible/40_thinkube/core/infrastructure/acme-certificates/19_rollback.yaml',
-      'ingress': 'ansible/40_thinkube/core/infrastructure/ingress/19_rollback.yaml',
+      'gateway-api': 'ansible/40_thinkube/core/infrastructure/gateway-api/19_rollback.yaml',
 
       // Core services
       'postgresql': 'ansible/40_thinkube/core/postgresql/19_rollback.yaml',
