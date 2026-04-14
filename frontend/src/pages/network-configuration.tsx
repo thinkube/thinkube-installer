@@ -42,7 +42,6 @@ interface NetworkConfig {
   gateway: string;
   zerotierCIDR: string;
   primaryIngressOctet: string;
-  secondaryIngressOctet: string;
   dnsExternalOctet: string;
   metallbStartOctet: string;
   metallbEndOctet: string;
@@ -144,7 +143,6 @@ export default function NetworkConfigurationPage() {
     gateway: "192.168.1.1",
     zerotierCIDR: "",
     primaryIngressOctet: "200",
-    secondaryIngressOctet: "201",
     dnsExternalOctet: "205",
     metallbStartOctet: "200",
     metallbEndOctet: "210",
@@ -381,16 +379,10 @@ export default function NetworkConfigurationPage() {
     const start = parseInt(networkConfig.metallbStartOctet);
     const end = parseInt(networkConfig.metallbEndOctet);
     const primary = parseInt(networkConfig.primaryIngressOctet);
-    const secondary = parseInt(networkConfig.secondaryIngressOctet);
 
-    if (!start || !end || !primary || !secondary) return false;
+    if (!start || !end || !primary) return false;
 
-    return (
-      primary >= start &&
-      primary <= end &&
-      secondary >= start &&
-      secondary <= end
-    );
+    return primary >= start && primary <= end;
   };
 
   const getServerRole = (hostname: string): string => {
@@ -416,10 +408,7 @@ export default function NetworkConfigurationPage() {
     const dnsOctet = networkConfig.dnsExternalOctet;
     if (!dnsOctet) return false;
 
-    if (
-      dnsOctet === networkConfig.primaryIngressOctet ||
-      dnsOctet === networkConfig.secondaryIngressOctet
-    ) {
+    if (dnsOctet === networkConfig.primaryIngressOctet) {
       return true;
     }
 
@@ -1016,49 +1005,6 @@ export default function NetworkConfigurationPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <TkLabel>
-                  Secondary Ingress IP
-                  <span className="text-xs text-muted-foreground ml-2">
-                    For Knative services
-                  </span>
-                </TkLabel>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm text-muted-foreground">
-                    {getNetworkBase(
-                      networkMode === "overlay"
-                        ? networkConfig.zerotierCIDR
-                        : networkConfig.cidr
-                    )}
-                    .
-                  </span>
-                  <TkInput
-                    type="number"
-                    min={1}
-                    max={254}
-                    placeholder="201"
-                    value={networkConfig.secondaryIngressOctet}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      updateNetworkConfig("secondaryIngressOctet", e.target.value)
-                    }
-                    className={cn(
-                      "w-20",
-                      (!isValidIngressOctet(
-                        networkConfig.secondaryIngressOctet
-                      ) ||
-                        isIngressIPInUse(
-                          networkConfig.secondaryIngressOctet
-                        )) &&
-                        "border-warning focus-visible:ring-warning"
-                    )}
-                  />
-                </div>
-                {isIngressIPInUse(networkConfig.secondaryIngressOctet) && (
-                  <p className="text-xs text-warning mt-1">
-                    This IP is already assigned to another ZeroTier member
-                  </p>
-                )}
-              </div>
             </div>
 
             {/* DNS External IP */}
@@ -1200,9 +1146,8 @@ export default function NetworkConfigurationPage() {
                     </TkAlertDescription>
                   ) : (
                     <TkAlertDescription>
-                      Primary ({networkConfig.primaryIngressOctet}) and Secondary (
-                      {networkConfig.secondaryIngressOctet}) ingress IPs must be
-                      within the Load Balancer range
+                      Primary ingress IP ({networkConfig.primaryIngressOctet}) must
+                      be within the Load Balancer range
                     </TkAlertDescription>
                   )}
                 </div>
@@ -1210,7 +1155,6 @@ export default function NetworkConfigurationPage() {
             )}
 
             {networkConfig.primaryIngressOctet &&
-              networkConfig.secondaryIngressOctet &&
               networkConfig.metallbStartOctet &&
               networkConfig.metallbEndOctet &&
               !isMetalLBRangeInvalid() && (
@@ -1244,17 +1188,6 @@ export default function NetworkConfigurationPage() {
                               : networkConfig.cidr
                           )}
                           .{networkConfig.primaryIngressOctet}
-                        </span>
-                      </li>
-                      <li>
-                        Secondary Ingress:{" "}
-                        <span className="font-mono">
-                          {getNetworkBase(
-                            networkMode === "overlay"
-                              ? networkConfig.zerotierCIDR
-                              : networkConfig.cidr
-                          )}
-                          .{networkConfig.secondaryIngressOctet}
                         </span>
                       </li>
                     </ul>

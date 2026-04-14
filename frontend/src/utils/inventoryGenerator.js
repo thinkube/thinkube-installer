@@ -193,17 +193,13 @@ export function generateDynamicInventory() {
 
     // Ingress IP configuration for overlay network
     inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
-    inventory.all.vars.secondary_ingress_ip_octet = networkConfig.secondaryIngressOctet || "201"
     inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
     inventory.all.vars.primary_ingress_ip = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
-    inventory.all.vars.secondary_ingress_ip = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.secondaryIngressOctet || "201")
   } else {
     // Local mode - use local network for ingress IPs
     inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
-    inventory.all.vars.secondary_ingress_ip_octet = networkConfig.secondaryIngressOctet || "201"
     inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
     inventory.all.vars.primary_ingress_ip = networkConfig.cidr.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
-    inventory.all.vars.secondary_ingress_ip = networkConfig.cidr.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.secondaryIngressOctet || "201")
   }
 
   // Container build architecture configuration
