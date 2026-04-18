@@ -36,6 +36,7 @@ interface Hardware {
   gpu_model?: string
   nvidia_driver_version?: string
   driver_status?: "compatible" | "old" | "missing"
+  architecture?: string
 }
 
 interface Network {
@@ -210,6 +211,20 @@ export default function HardwareDetection() {
 
   const continueToRoleAssignment = () => {
     sessionStorage.setItem("serverHardware", JSON.stringify(servers))
+
+    const discoveredServers = JSON.parse(
+      sessionStorage.getItem("discoveredServers") || "[]"
+    )
+    const updatedDiscovered = discoveredServers.map((ds: any) => {
+      const hw = servers.find(
+        (s) => s.hostname === ds.hostname || s.ip === (ds.ip_address || ds.ip)
+      )
+      if (hw?.hardware?.architecture) {
+        return { ...ds, architecture: hw.hardware.architecture }
+      }
+      return ds
+    })
+    sessionStorage.setItem("discoveredServers", JSON.stringify(updatedDiscovered))
 
     const networkInfo = servers
       .filter((s) => s.network?.cidr)

@@ -202,9 +202,22 @@ export function generateDynamicInventory() {
     inventory.all.vars.primary_ingress_ip = networkConfig.cidr.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
   }
 
-  // Container build architecture configuration
-  const buildArchitecture = sessionStorage.getItem('buildArchitecture') || 'both'
-  // Convert user selection to podman platform format
+  // Container build architecture configuration — auto-derived from detected node architectures
+  const savedBuildArch = sessionStorage.getItem('buildArchitecture')
+  let buildArchitecture = savedBuildArch
+  if (!buildArchitecture) {
+    const archSet = new Set()
+    discoveredServers.forEach(s => {
+      if (s.architecture) {
+        const arch = s.architecture.toLowerCase()
+        if (arch === 'x86_64' || arch === 'amd64') archSet.add('amd64')
+        else if (arch === 'aarch64' || arch === 'arm64') archSet.add('arm64')
+      }
+    })
+    if (archSet.size === 0) buildArchitecture = 'amd64'
+    else if (archSet.size === 1) buildArchitecture = [...archSet][0]
+    else buildArchitecture = 'both'
+  }
   const platformMap = {
     'amd64': 'linux/amd64',
     'arm64': 'linux/arm64',

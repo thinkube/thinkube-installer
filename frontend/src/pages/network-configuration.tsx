@@ -11,7 +11,6 @@ import { TkAlert, TkAlertDescription, TkAlertTitle } from "thinkube-style/compon
 import { TkInput } from "thinkube-style/components/forms-inputs";
 import { TkLabel } from "thinkube-style/components/forms-inputs";
 import { TkButton } from "thinkube-style/components/buttons-badges";
-import { TkRadioGroup, TkRadioGroupItem } from "thinkube-style/components/forms-inputs";
 import { TkBadge } from "thinkube-style/components/buttons-badges";
 import { TkSeparator, TkPageWrapper } from "thinkube-style/components/utilities";
 import { TkStatCard } from "thinkube-style/components/cards-data";
@@ -153,7 +152,7 @@ export default function NetworkConfigurationPage() {
     string[]
   >([]);
   const [buildArchitecture, setBuildArchitecture] =
-    useState<BuildArchitecture>("both");
+    useState<BuildArchitecture | null>(null);
 
   // ZeroTier API state
   const [zerotierLoading, setZerotierLoading] = useState(false);
@@ -652,7 +651,7 @@ export default function NetworkConfigurationPage() {
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || buildArchitecture === null) return;
     sessionStorage.setItem("buildArchitecture", buildArchitecture);
   }, [buildArchitecture, mounted]);
 
@@ -699,13 +698,12 @@ export default function NetworkConfigurationPage() {
 
       setDiscoveredServers(serversToUse);
 
-      const savedBuildArch = sessionStorage.getItem("buildArchitecture");
-      if (savedBuildArch) {
-        setBuildArchitecture(savedBuildArch as BuildArchitecture);
-      } else if (detectedArchitectures.length === 1) {
+      if (detectedArchitectures.length === 1) {
         setBuildArchitecture(detectedArchitectures[0] as BuildArchitecture);
       } else if (detectedArchitectures.length > 1) {
         setBuildArchitecture("both");
+      } else {
+        setBuildArchitecture("amd64");
       }
 
       const hasLocalServer = discoveredServers.some(
@@ -1204,81 +1202,30 @@ export default function NetworkConfigurationPage() {
           <TkCardTitle>Container Build Architecture</TkCardTitle>
         </TkCardHeader>
         <TkCardContent>
-          <div className="mb-4">
-            <p className="text-sm text-muted-foreground">
-              Choose which CPU architectures to build container images for.
-              Detected architectures from your cluster:{" "}
-              <span className="font-mono font-semibold">
-                {detectedArchitectures.join(", ") || "None"}
-              </span>
-            </p>
-          </div>
-
-          <TkRadioGroup
-            value={buildArchitecture}
-            onValueChange={(value: string) =>
-              setBuildArchitecture(value as BuildArchitecture)
-            }
-            className="flex flex-col gap-3"
-          >
-            <TkLabel
-              htmlFor="amd64"
-              className="flex items-start gap-4 p-4 bg-secondary rounded-lg cursor-pointer"
-            >
-              <TkRadioGroupItem value="amd64" id="amd64" />
-              <div className="flex flex-col flex-1">
-                <span className="font-medium">AMD64 (x86_64) only</span>
-                <span className="text-sm text-muted-foreground mt-1">
-                  Faster builds, less storage. Recommended for Intel/AMD-only
-                  clusters
-                </span>
-              </div>
-            </TkLabel>
-
-            <TkLabel
-              htmlFor="arm64"
-              className="flex items-start gap-4 p-4 bg-secondary rounded-lg cursor-pointer"
-            >
-              <TkRadioGroupItem value="arm64" id="arm64" />
-              <div className="flex flex-col flex-1">
-                <span className="font-medium">ARM64 only</span>
-                <span className="text-sm text-muted-foreground mt-1">
-                  Faster builds, less storage. Recommended for ARM-only clusters
-                  (Raspberry Pi, Apple Silicon)
-                </span>
-              </div>
-            </TkLabel>
-
-            <TkLabel
-              htmlFor="both"
-              className="flex items-start gap-4 p-4 bg-secondary rounded-lg cursor-pointer"
-            >
-              <TkRadioGroupItem value="both" id="both" />
-              <div className="flex flex-col flex-1">
-                <span className="font-medium">Both (AMD64 + ARM64)</span>
-                <span className="text-sm text-muted-foreground mt-1">
-                  Slower builds, more storage. Required for mixed clusters or
-                  future expansion
-                </span>
-              </div>
-            </TkLabel>
-          </TkRadioGroup>
-
-          {buildArchitecture === "both" && (
-            <TkAlert className="mt-4 bg-info/10 border-info/50">
-              <Info className="h-5 w-5 text-info" />
-              <div className="text-sm">
-                <TkAlertTitle className="font-medium">
-                  Multi-architecture builds will use QEMU emulation
-                </TkAlertTitle>
-                <TkAlertDescription className="mt-1">
-                  Build time may be 2-3x longer and requires ~2x storage space.
-                  Choose this if you plan to add nodes with different architectures
-                  later.
-                </TkAlertDescription>
-              </div>
-            </TkAlert>
-          )}
+          <TkAlert className="bg-info/10 border-info/50">
+            <Info className="h-5 w-5 text-info" />
+            <div className="text-sm">
+              <TkAlertTitle className="font-medium">
+                Auto-detected from cluster nodes
+              </TkAlertTitle>
+              <TkAlertDescription className="mt-1">
+                {detectedArchitectures.length > 0 ? (
+                  <>
+                    Detected architectures:{" "}
+                    <span className="font-mono font-semibold">
+                      {detectedArchitectures.join(", ")}
+                    </span>
+                    . Container images will be built natively on nodes of each
+                    architecture.
+                    {detectedArchitectures.length > 1 &&
+                      " Additional architectures can be added later by joining nodes through thinkube-control."}
+                  </>
+                ) : (
+                  "No architectures detected from cluster nodes. Defaulting to amd64."
+                )}
+              </TkAlertDescription>
+            </div>
+          </TkAlert>
         </TkCardContent>
       </TkCard>
 
