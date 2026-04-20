@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { TkAppHeader } from 'thinkube-style/components/utilities';
 import { TkThemeProvider } from 'thinkube-style/components/theme';
 import { TkToaster } from 'thinkube-style/components/feedback';
+import 'thinkube-style/styles.css';
 import './index.css';
 
 // Pages
