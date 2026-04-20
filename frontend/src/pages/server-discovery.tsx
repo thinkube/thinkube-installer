@@ -387,7 +387,7 @@ export default function ServerDiscovery() {
           <TkCardHeader>
             <div className="flex items-center gap-2">
               <TkCardTitle>Discovered Servers</TkCardTitle>
-              <TkBadge variant="default">{discoveredServers.length}</TkBadge>
+              <TkBadge appearance="prominent">{discoveredServers.length}</TkBadge>
             </div>
           </TkCardHeader>
           <TkCardContent>
@@ -438,7 +438,7 @@ export default function ServerDiscovery() {
                         {server.confidence === "possible" && (
                           <TkButton
                             size="sm"
-                            variant="ghost"
+                            intent="ghost"
                             onClick={() => verifyServer(server)}
                           >
                             Verify
@@ -455,12 +455,12 @@ export default function ServerDiscovery() {
                             </TkButton>
                           )}
                         {server.error && (
-                          <TkButton size="sm" variant="destructive" disabled>
+                          <TkButton size="sm" intent="danger" disabled>
                             Failed
                           </TkButton>
                         )}
                         {selectedServers.find((s) => s.ip === server.ip) && (
-                          <TkBadge variant="success">Selected</TkBadge>
+                          <TkBadge status="active">Selected</TkBadge>
                         )}
                       </div>
                     </div>
@@ -475,7 +475,7 @@ export default function ServerDiscovery() {
       {/* Navigation */}
       <div className="flex justify-between mt-6">
         <TkButton
-          variant="ghost"
+          intent="ghost"
           className="gap-2"
           onClick={() => navigate("/installation")}
         >

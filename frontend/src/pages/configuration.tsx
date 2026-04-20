@@ -611,7 +611,7 @@ export default function Configuration() {
                     {config.cloudflareToken && config.domainName && (
                       <TkButton
                         type="button"
-                        variant="ghost"
+                        intent="ghost"
                         size="sm"
                         className="h-auto p-1"
                         onClick={verifyCloudflare}
@@ -628,7 +628,7 @@ export default function Configuration() {
                     )}
                     <TkButton
                       type="button"
-                      variant="ghost"
+                      intent="ghost"
                       size="sm"
                       className="h-auto p-1"
                       onClick={() => setShowCloudflareToken(!showCloudflareToken)}
@@ -726,7 +726,7 @@ export default function Configuration() {
                         {config.zerotierApiToken && config.zerotierNetworkId && (
                           <TkButton
                             type="button"
-                            variant="ghost"
+                            intent="ghost"
                             size="sm"
                             className="h-auto p-1"
                             onClick={verifyZerotier}
@@ -743,7 +743,7 @@ export default function Configuration() {
                         )}
                         <TkButton
                           type="button"
-                          variant="ghost"
+                          intent="ghost"
                           size="sm"
                           className="h-auto p-1"
                           onClick={() => setShowZerotierToken(!showZerotierToken)}
@@ -785,7 +785,7 @@ export default function Configuration() {
                       />
                       <TkButton
                         type="button"
-                        variant="ghost"
+                        intent="ghost"
                         size="sm"
                         className="h-auto p-1 absolute inset-y-0 right-0 mr-3"
                         onClick={() => setShowTailscaleAuthKey(!showTailscaleAuthKey)}
@@ -820,7 +820,7 @@ export default function Configuration() {
                         {config.tailscaleAuthKey && config.tailscaleApiToken && (
                           <TkButton
                             type="button"
-                            variant="ghost"
+                            intent="ghost"
                             size="sm"
                             className="h-auto p-1"
                             onClick={verifyTailscale}
@@ -837,7 +837,7 @@ export default function Configuration() {
                         )}
                         <TkButton
                           type="button"
-                          variant="ghost"
+                          intent="ghost"
                           size="sm"
                           className="h-auto p-1"
                           onClick={() => setShowTailscaleApiToken(!showTailscaleApiToken)}
@@ -904,7 +904,7 @@ export default function Configuration() {
                   {config.githubToken && (
                     <TkButton
                       type="button"
-                      variant="ghost"
+                      intent="ghost"
                       size="sm"
                       className="h-auto p-1"
                       onClick={verifyGithub}
@@ -921,7 +921,7 @@ export default function Configuration() {
                   )}
                   <TkButton
                     type="button"
-                    variant="ghost"
+                    intent="ghost"
                     size="sm"
                     className="h-auto p-1"
                     onClick={() => setShowGithubToken(!showGithubToken)}
@@ -1007,7 +1007,7 @@ export default function Configuration() {
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                   <TkButton
                     type="button"
-                    variant="ghost"
+                    intent="ghost"
                     size="sm"
                     className="h-auto p-1"
                     onClick={() => setShowHfToken(!showHfToken)}
@@ -1034,7 +1034,7 @@ export default function Configuration() {
         <div className="flex justify-between mt-6">
           <TkButton
             type="button"
-            variant="ghost"
+            intent="ghost"
             onClick={() => navigate('/role-assignment')}
           >
             <ChevronLeft className="w-5 h-5 mr-2" />

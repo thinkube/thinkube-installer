@@ -1306,7 +1306,7 @@ export default function NetworkConfigurationPage() {
                       </>
                     )}
                     <TkTableCell>
-                      <TkBadge variant="outline">
+                      <TkBadge appearance="outlined">
                         {getServerRole(server.hostname)}
                       </TkBadge>
                     </TkTableCell>
@@ -1380,7 +1380,7 @@ export default function NetworkConfigurationPage() {
       {/* Actions */}
       <div className="flex justify-between">
         <TkButton
-          variant="ghost"
+          intent="ghost"
           onClick={() => navigate("/configuration")}
           className="gap-2"
         >

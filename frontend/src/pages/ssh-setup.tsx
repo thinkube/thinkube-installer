@@ -82,16 +82,16 @@ export default function SSHSetup() {
     }
   }, [autoStartSetup, currentUser, servers])
 
-  const getStatusClass = (status: Server["status"]) => {
+  const getStatusBadge = (status: Server["status"]) => {
     switch (status) {
       case "connected":
-        return "success"
+        return "healthy"
       case "failed":
-        return "destructive"
+        return "unhealthy"
       case "configuring":
         return "warning"
       default:
-        return "secondary"
+        return "pending"
     }
   }
 
@@ -236,7 +236,7 @@ export default function SSHSetup() {
                     <td className="py-2 px-4">{server.ip}</td>
                     <td className="py-2 px-4">
                       <div>
-                        <TkBadge variant={getStatusClass(server.status)}>
+                        <TkBadge status={getStatusBadge(server.status)}>
                           {server.status || "Pending"}
                         </TkBadge>
                         {server.error && (

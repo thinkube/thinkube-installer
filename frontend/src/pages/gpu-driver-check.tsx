@@ -364,32 +364,32 @@ export default function GpuDriverCheck() {
                     </td>
                     <td className="py-2 px-4">
                       {node.driver_version ? (
-                        <TkBadge variant="outline">{node.driver_version}</TkBadge>
+                        <TkBadge appearance="outlined">{node.driver_version}</TkBadge>
                       ) : (
                         <span className="text-muted-foreground">Not installed</span>
                       )}
                     </td>
                     <td className="py-2 px-4">
                       {node.driver_status === "compatible" && (
-                        <TkBadge variant="success" className="gap-2">
+                        <TkBadge status="healthy" className="gap-2">
                           <CheckCircle2 className="h-4 w-4" />
                           Compatible
                         </TkBadge>
                       )}
                       {node.driver_status === "old" && (
-                        <TkBadge variant="destructive" className="gap-2">
+                        <TkBadge status="unhealthy" className="gap-2">
                           <XCircle className="h-4 w-4" />
                           Old ({node.min_required_version}+ required)
                         </TkBadge>
                       )}
                       {node.driver_status === "missing" && (
-                        <TkBadge variant="warning" className="gap-2">
+                        <TkBadge status="warning" className="gap-2">
                           <AlertCircle className="h-4 w-4" />
                           Missing
                         </TkBadge>
                       )}
                       {!node.driver_status && (
-                        <TkBadge variant="secondary">{node.driver_status}</TkBadge>
+                        <TkBadge status="pending">{node.driver_status}</TkBadge>
                       )}
                     </td>
                     <td className="py-2 px-4">
@@ -538,7 +538,7 @@ export default function GpuDriverCheck() {
 
       {/* Navigation buttons */}
       <div className="flex justify-between mt-8">
-        <TkButton variant="outline" onClick={goBack}>
+        <TkButton intent="secondary" onClick={goBack}>
           Back
         </TkButton>
         <TkButton onClick={continueToDeployment} disabled={!canContinue}>

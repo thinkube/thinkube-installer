@@ -265,7 +265,7 @@ export default function HardwareDetection() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <h2 className="text-xl font-bold">{server.hostname}</h2>
-                    <TkBadge variant="outline" className="font-mono">
+                    <TkBadge appearance="outlined" className="font-mono">
                       {server.ip}
                     </TkBadge>
                   </div>
@@ -312,11 +312,11 @@ export default function HardwareDetection() {
                         variant="primary"
                         badge={
                           server.hardware.driver_status === "compatible" ? (
-                            <TkBadge variant="success">
+                            <TkBadge status="healthy">
                               Driver {server.hardware.nvidia_driver_version}
                             </TkBadge>
                           ) : server.hardware.driver_status === "old" ? (
-                            <TkBadge variant="warning">
+                            <TkBadge status="warning">
                               Driver {server.hardware.nvidia_driver_version}
                             </TkBadge>
                           ) : (
@@ -390,7 +390,7 @@ export default function HardwareDetection() {
             {compatibleDriverServers.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <TkBadge variant="success">Compatible</TkBadge>
+                  <TkBadge status="healthy">Compatible</TkBadge>
                   <span className="text-sm">
                     {compatibleDriverServers.length} server(s) with driver &gt;=
                     580.x
@@ -489,7 +489,7 @@ export default function HardwareDetection() {
 
           <div className="flex justify-between">
             <TkButton
-              variant="ghost"
+              intent="ghost"
               className="gap-2"
               onClick={() => navigate("/ssh-setup")}
             >
@@ -500,7 +500,7 @@ export default function HardwareDetection() {
             <div className="flex gap-2">
               {oldDriverServers.length > 0 && (
                 <TkButton
-                  variant="destructive"
+                  intent="danger"
                   className="gap-2"
                   onClick={stopInstallation}
                 >

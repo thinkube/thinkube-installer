@@ -720,14 +720,14 @@ ${log.logs}`
               <TkButton size="sm" onClick={handleRetry}>
                 Retry
               </TkButton>
-              <TkButton size="sm" variant="outline" onClick={handleRollback}>
+              <TkButton size="sm" intent="secondary" onClick={handleRollback}>
                 Rollback
               </TkButton>
-              <TkButton size="sm" variant="ghost" onClick={copyFailedLog}>
+              <TkButton size="sm" intent="ghost" onClick={copyFailedLog}>
                 <Copy className="w-4 h-4 mr-2" />
                 Copy Failed Log
               </TkButton>
-              <TkButton size="sm" variant="ghost" onClick={downloadLogs}>
+              <TkButton size="sm" intent="ghost" onClick={downloadLogs}>
                 <Download className="w-4 h-4 mr-2" />
                 Download All Logs
               </TkButton>
@@ -747,11 +747,11 @@ ${log.logs}`
               <TkButton onClick={() => navigate('/complete')}>
                 View Cluster Details
               </TkButton>
-              <TkButton variant="outline" onClick={copyLogs}>
+              <TkButton intent="secondary" onClick={copyLogs}>
                 <Copy className="w-4 h-4 mr-2" />
                 Copy Logs
               </TkButton>
-              <TkButton variant="outline" onClick={downloadLogs}>
+              <TkButton intent="secondary" onClick={downloadLogs}>
                 <Download className="w-4 h-4 mr-2" />
                 Download Logs
               </TkButton>

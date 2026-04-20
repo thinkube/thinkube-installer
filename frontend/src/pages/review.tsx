@@ -172,13 +172,13 @@ export default function Review() {
     return roleMap[role] || role
   }
 
-  const getRoleBadgeClass = (role: string) => {
-    const classMap: Record<string, "default" | "secondary" | "outline"> = {
-      control_plane: "default",
-      worker: "secondary",
-      dns: "outline"
+  const getRoleBadgeCategory = (role: string) => {
+    const classMap: Record<string, "core" | "optional" | "user"> = {
+      control_plane: "core",
+      worker: "optional",
+      dns: "user"
     }
-    return classMap[role] || "outline"
+    return classMap[role] || "user"
   }
 
   const copyInventory = async () => {
@@ -314,7 +314,7 @@ export default function Review() {
                       </div>
                     )}
                   </div>
-                  <TkBadge variant={getRoleBadgeClass(node.role)} className="text-lg">
+                  <TkBadge category={getRoleBadgeCategory(node.role)} className="text-lg">
                     {getRoleDisplay(node.role)}
                   </TkBadge>
                 </div>
@@ -337,17 +337,17 @@ export default function Review() {
             </p>
 
             <div className="flex gap-3">
-              <TkButton variant="outline" size="sm" onClick={copyInventory}>
+              <TkButton intent="secondary" size="sm" onClick={copyInventory}>
                 <Copy className="w-4 h-4 mr-2" />
                 Copy
               </TkButton>
 
-              <TkButton variant="outline" size="sm" onClick={downloadInventory}>
+              <TkButton intent="secondary" size="sm" onClick={downloadInventory}>
                 <Download className="w-4 h-4 mr-2" />
                 Download inventory.yaml
               </TkButton>
 
-              <TkButton variant="outline" size="sm" onClick={viewInventory}>
+              <TkButton intent="secondary" size="sm" onClick={viewInventory}>
                 <Eye className="w-4 h-4 mr-2" />
                 View
               </TkButton>
@@ -359,7 +359,7 @@ export default function Review() {
       {/* Actions */}
       <div className="flex justify-between">
         <TkButton
-          variant="ghost"
+          intent="ghost"
           className="gap-2"
           onClick={() => navigate("/network-configuration")}
         >
@@ -385,7 +385,7 @@ export default function Review() {
           </div>
 
           <TkDialogFooter>
-            <TkButton variant="ghost" onClick={() => setInventoryModalOpen(false)}>
+            <TkButton intent="ghost" onClick={() => setInventoryModalOpen(false)}>
               Close
             </TkButton>
           </TkDialogFooter>

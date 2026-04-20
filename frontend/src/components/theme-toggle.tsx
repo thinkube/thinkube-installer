@@ -15,7 +15,7 @@ export function ThemeToggle() {
 
   return (
     <TkButton
-      variant="ghost"
+      intent="ghost"
       size="icon"
       onClick={handleToggle}
       className="w-9 h-9"

@@ -129,7 +129,7 @@ export default function Requirements() {
                         <p className="text-sm text-muted-foreground">
                           {req.details}
                           {req.required && (
-                            <TkBadge variant="secondary" className="ml-2">
+                            <TkBadge appearance="muted" className="ml-2">
                               Required
                             </TkBadge>
                           )}
@@ -162,7 +162,7 @@ export default function Requirements() {
                         <p className="text-sm text-muted-foreground">
                           {req.details}
                           {req.action === 'install' && (
-                            <TkBadge variant="outline" className="ml-2 text-info border-info">
+                            <TkBadge appearance="outlined" className="ml-2 text-info border-info">
                               Will be installed
                             </TkBadge>
                           )}
@@ -198,7 +198,7 @@ export default function Requirements() {
       {!isLoading && (
         <div className="flex justify-between">
           <TkButton
-            variant="ghost"
+            intent="ghost"
             className="gap-2"
             onClick={() => navigate('/welcome')}
           >

@@ -208,7 +208,7 @@ export default function RoleAssignment() {
                           <p className="text-sm text-muted-foreground">
                             {node.cpu} CPU, {node.memory} GB RAM
                             {getNodeGPUStatus(node) && (
-                              <TkBadge variant="success" className="ml-2">
+                              <TkBadge status="healthy" className="ml-2">
                                 {getNodeGPUStatus(node)}
                               </TkBadge>
                             )}
@@ -258,7 +258,7 @@ export default function RoleAssignment() {
 
       <div className="flex justify-between">
         <TkButton
-          variant="ghost"
+          intent="ghost"
           className="gap-2"
           onClick={() => navigate('/hardware-detection')}
         >

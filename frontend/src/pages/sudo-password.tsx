@@ -206,7 +206,7 @@ export default function SudoPassword() {
 
       <div className="flex justify-between mt-6">
         <TkButton
-          variant="ghost"
+          intent="ghost"
           className="gap-2"
           onClick={() => navigate("/requirements")}
         >

@@ -507,7 +507,7 @@ ${logOutput.map(log => log.message).join('\n')}`
                   <span className="text-sm text-muted-foreground">Live Output:</span>
                   <div className="flex items-center gap-2">
                     <TkButton
-                      variant="ghost"
+                      intent="ghost"
                       size="sm"
                       onClick={copy}
                       className={copied ? 'text-success' : ''}
@@ -558,7 +558,7 @@ ${logOutput.map(log => log.message).join('\n')}`
             {/* Cancel Button (only during execution) */}
             {status === 'running' && (
               <div className="flex justify-end mb-4">
-                <TkButton variant="outline" size="sm" onClick={cancelExecution} disabled={isCancelling}>
+                <TkButton intent="secondary" size="sm" onClick={cancelExecution} disabled={isCancelling}>
                   {isCancelling && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
                   {isCancelling ? 'Cancelling...' : 'Cancel'}
                 </TkButton>

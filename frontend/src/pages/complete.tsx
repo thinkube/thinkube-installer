@@ -230,7 +230,7 @@ export default function Complete() {
               <div className="flex items-center justify-between border rounded-md px-3 py-2">
                 <span>{deploymentData.adminUsername}</span>
                 <TkButton
-                  variant="ghost"
+                  intent="ghost"
                   size="sm"
                   onClick={() => copyToClipboard(deploymentData.adminUsername)}
                 >
@@ -247,7 +247,7 @@ export default function Complete() {
                 </span>
                 <div className="flex gap-1">
                   <TkButton
-                    variant="ghost"
+                    intent="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
                   >
@@ -258,7 +258,7 @@ export default function Complete() {
                     )}
                   </TkButton>
                   <TkButton
-                    variant="ghost"
+                    intent="ghost"
                     size="sm"
                     onClick={() => copyToClipboard(deploymentData.adminPassword)}
                   >
@@ -278,7 +278,7 @@ export default function Complete() {
         </TkCardHeader>
         <TkCardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <TkButton variant="outline" className="gap-2" asChild>
+            <TkButton intent="secondary" className="gap-2" asChild>
               <a
                 href="https://thinkube.org"
                 target="_blank"
@@ -289,7 +289,7 @@ export default function Complete() {
               </a>
             </TkButton>
 
-            <TkButton variant="outline" className="gap-2" asChild>
+            <TkButton intent="secondary" className="gap-2" asChild>
               <a
                 href="https://github.com/thinkube/thinkube"
                 target="_blank"
@@ -301,7 +301,7 @@ export default function Complete() {
             </TkButton>
 
             <TkButton
-              variant="outline"
+              intent="secondary"
               className="gap-2"
               onClick={downloadLogs}
             >
@@ -314,7 +314,7 @@ export default function Complete() {
 
       {/* Actions */}
       <div className="text-center">
-        <TkButton variant="ghost" onClick={closeInstaller}>
+        <TkButton intent="ghost" onClick={closeInstaller}>
           Close Installer
         </TkButton>
       </div>
