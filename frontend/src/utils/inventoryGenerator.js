@@ -236,7 +236,10 @@ export function generateDynamicInventory() {
       s.hostname === hostname || s.host === hostname || s.ip === server.ip
     )
 
-    const serverArch = discoveredServer?.architecture || 'x86_64'
+    const serverArch = discoveredServer?.architecture
+    if (!serverArch) {
+      throw new Error(`Architecture not detected for ${hostname} — run hardware discovery first`)
+    }
     // Normalize architecture name
     const normalizedArch = serverArch.toLowerCase() === 'aarch64' ? 'arm64' :
                           serverArch.toLowerCase() === 'arm64' ? 'arm64' : 'x86_64'
