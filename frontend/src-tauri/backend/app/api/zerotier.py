@@ -114,6 +114,84 @@ async def fetch_zerotier_network(request: ZeroTierNetworkRequest):
             message=f"Error fetching network details: {str(e)}"
         )
 
+class OverlayAllocateRequest(BaseModel):
+    hostnames: list
+    network_id: str
+    api_token: str
+
+@router.post("/overlay/allocate-ips")
+async def allocate_overlay_ips(request: OverlayAllocateRequest):
+    """
+    Allocate ZeroTier IPs for a list of hostnames.
+    Queries ZeroTier Central API for existing members and available IPs,
+    then returns a mapping of hostname -> proposed IP.
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            # Get network info for CIDR
+            net_resp = await client.get(
+                f"https://api.zerotier.com/api/v1/network/{request.network_id}",
+                headers={"Authorization": f"Bearer {request.api_token}"},
+                timeout=10.0,
+            )
+            if net_resp.status_code != 200:
+                raise HTTPException(status_code=400, detail="Failed to fetch ZeroTier network info")
+
+            network_data = net_resp.json()
+            routes = network_data.get("config", {}).get("routes", [])
+            cidr = ""
+            for route in routes:
+                target = route.get("target", "")
+                if "/" in target and not target.startswith("169.254"):
+                    cidr = target
+                    break
+
+            if not cidr:
+                raise HTTPException(status_code=400, detail="No valid CIDR found in ZeroTier network")
+
+            # Parse subnet prefix from CIDR (e.g., "192.168.191.0/24" -> "192.168.191.")
+            import ipaddress
+            network = ipaddress.ip_network(cidr, strict=False)
+            prefix_parts = str(network.network_address).split(".")
+            subnet_prefix = f"{prefix_parts[0]}.{prefix_parts[1]}.{prefix_parts[2]}."
+
+            # Get existing members and their IPs
+            members_resp = await client.get(
+                f"https://api.zerotier.com/api/v1/network/{request.network_id}/member",
+                headers={"Authorization": f"Bearer {request.api_token}"},
+                timeout=10.0,
+            )
+            used_ips = set()
+            if members_resp.status_code == 200:
+                for member in members_resp.json():
+                    for ip in member.get("config", {}).get("ipAssignments", []):
+                        used_ips.add(ip)
+
+            # Allocate IPs starting from .1, skipping used ones and .0
+            allocations = {}
+            next_octet = 1
+            for hostname in request.hostnames:
+                while f"{subnet_prefix}{next_octet}" in used_ips and next_octet < 254:
+                    next_octet += 1
+                if next_octet >= 254:
+                    raise HTTPException(status_code=400, detail="No more IPs available in subnet")
+                ip = f"{subnet_prefix}{next_octet}"
+                allocations[hostname] = ip
+                used_ips.add(ip)
+                next_octet += 1
+
+            return {
+                "allocations": allocations,
+                "cidr": cidr,
+                "subnet_prefix": subnet_prefix,
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"IP allocation failed: {str(e)}")
+
+
 @router.post("/fetch-zerotier-members", response_model=ZeroTierMembersResponse)
 async def fetch_zerotier_members(request: ZeroTierNetworkRequest):
     """

@@ -35,14 +35,21 @@ export function generateDynamicInventory() {
     throw new Error('Domain name is required.')
   }
   
-  // ZeroTier validation only required for overlay mode
-  if (config.networkMode === 'overlay') {
+  // Overlay provider credential validation
+  const overlayProvider = config.overlayProvider || 'zerotier'
+  if (overlayProvider === 'zerotier') {
     if (!config.zerotierNetworkId) {
-      throw new Error('ZeroTier network ID is required for overlay mode.')
+      throw new Error('ZeroTier network ID is required.')
     }
-    
     if (!config.zerotierApiToken) {
-      throw new Error('ZeroTier API token is required for overlay mode.')
+      throw new Error('ZeroTier API token is required.')
+    }
+  } else {
+    if (!config.tailscaleAuthKey) {
+      throw new Error('Tailscale auth key is required.')
+    }
+    if (!config.tailscaleApiToken) {
+      throw new Error('Tailscale API token is required.')
     }
   }
   
@@ -59,9 +66,8 @@ export function generateDynamicInventory() {
     throw new Error('Network gateway is required.')
   }
   
-  // ZeroTier network config validation only for overlay mode
-  if (config.networkMode === 'overlay' && !networkConfig.zerotierCIDR) {
-    throw new Error('ZeroTier CIDR is required for overlay mode.')
+  if (!networkConfig.overlayCIDR) {
+    throw new Error('Overlay network CIDR is required.')
   }
   
   // Build inventory structure
@@ -83,8 +89,8 @@ export function generateDynamicInventory() {
         dns_servers: ["8.8.8.8", "8.8.4.4"],
         dns_search_domains: [],  // No custom DNS search domains to prevent wildcard matching
         
-        // Network mode
-        network_mode: config.networkMode || 'overlay',
+        // Network mode — always overlay
+        network_mode: 'overlay',
         
         // MetalLB configuration (conditional based on network mode)
         metallb_ip_start_octet: networkConfig.metallbStartOctet || "200",
@@ -172,35 +178,24 @@ export function generateDynamicInventory() {
     }
   }
   
-  // Add overlay network configuration conditionally for overlay mode
-  if (config.networkMode === 'overlay') {
-    // Overlay provider selection
-    const overlayProvider = config.overlayProvider || 'zerotier'
-    inventory.all.vars.overlay_provider = overlayProvider
+  // Overlay network configuration
+  inventory.all.vars.overlay_provider = overlayProvider
+  inventory.all.vars.overlay_cidr = networkConfig.overlayCIDR
+  inventory.all.vars.overlay_subnet_prefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.'
 
-    // Common overlay network variables
-    inventory.all.vars.zerotier_cidr = networkConfig.zerotierCIDR  // Used for both providers (overlay CIDR)
-    inventory.all.vars.zerotier_subnet_prefix = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.'  // Used for both providers
-
-    // Provider-specific variables
-    if (overlayProvider === 'zerotier') {
-      inventory.all.vars.zerotier_network_id = config.zerotierNetworkId
-      inventory.all.vars.zerotier_api_token = config.zerotierApiToken
-    } else if (overlayProvider === 'tailscale') {
-      inventory.all.vars.tailscale_auth_key = config.tailscaleAuthKey
-      inventory.all.vars.tailscale_api_token = config.tailscaleApiToken
-    }
-
-    // Ingress IP configuration for overlay network
-    inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
-    inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
-    inventory.all.vars.primary_ingress_ip = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
+  // Provider-specific variables
+  if (overlayProvider === 'zerotier') {
+    inventory.all.vars.zerotier_network_id = config.zerotierNetworkId
+    inventory.all.vars.zerotier_api_token = config.zerotierApiToken
   } else {
-    // Local mode - use local network for ingress IPs
-    inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
-    inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
-    inventory.all.vars.primary_ingress_ip = networkConfig.cidr.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
+    inventory.all.vars.tailscale_auth_key = config.tailscaleAuthKey
+    inventory.all.vars.tailscale_api_token = config.tailscaleApiToken
   }
+
+  // Ingress IP configuration
+  inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
+  inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
+  inventory.all.vars.primary_ingress_ip = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
 
   // Container build architecture configuration — auto-derived from detected node architectures
   const savedBuildArch = sessionStorage.getItem('buildArchitecture')
@@ -245,15 +240,10 @@ export function generateDynamicInventory() {
                           serverArch.toLowerCase() === 'arm64' ? 'arm64' : 'x86_64'
 
     const serverDef = {
-      ansible_host: config.networkMode === 'overlay' ? server.zerotierIP : server.ip,
-      lan_ip: server.ip,
+      ansible_host: server.overlayIP || server.ip,
+      lan_ip: server.ip || server.localIP || '',
       arch: normalizedArch,
-      zerotier_enabled: config.networkMode === 'overlay'
-    }
-
-    // Only add ZeroTier IP if overlay mode is enabled
-    if (config.networkMode === 'overlay') {
-      serverDef.zerotier_ip = server.zerotierIP
+      overlay_ip: server.overlayIP || server.ip,
     }
 
     // Special handling for local connection
@@ -316,10 +306,8 @@ export function generateDynamicInventory() {
       inventory.all.children.baremetal.children.headless.hosts[hostname] = {}
     }
     
-    // Add to overlay_nodes if overlay networking is enabled
-    if (serverDef.zerotier_enabled) {  // Note: variable name kept for backward compatibility
-      inventory.all.children.overlay_nodes.hosts[hostname] = {}
-    }
+    // All servers are always on the overlay network
+    inventory.all.children.overlay_nodes.hosts[hostname] = {}
   })
   
   
@@ -405,24 +393,16 @@ export function generateDynamicInventory() {
       controllerArch = 'arm64'
     }
     
-    // Get controller ZeroTier IP from network configuration (only needed for overlay mode)
-    let controllerZerotierIP = null
-    if (config.networkMode === 'overlay') {
-      const zerotierPrefix = networkConfig.zerotierCIDR.split('/')[0].split('.').slice(0, 3).join('.')
-      controllerZerotierIP = networkConfig.controllerZerotierIP || `${zerotierPrefix}.10` // fallback to .10 for backwards compatibility
-    }
-    
+    // Get controller overlay IP from network configuration
+    const overlayPrefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.')
+    const controllerOverlayIP = networkConfig.controllerOverlayIP || `${overlayPrefix}.10`
+
     const controllerDef = {
       ansible_connection: 'local',
       ansible_host: '127.0.0.1',
       lan_ip: controllerIP !== 'localhost' ? controllerIP : '127.0.0.1',
-      zerotier_enabled: config.networkMode === 'overlay',
+      overlay_ip: controllerOverlayIP,
       arch: controllerArch
-    }
-    
-    // Only add ZeroTier IP if overlay mode is enabled
-    if (config.networkMode === 'overlay') {
-      controllerDef.zerotier_ip = controllerZerotierIP
     }
     
     // Add controller to inventory

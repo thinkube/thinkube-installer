@@ -29,7 +29,7 @@ interface Node {
   memory?: number
   disk?: number
   hasGPU?: boolean
-  zerotierIP?: string
+  overlayIP?: string
   localIP?: string
   gpuInfo?: {
     gpu_count: number
@@ -45,7 +45,7 @@ interface Config {
   clusterName?: string
   domainName?: string
   adminUsername?: string
-  networkMode?: string
+  overlayProvider?: string
 }
 
 export default function Review() {
@@ -106,7 +106,7 @@ export default function Review() {
             memory: node.memory || hwInfo?.hardware?.memory_gb || 0,
             disk: node.disk || hwInfo?.hardware?.disk_gb || 0,
             hasGPU: hwInfo?.hardware?.gpu_detected || false,
-            zerotierIP: networkInfo?.zerotierIP || networkInfo?.ip || "",
+            overlayIP: networkInfo?.overlayIP || networkInfo?.ip || "",
             localIP: networkInfo?.localIP || hwInfo?.network?.ip_address || ""
           }
 
@@ -239,12 +239,10 @@ export default function Review() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground font-medium">
-                Network Mode
+                Overlay Provider
               </p>
-              <p className="font-semibold">
-                {config.networkMode === "overlay"
-                  ? "ZeroTier Overlay"
-                  : "Local Network"}
+              <p className="font-semibold capitalize">
+                {config.overlayProvider || "zerotier"}
               </p>
             </div>
           </div>
@@ -288,12 +286,12 @@ export default function Review() {
 
                     {/* Network information */}
                     <div className="text-sm mt-2 space-y-1">
-                      {node.zerotierIP && (
+                      {node.overlayIP && (
                         <div>
                           <span className="text-muted-foreground">
-                            ZeroTier:
+                            Overlay:
                           </span>{" "}
-                          <span className="font-mono">{node.zerotierIP}</span>
+                          <span className="font-mono">{node.overlayIP}</span>
                         </div>
                       )}
                       {node.localIP && (

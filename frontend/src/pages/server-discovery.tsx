@@ -12,7 +12,6 @@ import { TkBadge } from "thinkube-style/components/buttons-badges"
 import { TkProgress } from "thinkube-style/components/feedback"
 import { TkInput } from "thinkube-style/components/forms-inputs"
 import { TkLabel } from "thinkube-style/components/forms-inputs"
-import { TkRadioGroup, TkRadioGroupItem } from "thinkube-style/components/forms-inputs"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
 import {
   Search,
@@ -43,14 +42,6 @@ interface DiscoveredServer extends Server {
 export default function ServerDiscovery() {
   const navigate = useNavigate()
 
-  const [config] = useState(() => {
-    if (typeof window !== "undefined") {
-      return JSON.parse(localStorage.getItem("thinkube-config") || "{}")
-    }
-    return {}
-  })
-
-  const [networkMode, setNetworkMode] = useState(config.networkMode || "overlay")
   const [networkCIDR, setNetworkCIDR] = useState("192.168.1.0/24")
   const [isScanning, setIsScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(0)
@@ -59,24 +50,7 @@ export default function ServerDiscovery() {
   const [selectedServers, setSelectedServers] = useState<DiscoveredServer[]>([])
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      if (networkMode === "overlay") {
-        try {
-          const response = await axios.get("/api/zerotier-network")
-          if (response.data.detected) {
-            setNetworkCIDR(response.data.network_cidr)
-          } else {
-            setNetworkCIDR("172.30.0.0/24")
-          }
-        } catch (error) {
-          setNetworkCIDR("172.30.0.0/24")
-        }
-      } else {
-        await autoDetectNetwork()
-      }
-    }
-
-    loadInitialData()
+    autoDetectNetwork()
   }, [])
 
   const autoDetectNetwork = async () => {
@@ -90,41 +64,10 @@ export default function ServerDiscovery() {
     }
   }
 
-  const onNetworkModeChange = async (value: string) => {
-    setNetworkMode(value)
-
-    if (typeof window !== "undefined") {
-      const updatedConfig = { ...config, networkMode: value }
-      localStorage.setItem("thinkube-config", JSON.stringify(updatedConfig))
-    }
-
-    setDiscoveredServers([])
-    setSelectedServers([])
-
-    if (value === "overlay") {
-      try {
-        const response = await axios.get("/api/zerotier-network")
-        if (response.data.detected) {
-          setNetworkCIDR(response.data.network_cidr)
-        } else {
-          setNetworkCIDR("")
-        }
-      } catch (error) {
-        setNetworkCIDR("172.30.0.0/24")
-      }
-    } else {
-      await autoDetectNetwork()
-    }
-  }
-
   const startDiscovery = async () => {
     setIsScanning(true)
     setScanProgress(0)
-    setScanStatus(
-      networkMode === "overlay"
-        ? "Connecting to ZeroTier API..."
-        : "Initializing scan..."
-    )
+    setScanStatus("Initializing scan...")
     setDiscoveredServers([])
 
     const progressInterval = setInterval(() => {
@@ -132,9 +75,7 @@ export default function ServerDiscovery() {
         if (prev < 90) {
           const newProgress = Math.min(90, prev + Math.random() * 20)
           setScanStatus(
-            networkMode === "overlay"
-              ? `Scanning ZeroTier network ${networkCIDR} - Checking ${Math.floor(newProgress * 2.54)} of 254 hosts`
-              : `Scanning ${networkCIDR} - Checking ${Math.floor(newProgress * 2.54)} of 254 hosts`
+            `Scanning ${networkCIDR} - Checking ${Math.floor(newProgress * 2.54)} of 254 hosts`
           )
           return newProgress
         } else {
@@ -164,9 +105,7 @@ export default function ServerDiscovery() {
       setDiscoveredServers(response.data.servers || [])
       setScanProgress(100)
       setScanStatus(
-        networkMode === "overlay"
-          ? `Scan complete - Found ${response.data.servers?.length || 0} servers on ZeroTier network`
-          : `Scan complete - Found ${response.data.servers?.length || 0} servers`
+        `Scan complete - Found ${response.data.servers?.length || 0} servers`
       )
     } catch (error: any) {
       setScanStatus("Scan failed: " + error.message)
@@ -182,12 +121,8 @@ export default function ServerDiscovery() {
     try {
       const sudoPassword = sessionStorage.getItem("sudoPassword")
 
-      const endpoint = server.is_zerotier
-        ? "/api/verify-zerotier-ssh"
-        : "/api/verify-server-ssh"
-      const response = await axios.post(endpoint, {
+      const response = await axios.post("/api/verify-server-ssh", {
         ip_address: server.ip,
-        zerotier_ip: server.ip,
         password: sudoPassword,
         test_mode: false
       })
@@ -235,6 +170,7 @@ export default function ServerDiscovery() {
     sessionStorage.setItem("testMode", "false")
     sessionStorage.setItem("discoveredServers", JSON.stringify(selectedServers))
     sessionStorage.setItem("networkCIDR", networkCIDR)
+
     navigate("/ssh-setup")
   }
 
@@ -266,82 +202,29 @@ export default function ServerDiscovery() {
 
   return (
     <TkPageWrapper title="Server Discovery">
-      {/* Network Mode Selection */}
-      <TkCard className="mb-6">
-        <TkCardHeader>
-          <TkCardTitle>Network Mode</TkCardTitle>
-        </TkCardHeader>
-        <TkCardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            Choose how to discover your servers. ZeroTier is recommended for
-            distributed nodes.
-          </p>
-
-          <TkRadioGroup
-            value={networkMode}
-            onValueChange={onNetworkModeChange}
-            className="gap-4"
-          >
-            <div className="flex items-start gap-4 cursor-pointer">
-              <TkRadioGroupItem value="overlay" id="overlay" />
-              <TkLabel htmlFor="overlay" className="cursor-pointer flex-1">
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium">
-                    Overlay Network (ZeroTier) - Recommended
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    Discover nodes on your ZeroTier network
-                  </span>
-                </div>
-              </TkLabel>
-            </div>
-            <div className="flex items-start gap-4 cursor-pointer">
-              <TkRadioGroupItem value="local" id="local" />
-              <TkLabel htmlFor="local" className="cursor-pointer flex-1">
-                <div className="flex flex-col gap-1">
-                  <span className="font-medium">Local Network</span>
-                  <span className="text-sm text-muted-foreground">
-                    Scan your local network for Ubuntu servers
-                  </span>
-                </div>
-              </TkLabel>
-            </div>
-          </TkRadioGroup>
-        </TkCardContent>
-      </TkCard>
-
       {/* Discovery Controls */}
       <TkCard className="mb-6">
         <TkCardHeader>
-          <TkCardTitle>
-            {networkMode === "overlay"
-              ? "Discover ZeroTier Nodes"
-              : "Scan Network for Ubuntu Servers"}
-          </TkCardTitle>
+          <TkCardTitle>Scan Network for Ubuntu Servers</TkCardTitle>
         </TkCardHeader>
         <TkCardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Enter the CIDR of the local network where your servers are located.
+            The installer will scan for Ubuntu servers with SSH access.
+          </p>
+
           <div className="mb-4">
             <div className="flex justify-between items-end mb-2">
-              <TkLabel htmlFor="networkCIDR">
-                {networkMode === "overlay"
-                  ? "ZeroTier Network CIDR"
-                  : "Network CIDR"}
-              </TkLabel>
+              <TkLabel htmlFor="networkCIDR">Local Network CIDR</TkLabel>
               <span className="text-sm text-muted-foreground">
-                {networkMode === "overlay"
-                  ? "e.g., 172.30.0.0/24"
-                  : "e.g., 192.168.1.0/24"}
+                e.g., 192.168.1.0/24
               </span>
             </div>
             <TkInput
               id="networkCIDR"
               value={networkCIDR}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNetworkCIDR(e.target.value)}
-              placeholder={
-                networkMode === "overlay"
-                  ? "Enter your ZeroTier network CIDR"
-                  : "192.168.1.0/24"
-              }
+              placeholder="192.168.1.0/24"
               disabled={isScanning}
             />
           </div>
@@ -353,17 +236,13 @@ export default function ServerDiscovery() {
               ) : (
                 <Search className="w-5 h-5" />
               )}
-              {isScanning
-                ? "Discovering..."
-                : networkMode === "overlay"
-                  ? "Discover ZeroTier Nodes"
-                  : "Start Network Scan"}
+              {isScanning ? "Discovering..." : "Start Network Scan"}
             </TkButton>
           </div>
         </TkCardContent>
       </TkCard>
 
-      {/* Scanning TkProgress */}
+      {/* Scanning Progress */}
       {isScanning && (
         <TkCard className="mb-6">
           <TkCardContent className="pt-6">

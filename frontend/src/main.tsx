@@ -27,6 +27,7 @@ import ReviewPage from './pages/review';
 import DeployPage from './pages/deploy';
 import InstallationPage from './pages/installation';
 import CompletePage from './pages/complete';
+import OverlaySetupPage from './pages/overlay-setup';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
           <Route path="/role-assignment" element={<RoleAssignmentPage />} />
           <Route path="/network-configuration" element={<NetworkConfigurationPage />} />
           <Route path="/configuration" element={<ConfigurationPage />} />
+          <Route path="/overlay-setup" element={<OverlaySetupPage />} />
           <Route path="/ssh-setup" element={<SshSetupPage />} />
           <Route path="/gpu-driver-check" element={<GpuDriverCheckPage />} />
           <Route path="/review" element={<ReviewPage />} />

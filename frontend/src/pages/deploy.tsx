@@ -180,26 +180,23 @@ export default function Deploy() {
       name: 'ansible/00_initial_setup/40_setup_github_cli.yaml'
     })
 
-    // Phase 2: Networking
-    const networkMode = config.networkMode || 'overlay'
+    // Phase 2: Networking — overlay routing setup (provider-specific)
     const overlayProvider = config.overlayProvider || 'zerotier'
 
-    if (networkMode === 'overlay') {
-      if (overlayProvider === 'zerotier') {
-        queue.push({
-          id: 'zerotier-setup',
-          phase: 'initial',
-          title: 'Configuring ZeroTier Overlay Network',
-          name: 'ansible/30_networking/10_setup_zerotier.yaml'
-        })
-      } else if (overlayProvider === 'tailscale') {
-        queue.push({
-          id: 'tailscale-setup',
-          phase: 'initial',
-          title: 'Configuring Tailscale Overlay Network',
-          name: 'ansible/30_networking/11_setup_tailscale.yaml'
-        })
-      }
+    if (overlayProvider === 'zerotier') {
+      queue.push({
+        id: 'zerotier-setup',
+        phase: 'initial',
+        title: 'Configuring ZeroTier Overlay Routing',
+        name: 'ansible/30_networking/10_setup_zerotier.yaml'
+      })
+    } else {
+      queue.push({
+        id: 'tailscale-setup',
+        phase: 'initial',
+        title: 'Configuring Tailscale Overlay Routing',
+        name: 'ansible/30_networking/11_setup_tailscale.yaml'
+      })
     }
 
     // Phase 3: Kubernetes Infrastructure

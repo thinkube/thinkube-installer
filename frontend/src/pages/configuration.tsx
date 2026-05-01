@@ -33,11 +33,10 @@ import axios from "@/utils/axios"
 
 // TypeScript Interfaces
 interface ConfigData {
-  networkMode: string
-  overlayProvider: string
   clusterName: string
   domainName: string
   cloudflareToken: string
+  overlayProvider: string
   zerotierNetworkId: string
   zerotierApiToken: string
   tailscaleAuthKey: string
@@ -64,11 +63,10 @@ export default function Configuration() {
   const navigate = useNavigate()
 
   const [config, setConfig] = useState<ConfigData>({
-    networkMode: 'overlay',
-    overlayProvider: 'zerotier',
     clusterName: 'thinkube',
     domainName: '',
     cloudflareToken: '',
+    overlayProvider: 'zerotier',
     zerotierNetworkId: '',
     zerotierApiToken: '',
     tailscaleAuthKey: '',
@@ -118,6 +116,7 @@ export default function Configuration() {
           setConfig(prev => ({
             ...prev,
             ...(savedConfig.cloudflareToken && { cloudflareToken: savedConfig.cloudflareToken }),
+            ...(savedConfig.overlayProvider && { overlayProvider: savedConfig.overlayProvider }),
             ...(savedConfig.zerotierApiToken && { zerotierApiToken: savedConfig.zerotierApiToken }),
             ...(savedConfig.zerotierNetworkId && { zerotierNetworkId: savedConfig.zerotierNetworkId }),
             ...(savedConfig.tailscaleAuthKey && { tailscaleAuthKey: savedConfig.tailscaleAuthKey }),
@@ -127,7 +126,6 @@ export default function Configuration() {
             ...(savedConfig.hfToken && { hfToken: savedConfig.hfToken }),
             ...(savedConfig.clusterName && { clusterName: savedConfig.clusterName }),
             ...(savedConfig.domainName && { domainName: savedConfig.domainName }),
-            ...(savedConfig.overlayProvider && { overlayProvider: savedConfig.overlayProvider }),
           }))
         }
       } catch (e) {
@@ -140,18 +138,13 @@ export default function Configuration() {
           const parsed = JSON.parse(localConfig)
           setConfig(prev => ({
             ...prev,
-            ...(parsed.networkMode && { networkMode: parsed.networkMode }),
             ...(parsed.domainName && { domainName: parsed.domainName }),
             ...(parsed.clusterName && { clusterName: parsed.clusterName }),
+            ...(parsed.overlayProvider && { overlayProvider: parsed.overlayProvider }),
           }))
         } catch (e) {
           // Ignore parse errors
         }
-      }
-
-      const networkMode = sessionStorage.getItem('networkMode')
-      if (networkMode) {
-        setConfig(prev => ({ ...prev, networkMode }))
       }
     }
 
@@ -180,34 +173,6 @@ export default function Configuration() {
     }
   }, [config.domainName])
 
-  // Clear overlay verification when switching network modes
-  useEffect(() => {
-    if (config.networkMode === 'local') {
-      setZerotierVerified(false)
-      setTailscaleVerified(false)
-      setErrors(prev => ({
-        ...prev,
-        zerotierApiToken: '',
-        zerotierNetworkId: '',
-        tailscaleAuthKey: '',
-        tailscaleApiToken: ''
-      }))
-    }
-  }, [config.networkMode])
-
-  // Clear verification when switching overlay providers
-  useEffect(() => {
-    setZerotierVerified(false)
-    setTailscaleVerified(false)
-    setErrors(prev => ({
-      ...prev,
-      zerotierApiToken: '',
-      zerotierNetworkId: '',
-      tailscaleAuthKey: '',
-      tailscaleApiToken: ''
-    }))
-  }, [config.overlayProvider])
-
   // Reset Cloudflare verification when token or domain changes
   useEffect(() => {
     setCloudflareVerified(false)
@@ -234,27 +199,18 @@ export default function Configuration() {
 
   const isValid = useMemo(() => {
     const baseValid = config.clusterName &&
-                     config.domainName &&
-                     config.cloudflareToken &&
-                     config.githubToken &&
-                     config.githubOrg &&
-                     !errors.clusterName &&
-                     !errors.domainName &&
-                     !errors.githubOrg
+           config.domainName &&
+           config.cloudflareToken &&
+           config.githubToken &&
+           config.githubOrg &&
+           !errors.clusterName &&
+           !errors.domainName &&
+           !errors.githubOrg
 
-    if (config.networkMode === 'overlay') {
-      if (config.overlayProvider === 'zerotier') {
-        return baseValid &&
-               config.zerotierNetworkId &&
-               config.zerotierApiToken
-      } else if (config.overlayProvider === 'tailscale') {
-        return baseValid &&
-               config.tailscaleAuthKey &&
-               config.tailscaleApiToken
-      }
+    if (config.overlayProvider === 'tailscale') {
+      return baseValid && config.tailscaleAuthKey && config.tailscaleApiToken
     }
-
-    return baseValid
+    return baseValid && config.zerotierNetworkId && config.zerotierApiToken
   }, [config, errors])
 
   const verifyCloudflare = async () => {
@@ -334,7 +290,7 @@ export default function Configuration() {
 
   const verifyTailscale = async () => {
     if (!config.tailscaleAuthKey || !config.tailscaleApiToken) {
-      setErrors(prev => ({ ...prev, tailscaleApiToken: 'Both auth key and API token are required' }))
+      setErrors(prev => ({ ...prev, tailscaleApiToken: 'Both Auth Key and API Token are required' }))
       setTailscaleVerified(false)
       return false
     }
@@ -344,8 +300,8 @@ export default function Configuration() {
 
     try {
       const response = await axios.post('/api/verify-tailscale', {
-        auth_key: config.tailscaleAuthKey,
-        api_token: config.tailscaleApiToken
+        api_token: config.tailscaleApiToken,
+        auth_key: config.tailscaleAuthKey
       })
 
       if (response.data.valid) {
@@ -432,32 +388,28 @@ export default function Configuration() {
       }
     }
 
-    if (config.networkMode === 'overlay') {
-      if (config.overlayProvider === 'zerotier') {
-        if (!config.zerotierApiToken || !config.zerotierNetworkId) {
-          alert('ZeroTier API token and Network ID are both required for overlay mode')
+    if (config.overlayProvider === 'zerotier') {
+      if (!config.zerotierApiToken || !config.zerotierNetworkId) {
+        alert('ZeroTier API token and Network ID are required')
+        return
+      }
+      if (!zerotierVerified) {
+        const zerotierValid = await verifyZerotier()
+        if (!zerotierValid) {
+          alert('Please provide valid ZeroTier credentials with network access')
           return
         }
-
-        if (!zerotierVerified) {
-          const zerotierValid = await verifyZerotier()
-          if (!zerotierValid) {
-            alert('Please provide valid ZeroTier credentials with network access')
-            return
-          }
-        }
-      } else if (config.overlayProvider === 'tailscale') {
-        if (!config.tailscaleAuthKey || !config.tailscaleApiToken) {
-          alert('Tailscale auth key and API token are both required for overlay mode')
+      }
+    } else {
+      if (!config.tailscaleAuthKey || !config.tailscaleApiToken) {
+        alert('Tailscale Auth Key and API Token are required')
+        return
+      }
+      if (!tailscaleVerified) {
+        const tailscaleValid = await verifyTailscale()
+        if (!tailscaleValid) {
+          alert('Please provide valid Tailscale credentials')
           return
-        }
-
-        if (!tailscaleVerified) {
-          const tailscaleValid = await verifyTailscale()
-          if (!tailscaleValid) {
-            alert('Please provide valid Tailscale credentials')
-            return
-          }
         }
       }
     }
@@ -470,20 +422,25 @@ export default function Configuration() {
       }
     }
 
+    const savePayload: any = {
+      cloudflareToken: config.cloudflareToken,
+      githubToken: config.githubToken,
+      hfToken: config.hfToken,
+      githubOrg: config.githubOrg,
+      clusterName: config.clusterName,
+      domainName: config.domainName,
+      overlayProvider: config.overlayProvider,
+    }
+    if (config.overlayProvider === 'zerotier') {
+      savePayload.zerotierApiToken = config.zerotierApiToken
+      savePayload.zerotierNetworkId = config.zerotierNetworkId
+    } else {
+      savePayload.tailscaleAuthKey = config.tailscaleAuthKey
+      savePayload.tailscaleApiToken = config.tailscaleApiToken
+    }
+
     try {
-      await axios.post('/api/save-configuration', {
-        cloudflareToken: config.cloudflareToken,
-        githubToken: config.githubToken,
-        hfToken: config.hfToken,
-        zerotierApiToken: config.zerotierApiToken,
-        zerotierNetworkId: config.zerotierNetworkId,
-        tailscaleAuthKey: config.tailscaleAuthKey,
-        tailscaleApiToken: config.tailscaleApiToken,
-        githubOrg: config.githubOrg,
-        clusterName: config.clusterName,
-        domainName: config.domainName,
-        overlayProvider: config.overlayProvider
-      })
+      await axios.post('/api/save-configuration', savePayload)
     } catch (error) {
       alert('Failed to save configuration securely. Please try again.')
       return
@@ -493,40 +450,33 @@ export default function Configuration() {
     const systemUsername = sessionStorage.getItem('systemUsername')
 
     const configToSave: any = {
-      networkMode: config.networkMode,
       overlayProvider: config.overlayProvider,
       clusterName: config.clusterName,
       domainName: config.domainName,
       githubOrg: config.githubOrg,
       sudoPassword: sudoPassword,
-      systemUsername: systemUsername
+      systemUsername: systemUsername,
     }
-
-    if (config.networkMode === 'overlay') {
-      if (config.overlayProvider === 'zerotier') {
-        configToSave.zerotierNetworkId = config.zerotierNetworkId
-        configToSave.zerotierApiToken = config.zerotierApiToken
-      } else if (config.overlayProvider === 'tailscale') {
-        configToSave.tailscaleAuthKey = config.tailscaleAuthKey
-        configToSave.tailscaleApiToken = config.tailscaleApiToken
-      }
+    if (config.overlayProvider === 'zerotier') {
+      configToSave.zerotierNetworkId = config.zerotierNetworkId
+      configToSave.zerotierApiToken = config.zerotierApiToken
+    } else {
+      configToSave.tailscaleAuthKey = config.tailscaleAuthKey
+      configToSave.tailscaleApiToken = config.tailscaleApiToken
     }
     localStorage.setItem('thinkube-config', JSON.stringify(configToSave))
 
-    sessionStorage.setItem('networkMode', config.networkMode)
     sessionStorage.setItem('overlayProvider', config.overlayProvider)
     sessionStorage.setItem('cloudflareToken', config.cloudflareToken)
     sessionStorage.setItem('domainName', config.domainName)
     sessionStorage.setItem('clusterName', config.clusterName)
 
-    if (config.networkMode === 'overlay') {
-      if (config.overlayProvider === 'zerotier') {
-        sessionStorage.setItem('zerotierApiToken', config.zerotierApiToken)
-        sessionStorage.setItem('zerotierNetworkId', config.zerotierNetworkId)
-      } else if (config.overlayProvider === 'tailscale') {
-        sessionStorage.setItem('tailscaleAuthKey', config.tailscaleAuthKey)
-        sessionStorage.setItem('tailscaleApiToken', config.tailscaleApiToken)
-      }
+    if (config.overlayProvider === 'zerotier') {
+      sessionStorage.setItem('zerotierApiToken', config.zerotierApiToken)
+      sessionStorage.setItem('zerotierNetworkId', config.zerotierNetworkId)
+    } else {
+      sessionStorage.setItem('tailscaleAuthKey', config.tailscaleAuthKey)
+      sessionStorage.setItem('tailscaleApiToken', config.tailscaleApiToken)
     }
 
     if (config.githubToken) {
@@ -538,7 +488,7 @@ export default function Configuration() {
       sessionStorage.setItem('hfToken', config.hfToken)
     }
 
-    navigate('/network-configuration')
+    navigate('/overlay-setup')
   }
 
   return (
@@ -653,8 +603,7 @@ export default function Configuration() {
         </TkCard>
 
         {/* Overlay Network Configuration */}
-        {config.networkMode === 'overlay' && (
-          <TkCard className="mb-6">
+        <TkCard className="mb-6">
             <TkCardHeader>
               <TkCardTitle>Overlay Network Configuration</TkCardTitle>
             </TkCardHeader>
@@ -861,7 +810,6 @@ export default function Configuration() {
               )}
             </TkCardContent>
           </TkCard>
-        )}
 
         {/* GitHub Integration */}
         <TkCard className="mb-6">
@@ -1044,7 +992,7 @@ export default function Configuration() {
             type="submit"
             disabled={!isValid}
           >
-            Configure Network
+            Setup Overlay Network
             <ChevronRight className="w-5 h-5 ml-2" />
           </TkButton>
         </div>

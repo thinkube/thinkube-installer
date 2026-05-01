@@ -39,18 +39,18 @@ import axios from "@/utils/axios";
 interface NetworkConfig {
   cidr: string;
   gateway: string;
-  zerotierCIDR: string;
+  overlayCIDR: string;
   primaryIngressOctet: string;
   dnsExternalOctet: string;
   metallbStartOctet: string;
   metallbEndOctet: string;
-  controllerZerotierIP: string;
+  controllerOverlayIP: string;
 }
 
 interface PhysicalServer {
   hostname: string;
   ip: string;
-  zerotierIP: string;
+  overlayIP: string;
   localIP: string;
 }
 
@@ -84,10 +84,9 @@ interface ClusterNode {
 interface SavedConfig {
   zerotierNetworkId?: string;
   zerotierApiToken?: string;
-  networkMode?: string;
+  overlayProvider?: string;
 }
 
-type NetworkMode = "local" | "overlay";
 type BuildArchitecture = "amd64" | "arm64" | "both";
 
 // Pure helper functions - extracted outside component to avoid initialization order issues
@@ -136,16 +135,16 @@ export default function NetworkConfigurationPage() {
   const [mounted, setMounted] = useState(false);
 
   // State
-  const [networkMode, setNetworkMode] = useState<NetworkMode>("overlay");
+  const [overlayProvider, setOverlayProvider] = useState<string>("zerotier");
   const [networkConfig, setNetworkConfig] = useState<NetworkConfig>({
     cidr: "192.168.1.0/24",
     gateway: "192.168.1.1",
-    zerotierCIDR: "",
+    overlayCIDR: "",
     primaryIngressOctet: "200",
     dnsExternalOctet: "205",
     metallbStartOctet: "200",
     metallbEndOctet: "210",
-    controllerZerotierIP: "",
+    controllerOverlayIP: "",
   });
   const [physicalServers, setPhysicalServers] = useState<PhysicalServer[]>([]);
   const [networkValidationErrors, setNetworkValidationErrors] = useState<
@@ -195,34 +194,23 @@ export default function NetworkConfigurationPage() {
     const conflicts: string[] = [];
     const ipToServers: Record<string, string[]> = {};
 
-    if (networkMode === "overlay") {
-      physicalServers.forEach((server) => {
-        if (server.zerotierIP) {
-          if (!ipToServers[server.zerotierIP]) {
-            ipToServers[server.zerotierIP] = [];
-          }
-          ipToServers[server.zerotierIP].push(server.hostname);
+    physicalServers.forEach((server) => {
+      if (server.overlayIP) {
+        if (!ipToServers[server.overlayIP]) {
+          ipToServers[server.overlayIP] = [];
         }
-      });
-
-      if (
-        isExternalController &&
-        networkConfig.controllerZerotierIP
-      ) {
-        if (!ipToServers[networkConfig.controllerZerotierIP]) {
-          ipToServers[networkConfig.controllerZerotierIP] = [];
-        }
-        ipToServers[networkConfig.controllerZerotierIP].push("Controller");
+        ipToServers[server.overlayIP].push(server.hostname);
       }
-    } else {
-      physicalServers.forEach((server) => {
-        if (server.ip) {
-          if (!ipToServers[server.ip]) {
-            ipToServers[server.ip] = [];
-          }
-          ipToServers[server.ip].push(server.hostname);
-        }
-      });
+    });
+
+    if (
+      isExternalController &&
+      networkConfig.controllerOverlayIP
+    ) {
+      if (!ipToServers[networkConfig.controllerOverlayIP]) {
+        ipToServers[networkConfig.controllerOverlayIP] = [];
+      }
+      ipToServers[networkConfig.controllerOverlayIP].push("Controller");
     }
 
     Object.entries(ipToServers).forEach(([ip, servers]) => {
@@ -236,35 +224,23 @@ export default function NetworkConfigurationPage() {
     return conflicts;
   }, [
     physicalServers,
-    networkMode,
     isExternalController,
-    networkConfig.controllerZerotierIP,
+    networkConfig.controllerOverlayIP,
   ]);
 
   // Computed: Configuration validity
   const isConfigurationValid = useMemo(() => {
-    if (networkMode === "overlay") {
-      const allServersValid = physicalServers.every(
-        (s) => s.zerotierIP && isValidIP(s.zerotierIP)
-      );
+    const allServersValid = physicalServers.every(
+      (s) => s.overlayIP && isValidIP(s.overlayIP)
+    );
 
-      const networkValid =
-        isValidIP(networkConfig.gateway) &&
-        networkConfig.cidr &&
-        networkConfig.zerotierCIDR;
+    const networkValid =
+      isValidIP(networkConfig.gateway) &&
+      networkConfig.cidr &&
+      networkConfig.overlayCIDR;
 
-      return allServersValid && networkValid && ipConflicts.length === 0;
-    } else {
-      const allServersValid = physicalServers.every(
-        (s) => s.ip && isValidIP(s.ip)
-      );
-
-      const networkValid =
-        isValidIP(networkConfig.gateway) && networkConfig.cidr;
-
-      return allServersValid && networkValid && ipConflicts.length === 0;
-    }
-  }, [physicalServers, networkMode, networkConfig, ipConflicts]);
+    return allServersValid && networkValid && ipConflicts.length === 0;
+  }, [physicalServers, networkConfig, ipConflicts]);
 
   // Computed: Control plane hostname
   const controlPlaneHostname = useMemo(() => {
@@ -277,17 +253,17 @@ export default function NetworkConfigurationPage() {
     return controlPlane?.hostname || "";
   }, []);
 
-  // Computed: MetalLB IPs for ZeroTier
-  const metallbIPsForZeroTier = useMemo(() => {
+  // Computed: MetalLB IPs
+  const metallbIPs = useMemo(() => {
     if (
-      !networkConfig.zerotierCIDR ||
+      !networkConfig.overlayCIDR ||
       !networkConfig.metallbStartOctet ||
       !networkConfig.metallbEndOctet
     ) {
       return "";
     }
 
-    const base = getNetworkBase(networkConfig.zerotierCIDR);
+    const base = getNetworkBase(networkConfig.overlayCIDR);
     const start = parseInt(networkConfig.metallbStartOctet);
     const end = parseInt(networkConfig.metallbEndOctet);
 
@@ -298,20 +274,20 @@ export default function NetworkConfigurationPage() {
 
     return ips.join(", ");
   }, [
-    networkConfig.zerotierCIDR,
+    networkConfig.overlayCIDR,
     networkConfig.metallbStartOctet,
     networkConfig.metallbEndOctet,
   ]);
 
   // Helper functions (pure functions moved outside component)
 
-  const isZeroTierIPInUse = (ip: string): boolean => {
+  const isOverlayIPInUse = (ip: string): boolean => {
     return zerotierUsedIPs.includes(ip);
   };
 
-  const getZeroTierIPStatus = (ip: string): string => {
+  const getOverlayIPStatus = (ip: string): string => {
     if (!ip) return "";
-    if (isZeroTierIPInUse(ip)) {
+    if (isOverlayIPInUse(ip)) {
       const member = zerotierMembers.find((m) =>
         m.ipAssignments.includes(ip)
       );
@@ -337,29 +313,15 @@ export default function NetworkConfigurationPage() {
 
   const isIngressIPInUse = (octet: string): boolean => {
     if (!octet) return false;
+    if (!networkConfig.overlayCIDR) return false;
 
-    if (networkMode === "overlay") {
-      if (!networkConfig.zerotierCIDR) return false;
-      const fullIP = `${getNetworkBase(networkConfig.zerotierCIDR)}.${octet}`;
-
-      if (isZeroTierIPInUse(fullIP)) {
-        const serverWithIP = physicalServers.find(
-          (s) => s.zerotierIP === fullIP
-        );
-
-        if (serverWithIP) {
-          return false;
-        }
-
-        return true;
-      }
-    } else {
-      const fullIP = `${getNetworkBase(networkConfig.cidr)}.${octet}`;
-
-      const serverWithIP = physicalServers.find((s) => s.ip === fullIP);
-      if (serverWithIP) {
-        return true;
-      }
+    const fullIP = `${getNetworkBase(networkConfig.overlayCIDR)}.${octet}`;
+    if (isOverlayIPInUse(fullIP)) {
+      const serverWithIP = physicalServers.find(
+        (s) => s.overlayIP === fullIP
+      );
+      if (serverWithIP) return false;
+      return true;
     }
 
     return false;
@@ -411,15 +373,11 @@ export default function NetworkConfigurationPage() {
       return true;
     }
 
-    const networkBase = getNetworkBase(
-      networkMode === "overlay"
-        ? networkConfig.zerotierCIDR
-        : networkConfig.cidr
-    );
+    const networkBase = getNetworkBase(networkConfig.overlayCIDR);
     const dnsIP = `${networkBase}.${dnsOctet}`;
 
     return physicalServers.some(
-      (server) => server.ip === dnsIP || server.zerotierIP === dnsIP
+      (server) => server.ip === dnsIP || server.overlayIP === dnsIP
     );
   };
 
@@ -433,10 +391,10 @@ export default function NetworkConfigurationPage() {
     return dnsOctet >= start && dnsOctet <= end;
   };
 
-  const assignZeroTierIPs = () => {
-    if (!networkConfig.zerotierCIDR) return;
+  const assignOverlayIPs = () => {
+    if (!networkConfig.overlayCIDR) return;
 
-    const zerotierBase = networkConfig.zerotierCIDR
+    const zerotierBase = networkConfig.overlayCIDR
       .split("/")[0]
       .split(".")
       .slice(0, 3)
@@ -444,8 +402,8 @@ export default function NetworkConfigurationPage() {
 
     const usedIPSet = new Set(zerotierUsedIPs);
 
-    if (isExternalController && networkConfig.controllerZerotierIP) {
-      usedIPSet.add(networkConfig.controllerZerotierIP);
+    if (isExternalController && networkConfig.controllerOverlayIP) {
+      usedIPSet.add(networkConfig.controllerOverlayIP);
     }
 
     const findNextAvailableIP = (startFrom = 10): string | null => {
@@ -463,10 +421,10 @@ export default function NetworkConfigurationPage() {
 
     setPhysicalServers((servers) =>
       servers.map((server) => {
-        if (!server.zerotierIP || usedIPSet.has(server.zerotierIP)) {
+        if (!server.overlayIP || usedIPSet.has(server.overlayIP)) {
           const newIP = findNextAvailableIP();
           if (newIP) {
-            return { ...server, zerotierIP: newIP };
+            return { ...server, overlayIP: newIP };
           } else {
             setZerotierError("No available ZeroTier IPs");
           }
@@ -476,7 +434,7 @@ export default function NetworkConfigurationPage() {
     );
   };
 
-  const fetchZeroTierMembers = async (config: SavedConfig) => {
+  const fetchOverlayMembers = async (config: SavedConfig) => {
     try {
       const response = await axios.post("/api/fetch-zerotier-members", {
         network_id: config.zerotierNetworkId,
@@ -491,15 +449,15 @@ export default function NetworkConfigurationPage() {
     }
   };
 
-  const fetchZeroTierNetwork = async () => {
+  const fetchOverlayNetwork = async () => {
     const config: SavedConfig = JSON.parse(
       localStorage.getItem("thinkube-config") || "{}"
     );
 
     if (!config.zerotierNetworkId || !config.zerotierApiToken) {
-      if (networkConfig.zerotierCIDR) {
-        await fetchZeroTierMembers(config);
-        assignZeroTierIPs();
+      if (networkConfig.overlayCIDR) {
+        await fetchOverlayMembers(config);
+        assignOverlayIPs();
       }
       return;
     }
@@ -514,20 +472,20 @@ export default function NetworkConfigurationPage() {
           network_id: config.zerotierNetworkId,
           api_token: config.zerotierApiToken,
         }),
-        fetchZeroTierMembers(config),
+        fetchOverlayMembers(config),
       ]);
 
       if (networkResponse.data.success) {
-        if (!networkConfig.zerotierCIDR) {
+        if (!networkConfig.overlayCIDR) {
           setNetworkConfig((prev) => ({
             ...prev,
-            zerotierCIDR: networkResponse.data.cidr,
+            overlayCIDR: networkResponse.data.cidr,
           }));
         }
         setZerotierNetworkName(networkResponse.data.network_name);
         setZerotierError("");
 
-        assignZeroTierIPs();
+        assignOverlayIPs();
       } else {
         setZerotierError(networkResponse.data.message);
       }
@@ -575,11 +533,7 @@ export default function NetworkConfigurationPage() {
         networkInfo.find((n) => n.gateway)?.gateway || "";
 
       if (detectedCIDR) {
-        if (networkMode === "overlay") {
-          setNetworkConfig((prev) => ({ ...prev, cidr: detectedCIDR }));
-        } else {
-          setNetworkConfig((prev) => ({ ...prev, cidr: detectedCIDR }));
-        }
+        setNetworkConfig((prev) => ({ ...prev, cidr: detectedCIDR }));
       }
       if (detectedGateway) {
         setNetworkConfig((prev) => ({ ...prev, gateway: detectedGateway }));
@@ -670,10 +624,8 @@ export default function NetworkConfigurationPage() {
       const serverNetworkInfo: ServerNetworkInfo[] = JSON.parse(
         sessionStorage.getItem("serverNetworkInfo") || "[]"
       );
-      const savedNetworkMode =
-        (sessionStorage.getItem("networkMode") as NetworkMode) || "overlay";
-
-      setNetworkMode(savedNetworkMode);
+      const savedProvider = sessionStorage.getItem("overlayProvider") || "zerotier";
+      setOverlayProvider(savedProvider);
 
       const serversToUse =
         selectedServers.length > 0 ? selectedServers : discoveredServersData;
@@ -687,7 +639,7 @@ export default function NetworkConfigurationPage() {
           return {
             hostname: server.hostname || server.ip,
             ip: netInfo?.localIP || "",
-            zerotierIP: savedNetworkMode === "overlay" ? server.ip : "",
+            overlayIP: (server as any).overlayIP || server.ip || "",
             localIP: netInfo?.localIP || "",
           };
         });
@@ -711,33 +663,25 @@ export default function NetworkConfigurationPage() {
       );
       setIsExternalController(!hasLocalServer && discoveredServers.length > 0);
 
-      if (savedNetworkMode === "overlay") {
-        setNetworkConfig((prev) => ({ ...prev, zerotierCIDR: networkCIDR }));
+      setNetworkConfig((prev) => ({ ...prev, overlayCIDR: networkCIDR }));
 
-        const clusterNet = getClusterNetwork();
-        if (clusterNet.detected) {
-          setNetworkConfig((prev) => ({
-            ...prev,
-            cidr: clusterNet.cidr,
-            gateway: clusterNet.gateway,
-          }));
-        } else {
-          setNetworkValidationErrors([
-            "Unable to detect cluster network from nodes. Hardware detection may have failed.",
-          ]);
-        }
+      const clusterNet = getClusterNetwork();
+      if (clusterNet.detected) {
+        setNetworkConfig((prev) => ({
+          ...prev,
+          cidr: clusterNet.cidr,
+          gateway: clusterNet.gateway,
+        }));
       } else {
-        setNetworkConfig((prev) => ({ ...prev, cidr: networkCIDR }));
-        const networkBase = networkCIDR.split("/")[0].split(".").slice(0, 3).join(".");
-        setNetworkConfig((prev) => ({ ...prev, gateway: `${networkBase}.1` }));
+        setNetworkValidationErrors([
+          "Unable to detect cluster network from nodes. Hardware detection may have failed.",
+        ]);
       }
 
-      if (savedNetworkMode === "overlay") {
-        const existingCIDR = networkConfig.zerotierCIDR;
-        await fetchZeroTierNetwork();
-        if (!networkConfig.zerotierCIDR && existingCIDR) {
-          setNetworkConfig((prev) => ({ ...prev, zerotierCIDR: existingCIDR }));
-        }
+      const existingCIDR = networkConfig.overlayCIDR;
+      await fetchOverlayNetwork();
+      if (!networkConfig.overlayCIDR && existingCIDR) {
+        setNetworkConfig((prev) => ({ ...prev, overlayCIDR: existingCIDR }));
       }
 
       generateDefaultIPs();
@@ -745,22 +689,20 @@ export default function NetworkConfigurationPage() {
       const savedConfig = sessionStorage.getItem("networkConfiguration");
       if (savedConfig) {
         const parsed = JSON.parse(savedConfig);
-        const currentZeroTierCIDR = networkConfig.zerotierCIDR;
+        const currentOverlayCIDR = networkConfig.overlayCIDR;
         const currentLocalCIDR = networkConfig.cidr;
         setNetworkConfig({ ...networkConfig, ...parsed.networkConfig });
 
-        if (savedNetworkMode === "overlay") {
-          setNetworkConfig((prev) => ({
-            ...prev,
-            zerotierCIDR: currentZeroTierCIDR || parsed.networkConfig.zerotierCIDR,
-            cidr: currentLocalCIDR || parsed.networkConfig.cidr,
-          }));
-        }
+        setNetworkConfig((prev) => ({
+          ...prev,
+          overlayCIDR: currentOverlayCIDR || parsed.networkConfig.overlayCIDR,
+          cidr: currentLocalCIDR || parsed.networkConfig.cidr,
+        }));
         if (parsed.physicalServers) setPhysicalServers(parsed.physicalServers);
       }
 
-      if (networkConfig.zerotierCIDR) {
-        assignZeroTierIPs();
+      if (networkConfig.overlayCIDR) {
+        assignOverlayIPs();
       }
     };
 
@@ -800,69 +742,15 @@ export default function NetworkConfigurationPage() {
         </TkCardHeader>
         <TkCardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {networkMode === "local" && (
-              <>
                 <div className="space-y-2">
                   <TkLabel>
-                    Local Network CIDR
-                    <span className="text-xs text-muted-foreground ml-2">
-                      Auto-discovered
-                    </span>
-                  </TkLabel>
-                  <TkInput
-                    value={networkConfig.cidr}
-                    readOnly
-                    className="bg-muted"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <TkLabel>
-                    Gateway IP
-                    <span className="text-xs text-muted-foreground ml-2">
-                      Last octet editable
-                    </span>
-                  </TkLabel>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm text-muted-foreground">
-                      {getNetworkBase(networkConfig.cidr)}.
-                    </span>
-                    <TkInput
-                      type="number"
-                      min={1}
-                      max={254}
-                      value={getLastOctet(networkConfig.gateway)}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        updateNetworkConfig(
-                          "gateway",
-                          setLastOctet(
-                            getNetworkBase(networkConfig.cidr),
-                            e.target.value
-                          )
-                        )
-                      }
-                      className={cn(
-                        "w-16",
-                        !isValidIP(networkConfig.gateway) &&
-                          "border-destructive focus-visible:ring-destructive"
-                      )}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {networkMode === "overlay" && (
-              <>
-                <div className="space-y-2">
-                  <TkLabel>
-                    ZeroTier Network CIDR
+                    Overlay Network CIDR
                     <span className="text-xs text-muted-foreground ml-2">
                       Remote access network
                     </span>
                   </TkLabel>
                   <TkInput
-                    value={networkConfig.zerotierCIDR}
+                    value={networkConfig.overlayCIDR}
                     readOnly
                     className="bg-muted"
                   />
@@ -883,23 +771,21 @@ export default function NetworkConfigurationPage() {
                     title="Auto-detected from cluster nodes"
                   />
                 </div>
-              </>
-            )}
           </div>
 
-          {networkMode === "overlay" && zerotierLoading && (
+          {zerotierLoading && (
             <div className="flex items-center gap-3 mt-4">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Fetching ZeroTier network details...</span>
+              <span className="text-sm">Fetching overlay network details...</span>
             </div>
           )}
 
-          {networkMode === "overlay" && zerotierError && (
+          {zerotierError && (
             <TkAlert variant="destructive" className="mt-4">
               <XCircle className="h-5 w-5" />
               <div>
                 <TkAlertTitle className="font-bold">
-                  Failed to fetch ZeroTier network
+                  Failed to fetch overlay network
                 </TkAlertTitle>
                 <TkAlertDescription className="text-sm">
                   {zerotierError}
@@ -908,7 +794,7 @@ export default function NetworkConfigurationPage() {
             </TkAlert>
           )}
 
-          {networkMode === "overlay" && zerotierNetworkName && (
+          {zerotierNetworkName && (
             <TkAlert className="mt-4 bg-info/10 border-info/50">
               <Info className="h-5 w-5 text-info" />
               <div>
@@ -916,7 +802,7 @@ export default function NetworkConfigurationPage() {
                   Dual Network Configuration
                 </TkAlertTitle>
                 <TkAlertDescription className="text-sm">
-                  <strong>ZeroTier ({zerotierNetworkName}):</strong> Remote
+                  <strong>Overlay ({zerotierNetworkName}):</strong> Remote
                   management and distributed access
                   <br />
                   <strong>Local LAN ({networkConfig.cidr}):</strong> High-speed
@@ -925,24 +811,11 @@ export default function NetworkConfigurationPage() {
               </div>
             </TkAlert>
           )}
-
-          {networkMode === "local" && (
-            <TkAlert className="mt-4 bg-info/10 border-info/50">
-              <Info className="h-5 w-5 text-info" />
-              <div>
-                <TkAlertTitle className="font-bold">Local Network Mode</TkAlertTitle>
-                <TkAlertDescription className="text-sm">
-                  Using existing network infrastructure • DNS and Load Balancer will use
-                  local network IPs
-                </TkAlertDescription>
-              </div>
-            </TkAlert>
-          )}
         </TkCardContent>
       </TkCard>
 
       {/* Ingress IP Configuration */}
-      {(networkMode === "overlay" || networkMode === "local") && (
+      {(
         <TkCard className="mb-6">
           <TkCardHeader>
             <TkCardTitle>Ingress IP Configuration</TkCardTitle>
@@ -955,9 +828,7 @@ export default function NetworkConfigurationPage() {
                   Load Balancer IP Range
                 </TkAlertTitle>
                 <TkAlertDescription className="text-sm">
-                  {networkMode === "overlay"
-                    ? "These IPs will be reserved on the ZeroTier network for external access to services"
-                    : "These IPs will be reserved on your local network for Kubernetes ingress services"}
+                  These IPs will be reserved on the overlay network for external access to services
                 </TkAlertDescription>
               </div>
             </TkAlert>
@@ -973,9 +844,7 @@ export default function NetworkConfigurationPage() {
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">
                     {getNetworkBase(
-                      networkMode === "overlay"
-                        ? networkConfig.zerotierCIDR
-                        : networkConfig.cidr
+                      networkConfig.overlayCIDR
                     )}
                     .
                   </span>
@@ -1019,9 +888,7 @@ export default function NetworkConfigurationPage() {
               <div className="flex items-center gap-1">
                 <span className="text-sm text-muted-foreground">
                   {getNetworkBase(
-                    networkMode === "overlay"
-                      ? networkConfig.zerotierCIDR
-                      : networkConfig.cidr
+networkConfig.overlayCIDR
                   )}
                   .
                 </span>
@@ -1072,9 +939,7 @@ export default function NetworkConfigurationPage() {
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">
                     {getNetworkBase(
-                      networkMode === "overlay"
-                        ? networkConfig.zerotierCIDR
-                        : networkConfig.cidr
+                      networkConfig.overlayCIDR
                     )}
                     .
                   </span>
@@ -1107,9 +972,7 @@ export default function NetworkConfigurationPage() {
                 <div className="flex items-center gap-1">
                   <span className="text-sm text-muted-foreground">
                     {getNetworkBase(
-                      networkMode === "overlay"
-                        ? networkConfig.zerotierCIDR
-                        : networkConfig.cidr
+                      networkConfig.overlayCIDR
                     )}
                     .
                   </span>
@@ -1164,15 +1027,11 @@ export default function NetworkConfigurationPage() {
                         IP Range:{" "}
                         <span className="font-mono">
                           {getNetworkBase(
-                            networkMode === "overlay"
-                              ? networkConfig.zerotierCIDR
-                              : networkConfig.cidr
+networkConfig.overlayCIDR
                           )}
                           .{networkConfig.metallbStartOctet}-
                           {getNetworkBase(
-                            networkMode === "overlay"
-                              ? networkConfig.zerotierCIDR
-                              : networkConfig.cidr
+networkConfig.overlayCIDR
                           )}
                           .{networkConfig.metallbEndOctet}
                         </span>
@@ -1181,9 +1040,7 @@ export default function NetworkConfigurationPage() {
                         Primary Ingress:{" "}
                         <span className="font-mono">
                           {getNetworkBase(
-                            networkMode === "overlay"
-                              ? networkConfig.zerotierCIDR
-                              : networkConfig.cidr
+networkConfig.overlayCIDR
                           )}
                           .{networkConfig.primaryIngressOctet}
                         </span>
@@ -1240,17 +1097,8 @@ export default function NetworkConfigurationPage() {
               <TkTableHeader>
                 <TkTableRow>
                   <TkTableHead className="font-semibold">Hostname</TkTableHead>
-                  {networkMode === "local" && (
-                    <TkTableHead className="font-semibold">LAN IP</TkTableHead>
-                  )}
-                  {networkMode === "overlay" && (
-                    <>
-                      <TkTableHead className="font-semibold">ZeroTier IP</TkTableHead>
-                      <TkTableHead className="font-semibold">
-                        Local IP (Auto)
-                      </TkTableHead>
-                    </>
-                  )}
+                  <TkTableHead className="font-semibold">Overlay IP</TkTableHead>
+                  <TkTableHead className="font-semibold">Local IP</TkTableHead>
                   <TkTableHead className="font-semibold">Role</TkTableHead>
                 </TkTableRow>
               </TkTableHeader>
@@ -1260,51 +1108,24 @@ export default function NetworkConfigurationPage() {
                     <TkTableCell className="font-medium">
                       {server.hostname}
                     </TkTableCell>
-                    {networkMode === "local" && (
-                      <TkTableCell>
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm text-muted-foreground">
-                            {getNetworkBase(networkConfig.cidr)}.
-                          </span>
-                          <TkInput
-                            type="number"
-                            min={1}
-                            max={254}
-                            value={getLastOctet(server.ip)}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                              updateServerIP(idx, e.target.value)
-                            }
-                            className={cn(
-                              "w-16",
-                              !isValidIP(server.ip) &&
-                                "border-destructive focus-visible:ring-destructive"
-                            )}
-                          />
-                        </div>
-                      </TkTableCell>
-                    )}
-                    {networkMode === "overlay" && (
-                      <>
-                        <TkTableCell>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-sm text-muted-foreground">
-                              {server.zerotierIP || server.ip}
+                    <TkTableCell>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm text-muted-foreground">
+                          {server.overlayIP || server.ip}
+                        </span>
+                        {server.overlayIP &&
+                          isOverlayIPInUse(server.overlayIP) && (
+                            <span className="text-xs text-warning">
+                              {getOverlayIPStatus(server.overlayIP)}
                             </span>
-                            {server.zerotierIP &&
-                              isZeroTierIPInUse(server.zerotierIP) && (
-                                <span className="text-xs text-warning">
-                                  {getZeroTierIPStatus(server.zerotierIP)}
-                                </span>
-                              )}
-                          </div>
-                        </TkTableCell>
-                        <TkTableCell>
-                          <div className="text-sm text-muted-foreground">
-                            {server.localIP || "Not detected"}
-                          </div>
-                        </TkTableCell>
-                      </>
-                    )}
+                          )}
+                      </div>
+                    </TkTableCell>
+                    <TkTableCell>
+                      <div className="text-sm text-muted-foreground">
+                        {server.localIP || "Not detected"}
+                      </div>
+                    </TkTableCell>
                     <TkTableCell>
                       <TkBadge appearance="outlined">
                         {getServerRole(server.hostname)}
@@ -1381,7 +1202,7 @@ export default function NetworkConfigurationPage() {
       <div className="flex justify-between">
         <TkButton
           intent="ghost"
-          onClick={() => navigate("/configuration")}
+          onClick={() => navigate("/overlay-setup")}
           className="gap-2"
         >
           <ChevronLeft className="w-5 h-5" />
