@@ -101,17 +101,21 @@ Pure rename, lands first. Both repos in lockstep.
 ## Phase 2 — Add Tailscale Operator install playbook
 
 - **2.1** **New file**:
-  `thinkube/ansible/30_networking/12_install_tailscale_operator.yaml`.
+  `thinkube/ansible/40_thinkube/core/infrastructure/tailscale-operator/10_deploy.yaml`.
   Contents:
   - Add the `tailscale` Helm repo.
   - Install `tailscale-operator` chart in the `tailscale` namespace.
   - Pass OAuth Client ID + Secret as Helm values (`oauth.clientId`,
-    `oauth.clientSecret`).
-  - Set the operator's tag to `tag:k8s-operator`.
-  - Wait for the operator deployment to become ready.
+    `oauth.clientSecret`) — `no_log` so they don't leak.
+  - The `tag:k8s-operator` is attached to the OAuth client itself in the
+    Tailscale console (not a Helm value), and the matching `tagOwners`
+    are placed in the policy file by the installer via the ACL API.
+  - Wait for the `operator` deployment in the `tailscale` namespace to
+    become ready.
   - **Skip entirely** when `overlay_provider != 'tailscale'`.
-- **2.2** Update `30_networking/README.md` documenting the new playbook's
-  place in the chain.
+  - Position in chain: must come *after* `k8s/10_install_k8s.yaml`
+    (needs a working cluster) and *before* `gateway-api/10_deploy.yaml`
+    (which annotates the Gateway Service for the operator to expose).
 
 ---
 
@@ -312,7 +316,8 @@ earlier work stays.)
 ### 5.7 Playbook routing (`frontend/src-tauri/backend/app/api/playbook_stream.py`)
 
 - Add `install-tailscale-operator` →
-  `ansible/30_networking/12_install_tailscale_operator.yaml` to the
+  `ansible/40_thinkube/core/infrastructure/tailscale-operator/10_deploy.yaml`
+  to the
   playbook mapping.
 
 ### 5.8 Overlay-setup page (`frontend/src/pages/overlay-setup.tsx`)
