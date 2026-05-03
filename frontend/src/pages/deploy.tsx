@@ -242,6 +242,44 @@ export default function Deploy() {
       })
     }
 
+    // Tailscale Operator (Tailscale mode only). Must come after k8s install
+    // (needs a working cluster) and before gateway-api (which annotates the
+    // Gateway Service for the operator to expose). No-op in ZeroTier mode.
+    if (overlayProvider === 'tailscale') {
+      queue.push({
+        id: 'tailscale-operator',
+        phase: 'kubernetes',
+        title: 'Installing Tailscale Kubernetes Operator',
+        name: 'ansible/40_thinkube/core/infrastructure/tailscale-operator/10_deploy.yaml'
+      })
+    }
+
+    queue.push({
+      id: 'acme-certificates',
+      phase: 'kubernetes',
+      title: 'Setting up SSL Certificates',
+      name: 'ansible/40_thinkube/core/infrastructure/acme-certificates/10_deploy.yaml'
+    })
+
+    queue.push({
+      id: 'acme-renewal-hook',
+      phase: 'kubernetes',
+      title: 'Configuring Certificate Renewal Hook',
+      name: 'ansible/40_thinkube/core/infrastructure/acme-certificates/15_configure_renewal_hook.yaml'
+    })
+
+    // Gateway API has to come before dns-server now: in Tailscale mode the
+    // dns-server playbook reads the operator-assigned tailnet IP from the
+    // Gateway Service .status.loadBalancer.ingress and templates it into
+    // the BIND9 wildcard A record. ZeroTier mode is unaffected (the
+    // wildcard IP is statically known).
+    queue.push({
+      id: 'gateway-api',
+      phase: 'kubernetes',
+      title: 'Deploying Gateway API',
+      name: 'ansible/40_thinkube/core/infrastructure/gateway-api/10_deploy.yaml'
+    })
+
     queue.push({
       id: 'dns-server',
       phase: 'kubernetes',
@@ -261,27 +299,6 @@ export default function Deploy() {
       phase: 'kubernetes',
       title: 'Configuring Node DNS',
       name: 'ansible/40_thinkube/core/infrastructure/coredns/15_configure_node_dns.yaml'
-    })
-
-    queue.push({
-      id: 'acme-certificates',
-      phase: 'kubernetes',
-      title: 'Setting up SSL Certificates',
-      name: 'ansible/40_thinkube/core/infrastructure/acme-certificates/10_deploy.yaml'
-    })
-
-    queue.push({
-      id: 'acme-renewal-hook',
-      phase: 'kubernetes',
-      title: 'Configuring Certificate Renewal Hook',
-      name: 'ansible/40_thinkube/core/infrastructure/acme-certificates/15_configure_renewal_hook.yaml'
-    })
-
-    queue.push({
-      id: 'gateway-api',
-      phase: 'kubernetes',
-      title: 'Deploying Gateway API',
-      name: 'ansible/40_thinkube/core/infrastructure/gateway-api/10_deploy.yaml'
     })
 
     // Core Services
@@ -501,6 +518,10 @@ export default function Deploy() {
       'k8s': 'ansible/40_thinkube/core/infrastructure/k8s/19_rollback_control.yaml',
       'k8s-join-workers': 'ansible/40_thinkube/core/infrastructure/k8s/29_rollback_workers.yaml',
       'gpu-operator': 'ansible/40_thinkube/core/infrastructure/gpu_operator/19_rollback.yaml',
+      // No rollback playbook for tailscale-operator yet — uninstalling the
+      // operator would orphan tailnet devices it created. Manual cleanup
+      // via `helm -n tailscale uninstall tailscale-operator` if needed.
+      'tailscale-operator': null,
       'dns-server': 'ansible/40_thinkube/core/infrastructure/dns-server/19_rollback.yaml',
       'coredns': 'ansible/40_thinkube/core/infrastructure/coredns/19_rollback.yaml',
       'coredns-configure-nodes': null,

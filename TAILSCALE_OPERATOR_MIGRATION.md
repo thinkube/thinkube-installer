@@ -159,6 +159,75 @@ Pure rename, lands first. Both repos in lockstep.
 
 ---
 
+## Phase 4.5 — Expose other static-IP Services in Tailscale mode
+
+**Status: not yet implemented. Tailscale mode is not functional end to end
+without this.**
+
+Phase 3 disables Cilium's L2 load balancer in Tailscale mode (it can't
+work over an L3 mesh). That correctly forces the cluster Gateway through
+the Tailscale Operator (Phase 3.1). But the cluster has *other* Services
+that today claim a static `loadBalancerIP` from the same overlay subnet
+and depend on the same Cilium L2 LB to assign it. Without Phase 4.5
+they stay LoadBalancer-pending forever in Tailscale mode.
+
+Known affected Services:
+
+- **`bind9-external`** (`dns-server/10_deploy.yaml` line ~340): hard-codes
+  `loadBalancerIP: {{ dns_external_ip }}` — a static octet on the
+  overlay subnet. Without Cilium L2 LB, this never gets the IP, BIND9
+  is unreachable from outside the cluster, and node-level resolvers
+  configured to point at `dns_external_ip` (via
+  `coredns/15_configure_node_dns.yaml`) all fail.
+
+- Any future Service that uses the same `loadBalancerIP: <static-overlay-IP>`
+  pattern. Audit needed.
+
+**Note:** `coredns_external_ip` in the CoreDNS playbook is just a
+misleading variable name for the same `dns_external_ip` (computed from
+the same `dns_external_ip_octet`). It's not a separate Service to
+expose; it's the BIND9 IP that CoreDNS forwards external queries to.
+Once Phase 4.5 fixes BIND9 itself, the CoreDNS forwarding still works
+because CoreDNS uses the in-cluster ClusterIP path
+(`bind9-internal.dns-system.svc.cluster.local`) when the var is read
+correctly. (Confirm during Phase 7 testing.)
+
+### Approach
+
+In Tailscale mode, expose `bind9-external` via the operator instead of
+relying on Cilium L2 LB:
+
+- **5.1 dns-server/10_deploy.yaml**: when `overlay_provider == 'tailscale'`,
+  drop the `loadBalancerIP` field from the `bind9-external` Service spec
+  and add the operator annotations:
+    ```yaml
+    metadata:
+      annotations:
+        tailscale.com/expose: "true"
+        tailscale.com/hostname: "{{ cluster_name | default('thinkube') }}-dns"
+    ```
+  Then poll `Service.status.loadBalancer.ingress[0].ip` (same pattern as
+  Phase 4) to discover the operator-assigned tailnet IP.
+
+- **5.2 coredns/15_configure_node_dns.yaml**: this configures node-level
+  resolvers to point at the BIND9 IP. It currently uses
+  `dns_external_ip` (static). In Tailscale mode it must be updated to
+  use the operator-assigned tailnet IP instead — same discovery
+  mechanism.
+
+- **5.3 Audit** other playbooks for `loadBalancerIP:` and the
+  `dns_external_ip` / `primary_ingress_ip` references; apply the same
+  pattern wherever a static overlay IP is assumed.
+
+### Why this isn't done yet
+
+It surfaced during Phase 4 implementation — wasn't called out in the
+original plan because the plan focused on the Gateway and assumed other
+LoadBalancer Services would Just Work. They don't. This phase has to
+land before a fresh Tailscale install can complete.
+
+---
+
 ## Phase 5 — Installer UX changes
 
 ### 5.1 Configuration page (`frontend/src/pages/configuration.tsx`)
