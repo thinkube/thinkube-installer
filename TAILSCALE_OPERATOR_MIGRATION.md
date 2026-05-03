@@ -161,8 +161,7 @@ Pure rename, lands first. Both repos in lockstep.
 
 ## Phase 4.5 — Expose other static-IP Services in Tailscale mode
 
-**Status: not yet implemented. Tailscale mode is not functional end to end
-without this.**
+**Status: implemented in `thinkube` commit `8b3e1f4`.**
 
 Phase 3 disables Cilium's L2 load balancer in Tailscale mode (it can't
 work over an L3 mesh). That correctly forces the cluster Gateway through
