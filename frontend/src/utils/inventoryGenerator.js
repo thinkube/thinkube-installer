@@ -405,10 +405,11 @@ export function generateDynamicInventory() {
       arch: controllerArch
     }
     
-    // Add controller to inventory
+    // Add controller to inventory. The controller always joins the overlay
+    // network too, regardless of whether it ends up being a k8s control plane,
+    // so the user can reach cluster services from the installer host.
     inventory.all.children.management.hosts.controller = controllerDef
-    // DO NOT add controller to overlay_nodes - it shouldn't run ZeroTier setup
-    // The controller only manages the cluster, it doesn't need ZeroTier if it's external
+    inventory.all.children.overlay_nodes.hosts.controller = {}
     inventory.all.children.arch.children[controllerArch].hosts.controller = {}
     
     console.log('External controller detected, added to inventory:', controllerDef)

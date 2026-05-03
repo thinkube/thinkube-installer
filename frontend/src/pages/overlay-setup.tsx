@@ -69,6 +69,16 @@ export default function OverlaySetup() {
     }
   }, [])
 
+  // Auto-start the playbook once prerequisites are ready. Both providers must
+  // run automatically — selecting an overlay implies installing it on every
+  // node, no separate user action required.
+  useEffect(() => {
+    if (setupStarted || setupComplete || nodes.length === 0) return
+    if (overlayProvider === "zerotier" && !ipAllocationDone) return
+    startSetup()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overlayProvider, nodes.length, ipAllocationDone, setupStarted, setupComplete])
+
   const allocateZerotierIps = async (serverNodes: ServerNode[]) => {
     const networkId = sessionStorage.getItem("zerotierNetworkId")
     const apiToken = sessionStorage.getItem("zerotierApiToken")
@@ -185,10 +195,6 @@ export default function OverlaySetup() {
 
   const allConnected = nodes.every((n) => n.status === "connected")
   const hasFailed = nodes.some((n) => n.status === "failed")
-  const canStart =
-    overlayProvider === "tailscale"
-      ? nodes.length > 0 && !setupStarted
-      : nodes.length > 0 && !setupStarted && ipAllocationDone
 
   return (
     <TkPageWrapper title={`${providerLabel} Overlay Setup`}>
@@ -271,18 +277,16 @@ export default function OverlaySetup() {
         </TkCardContent>
       </TkCard>
 
-      {/* Setup Button */}
+      {/* Setup status / retry control */}
       {!setupComplete && (
         <div className="flex justify-center mb-6">
           {!setupStarted ? (
-            <TkButton
-              onClick={startSetup}
-              disabled={!canStart}
-              className="gap-2"
-            >
-              <Network className="w-5 h-5" />
-              Setup {providerLabel} on All Nodes
-            </TkButton>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {overlayProvider === "zerotier" && !ipAllocationDone
+                ? "Allocating overlay IPs..."
+                : `Preparing ${providerLabel} installation...`}
+            </div>
           ) : hasFailed ? (
             <TkButton onClick={() => { setSetupStarted(false); startSetup() }} className="gap-2">
               <RefreshCw className="w-5 h-5" />
