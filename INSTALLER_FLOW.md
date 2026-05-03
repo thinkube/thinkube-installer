@@ -79,7 +79,7 @@ The installer follows this sequential flow:
 9. Network Configuration
    └─> router: /network-configuration
    └─> component: frontend/src/views/NetworkConfiguration.vue
-   └─> purpose: Configure network mode, ZeroTier, MetalLB IP pool
+   └─> purpose: Configure network mode, ZeroTier, load balancer IP pool
 
 10. Review
     └─> router: /review

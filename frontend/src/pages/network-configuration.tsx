@@ -42,8 +42,8 @@ interface NetworkConfig {
   overlayCIDR: string;
   primaryIngressOctet: string;
   dnsExternalOctet: string;
-  metallbStartOctet: string;
-  metallbEndOctet: string;
+  lbStartOctet: string;
+  lbEndOctet: string;
   controllerOverlayIP: string;
 }
 
@@ -142,8 +142,8 @@ export default function NetworkConfigurationPage() {
     overlayCIDR: "",
     primaryIngressOctet: "200",
     dnsExternalOctet: "205",
-    metallbStartOctet: "200",
-    metallbEndOctet: "210",
+    lbStartOctet: "200",
+    lbEndOctet: "210",
     controllerOverlayIP: "",
   });
   const [physicalServers, setPhysicalServers] = useState<PhysicalServer[]>([]);
@@ -253,19 +253,19 @@ export default function NetworkConfigurationPage() {
     return controlPlane?.hostname || "";
   }, []);
 
-  // Computed: MetalLB IPs
-  const metallbIPs = useMemo(() => {
+  // Computed: Cilium load balancer IPs
+  const lbIPs = useMemo(() => {
     if (
       !networkConfig.overlayCIDR ||
-      !networkConfig.metallbStartOctet ||
-      !networkConfig.metallbEndOctet
+      !networkConfig.lbStartOctet ||
+      !networkConfig.lbEndOctet
     ) {
       return "";
     }
 
     const base = getNetworkBase(networkConfig.overlayCIDR);
-    const start = parseInt(networkConfig.metallbStartOctet);
-    const end = parseInt(networkConfig.metallbEndOctet);
+    const start = parseInt(networkConfig.lbStartOctet);
+    const end = parseInt(networkConfig.lbEndOctet);
 
     const ips: string[] = [];
     for (let i = start; i <= end; i++) {
@@ -275,8 +275,8 @@ export default function NetworkConfigurationPage() {
     return ips.join(", ");
   }, [
     networkConfig.overlayCIDR,
-    networkConfig.metallbStartOctet,
-    networkConfig.metallbEndOctet,
+    networkConfig.lbStartOctet,
+    networkConfig.lbEndOctet,
   ]);
 
   // Helper functions (pure functions moved outside component)
@@ -327,9 +327,9 @@ export default function NetworkConfigurationPage() {
     return false;
   };
 
-  const isMetalLBRangeInvalid = (): boolean => {
-    const start = parseInt(networkConfig.metallbStartOctet);
-    const end = parseInt(networkConfig.metallbEndOctet);
+  const isLbRangeInvalid = (): boolean => {
+    const start = parseInt(networkConfig.lbStartOctet);
+    const end = parseInt(networkConfig.lbEndOctet);
 
     if (!start || !end || start > end) return true;
 
@@ -337,8 +337,8 @@ export default function NetworkConfigurationPage() {
   };
 
   const isIngressIPInRange = (): boolean => {
-    const start = parseInt(networkConfig.metallbStartOctet);
-    const end = parseInt(networkConfig.metallbEndOctet);
+    const start = parseInt(networkConfig.lbStartOctet);
+    const end = parseInt(networkConfig.lbEndOctet);
     const primary = parseInt(networkConfig.primaryIngressOctet);
 
     if (!start || !end || !primary) return false;
@@ -381,10 +381,10 @@ export default function NetworkConfigurationPage() {
     );
   };
 
-  const isDNSInMetalLBRange = (): boolean => {
+  const isDNSInLbRange = (): boolean => {
     const dnsOctet = parseInt(networkConfig.dnsExternalOctet);
-    const start = parseInt(networkConfig.metallbStartOctet);
-    const end = parseInt(networkConfig.metallbEndOctet);
+    const start = parseInt(networkConfig.lbStartOctet);
+    const end = parseInt(networkConfig.lbEndOctet);
 
     if (!dnsOctet || !start || !end) return true;
 
@@ -689,9 +689,19 @@ export default function NetworkConfigurationPage() {
       const savedConfig = sessionStorage.getItem("networkConfiguration");
       if (savedConfig) {
         const parsed = JSON.parse(savedConfig);
+        // Migration: an earlier installer release saved metallbStartOctet /
+        // metallbEndOctet. Copy them to the new lb* names if present so the
+        // page restores cleanly across installer upgrades.
+        const nc = parsed.networkConfig || {};
+        if (nc.metallbStartOctet && !nc.lbStartOctet) {
+          nc.lbStartOctet = nc.metallbStartOctet;
+        }
+        if (nc.metallbEndOctet && !nc.lbEndOctet) {
+          nc.lbEndOctet = nc.metallbEndOctet;
+        }
         const currentOverlayCIDR = networkConfig.overlayCIDR;
         const currentLocalCIDR = networkConfig.cidr;
-        setNetworkConfig({ ...networkConfig, ...parsed.networkConfig });
+        setNetworkConfig({ ...networkConfig, ...nc });
 
         setNetworkConfig((prev) => ({
           ...prev,
@@ -905,7 +915,7 @@ networkConfig.overlayCIDR
                     "w-20",
                     (!isValidIngressOctet(networkConfig.dnsExternalOctet) ||
                       isDNSIPConflict() ||
-                      !isDNSInMetalLBRange()) &&
+                      !isDNSInLbRange()) &&
                       "border-destructive focus-visible:ring-destructive"
                   )}
                 />
@@ -915,11 +925,11 @@ networkConfig.overlayCIDR
                   DNS IP conflicts with other assignments
                 </TkLabel>
               )}
-              {!isDNSIPConflict() && !isDNSInMetalLBRange() && (
+              {!isDNSIPConflict() && !isDNSInLbRange() && (
                 <TkLabel className="text-xs text-destructive">
-                  DNS IP should be within MetalLB range (
-                  {networkConfig.metallbStartOctet}-
-                  {networkConfig.metallbEndOctet})
+                  DNS IP should be within the load balancer range (
+                  {networkConfig.lbStartOctet}-
+                  {networkConfig.lbEndOctet})
                 </TkLabel>
               )}
             </div>
@@ -948,14 +958,14 @@ networkConfig.overlayCIDR
                     min={1}
                     max={254}
                     placeholder="200"
-                    value={networkConfig.metallbStartOctet}
+                    value={networkConfig.lbStartOctet}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      updateNetworkConfig("metallbStartOctet", e.target.value)
+                      updateNetworkConfig("lbStartOctet", e.target.value)
                     }
                     className={cn(
                       "w-20",
-                      (!isValidIngressOctet(networkConfig.metallbStartOctet) ||
-                        isMetalLBRangeInvalid()) &&
+                      (!isValidIngressOctet(networkConfig.lbStartOctet) ||
+                        isLbRangeInvalid()) &&
                         "border-destructive focus-visible:ring-destructive"
                     )}
                   />
@@ -981,14 +991,14 @@ networkConfig.overlayCIDR
                     min={1}
                     max={254}
                     placeholder="210"
-                    value={networkConfig.metallbEndOctet}
+                    value={networkConfig.lbEndOctet}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      updateNetworkConfig("metallbEndOctet", e.target.value)
+                      updateNetworkConfig("lbEndOctet", e.target.value)
                     }
                     className={cn(
                       "w-20",
-                      (!isValidIngressOctet(networkConfig.metallbEndOctet) ||
-                        isMetalLBRangeInvalid()) &&
+                      (!isValidIngressOctet(networkConfig.lbEndOctet) ||
+                        isLbRangeInvalid()) &&
                         "border-destructive focus-visible:ring-destructive"
                     )}
                   />
@@ -996,12 +1006,12 @@ networkConfig.overlayCIDR
               </div>
             </div>
 
-            {isMetalLBRangeInvalid() && (
+            {isLbRangeInvalid() && (
               <TkAlert variant="destructive" className="mt-2">
                 <XCircle className="h-5 w-5" />
                 <div>
-                  {parseInt(networkConfig.metallbStartOctet) >
-                  parseInt(networkConfig.metallbEndOctet) ? (
+                  {parseInt(networkConfig.lbStartOctet) >
+                  parseInt(networkConfig.lbEndOctet) ? (
                     <TkAlertDescription>
                       Start IP must be less than or equal to End IP
                     </TkAlertDescription>
@@ -1016,9 +1026,9 @@ networkConfig.overlayCIDR
             )}
 
             {networkConfig.primaryIngressOctet &&
-              networkConfig.metallbStartOctet &&
-              networkConfig.metallbEndOctet &&
-              !isMetalLBRangeInvalid() && (
+              networkConfig.lbStartOctet &&
+              networkConfig.lbEndOctet &&
+              !isLbRangeInvalid() && (
                 <div className="mt-4">
                   <div className="prose prose-sm max-w-none text-muted-foreground">
                     <p className="font-medium mb-2">Load Balancer Configuration:</p>
@@ -1029,11 +1039,11 @@ networkConfig.overlayCIDR
                           {getNetworkBase(
 networkConfig.overlayCIDR
                           )}
-                          .{networkConfig.metallbStartOctet}-
+                          .{networkConfig.lbStartOctet}-
                           {getNetworkBase(
 networkConfig.overlayCIDR
                           )}
-                          .{networkConfig.metallbEndOctet}
+                          .{networkConfig.lbEndOctet}
                         </span>
                       </li>
                       <li>
