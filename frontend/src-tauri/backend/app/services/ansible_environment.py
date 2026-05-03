@@ -208,10 +208,10 @@ class AnsibleEnvironment:
             if progress_callback:
                 progress_callback("Creating temporary directory...", 10)
 
-            # Use fixed directory name for easier testing and debugging
-            # When playbook fails, you can edit /tmp/thinkube-installer/ and retry
+            # Per-user directory: the sticky bit on /tmp prevents one user from
+            # removing another user's stale clone, so scope by UID.
             temp_base = Path(tempfile.gettempdir())
-            self.thinkube_clone_dir = temp_base / "thinkube-installer"
+            self.thinkube_clone_dir = temp_base / f"thinkube-installer-{os.geteuid()}"
 
             # Remove existing clone if it exists
             if self.thinkube_clone_dir.exists():
