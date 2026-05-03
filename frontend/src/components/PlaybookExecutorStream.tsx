@@ -161,104 +161,115 @@ ${logOutput.map(log => log.message).join('\n')}`
         const paramsToSend = params
 
         ws.onopen = async () => {
-          let inventoryYAML = ''
-
-          // Check if this is SSH-related playbook - use minimal inventory
-          if (playbookName === 'setup-ssh-keys' || playbookName === 'test-ssh-connectivity') {
-            // Dynamically import minimal inventory
-            const { generateMinimalInventory, minimalInventoryToYAML } = await import(
-              '../utils/minimalInventory.js'
-            )
-            const minimalInventory = generateMinimalInventory()
-            inventoryYAML = minimalInventoryToYAML(minimalInventory)
-          } else {
-            // Use full inventory for other playbooks
-            const { generateDynamicInventory, inventoryToYAML } = await import(
-              '../utils/inventoryGenerator.js'
-            )
-            const dynamicInventory = generateDynamicInventory()
-            inventoryYAML = inventoryToYAML(dynamicInventory)
-          }
-
-          // Add inventory to parameters
-          const paramsWithInventory = {
-            ...paramsToSend,
-            inventory: inventoryYAML
-          }
-
-          // Add ZeroTier-specific environment variables if this is a ZeroTier playbook
-          if (playbookName.includes('zerotier')) {
-            const zerotierApiToken = sessionStorage.getItem('zerotierApiToken')
-            const zerotierNetworkId = sessionStorage.getItem('zerotierNetworkId')
-
-            if (zerotierApiToken || zerotierNetworkId) {
-              paramsWithInventory.environment = {
-                ...paramsWithInventory.environment
-              }
-
-              if (zerotierApiToken) {
-                paramsWithInventory.environment.ZEROTIER_API_TOKEN = zerotierApiToken
-              }
-              if (zerotierNetworkId) {
-                paramsWithInventory.environment.ZEROTIER_NETWORK_ID = zerotierNetworkId
-              }
-            }
-          }
-
-          // Add Cloudflare token if needed
-          if (playbookName.includes('cert-manager') || playbookName.includes('dns')) {
-            const cloudflareToken = sessionStorage.getItem('cloudflareToken')
-            if (cloudflareToken) {
-              paramsWithInventory.environment = {
-                ...paramsWithInventory.environment,
-                CLOUDFLARE_TOKEN: cloudflareToken
-              }
-            }
-          }
-
-          // Add GitHub token if needed
-          if (playbookName.includes('github') || playbookName.includes('devpi')) {
-            const githubToken = sessionStorage.getItem('githubToken')
-            if (githubToken) {
-              paramsWithInventory.environment = {
-                ...paramsWithInventory.environment,
-                GITHUB_TOKEN: githubToken
-              }
-            }
-          }
-
-          // Add HuggingFace token if needed
-          if (playbookName.includes('thinkube-control')) {
-            const hfToken = sessionStorage.getItem('hfToken')
-            if (hfToken) {
-              paramsWithInventory.environment = {
-                ...paramsWithInventory.environment,
-                HF_TOKEN: hfToken
-              }
-            }
-          }
-
-          // Send execution parameters with dynamic inventory
+          // Anything thrown in here used to become an unhandled promise rejection,
+          // leaving the WebSocket open until the backend hit its 30s receive
+          // timeout. Surface the real error in the UI instead.
           try {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify(paramsWithInventory))
+            let inventoryYAML = ''
+
+            // Check if this is SSH-related playbook - use minimal inventory
+            if (playbookName === 'setup-ssh-keys' || playbookName === 'test-ssh-connectivity') {
+              const { generateMinimalInventory, minimalInventoryToYAML } = await import(
+                '../utils/minimalInventory.js'
+              )
+              const minimalInventory = generateMinimalInventory()
+              inventoryYAML = minimalInventoryToYAML(minimalInventory)
             } else {
-              setLogOutput((prev) => [
-                ...prev,
-                {
-                  type: 'error',
-                  message: 'WebSocket not ready - connection may have failed'
-                }
-              ])
+              const { generateDynamicInventory, inventoryToYAML } = await import(
+                '../utils/inventoryGenerator.js'
+              )
+              const dynamicInventory = generateDynamicInventory()
+              inventoryYAML = inventoryToYAML(dynamicInventory)
             }
-          } catch (error) {
+
+            const paramsWithInventory = {
+              ...paramsToSend,
+              inventory: inventoryYAML
+            }
+
+            if (playbookName.includes('zerotier')) {
+              const zerotierApiToken = sessionStorage.getItem('zerotierApiToken')
+              const zerotierNetworkId = sessionStorage.getItem('zerotierNetworkId')
+
+              if (zerotierApiToken || zerotierNetworkId) {
+                paramsWithInventory.environment = {
+                  ...paramsWithInventory.environment
+                }
+
+                if (zerotierApiToken) {
+                  paramsWithInventory.environment.ZEROTIER_API_TOKEN = zerotierApiToken
+                }
+                if (zerotierNetworkId) {
+                  paramsWithInventory.environment.ZEROTIER_NETWORK_ID = zerotierNetworkId
+                }
+              }
+            }
+
+            if (playbookName.includes('tailscale')) {
+              const tailscaleAuthKey = sessionStorage.getItem('tailscaleAuthKey')
+              const tailscaleApiToken = sessionStorage.getItem('tailscaleApiToken')
+
+              if (tailscaleAuthKey || tailscaleApiToken) {
+                paramsWithInventory.environment = {
+                  ...paramsWithInventory.environment
+                }
+
+                if (tailscaleAuthKey) {
+                  paramsWithInventory.environment.TAILSCALE_AUTH_KEY = tailscaleAuthKey
+                }
+                if (tailscaleApiToken) {
+                  paramsWithInventory.environment.TAILSCALE_API_TOKEN = tailscaleApiToken
+                }
+              }
+            }
+
+            if (playbookName.includes('cert-manager') || playbookName.includes('dns')) {
+              const cloudflareToken = sessionStorage.getItem('cloudflareToken')
+              if (cloudflareToken) {
+                paramsWithInventory.environment = {
+                  ...paramsWithInventory.environment,
+                  CLOUDFLARE_TOKEN: cloudflareToken
+                }
+              }
+            }
+
+            if (playbookName.includes('github') || playbookName.includes('devpi')) {
+              const githubToken = sessionStorage.getItem('githubToken')
+              if (githubToken) {
+                paramsWithInventory.environment = {
+                  ...paramsWithInventory.environment,
+                  GITHUB_TOKEN: githubToken
+                }
+              }
+            }
+
+            if (playbookName.includes('thinkube-control')) {
+              const hfToken = sessionStorage.getItem('hfToken')
+              if (hfToken) {
+                paramsWithInventory.environment = {
+                  ...paramsWithInventory.environment,
+                  HF_TOKEN: hfToken
+                }
+              }
+            }
+
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+              throw new Error('WebSocket closed before parameters could be sent')
+            }
+            ws.send(JSON.stringify(paramsWithInventory))
+          } catch (error: any) {
+            const message = error?.message ?? String(error)
             setLogOutput((prev) => [
               ...prev,
               {
                 type: 'error',
-                message: `Failed to send parameters: ${error}`
+                message: `Failed to start playbook: ${message}`
               }
             ])
+            setStatus('error')
+            setMessage(message)
+            completeExecution({ status: 'error', message })
+            try { ws.close() } catch { /* ignore */ }
           }
         }
 
