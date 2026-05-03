@@ -30,6 +30,9 @@ interface DeploymentData {
   adminPassword: string
   systemUsername: string
   controlPlaneIP: string
+  overlayProvider: string
+  gatewayHostname: string
+  clusterName: string
 }
 
 export default function Complete() {
@@ -41,7 +44,10 @@ export default function Complete() {
     adminUsername: "",
     adminPassword: "",
     systemUsername: "",
-    controlPlaneIP: ""
+    controlPlaneIP: "",
+    overlayProvider: "",
+    gatewayHostname: "",
+    clusterName: ""
   })
 
   const isElectron = useMemo(() => {
@@ -83,6 +89,14 @@ export default function Complete() {
       }
     }
 
+    // overlayProvider, clusterName, and gatewayHostname are written to
+    // sessionStorage by the configuration page (gatewayHostname there
+    // already resolves the default to <clusterName>-gw if the user left
+    // it blank — this page is just a reader).
+    const overlayProvider = sessionStorage.getItem("overlayProvider") || ""
+    const clusterName = sessionStorage.getItem("clusterName") || ""
+    const gatewayHostname = sessionStorage.getItem("gatewayHostname") || ""
+
     // Check if we have the minimum required data
     if (domainName && adminUsername && controlPlaneIP) {
       setDataLoaded(true)
@@ -91,7 +105,10 @@ export default function Complete() {
         adminUsername,
         adminPassword,
         systemUsername,
-        controlPlaneIP
+        controlPlaneIP,
+        overlayProvider,
+        gatewayHostname,
+        clusterName,
       })
     }
   }, [])
@@ -210,6 +227,85 @@ export default function Complete() {
           </div>
         </TkCardContent>
       </TkCard>
+
+      {/* Tailscale-specific reachability summary */}
+      {deploymentData.overlayProvider === "tailscale" && (
+        <TkCard className="mb-6">
+          <TkCardHeader>
+            <TkCardTitle>Reaching Your Cluster Over Tailscale</TkCardTitle>
+          </TkCardHeader>
+          <TkCardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              The Tailscale Operator exposed your cluster's Gateway as a
+              tailnet device named <code>{deploymentData.gatewayHostname}</code>.
+              Any device joined to your tailnet can reach
+              <code> *.{deploymentData.domainName}</code> via that Gateway.
+            </p>
+
+            <div>
+              <TkLabel className="font-semibold mb-2 block">
+                Find the Gateway tailnet IP
+              </TkLabel>
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <code className="text-sm">
+                  tailscale ip {deploymentData.gatewayHostname}
+                </code>
+                <TkButton
+                  intent="ghost"
+                  size="sm"
+                  onClick={() =>
+                    copyToClipboard(`tailscale ip ${deploymentData.gatewayHostname}`)
+                  }
+                >
+                  <Copy className="w-4 h-4" />
+                </TkButton>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Or open <a
+                  href="https://login.tailscale.com/admin/machines"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >Tailscale Admin → Machines</a>{" "}
+                and look for <code>{deploymentData.gatewayHostname}</code>.
+              </p>
+            </div>
+
+            <div>
+              <TkLabel className="font-semibold mb-2 block">
+                Verify a service resolves
+              </TkLabel>
+              <div className="flex items-center justify-between border rounded-md px-3 py-2">
+                <code className="text-sm">
+                  dig +short control.{deploymentData.domainName}
+                </code>
+                <TkButton
+                  intent="ghost"
+                  size="sm"
+                  onClick={() =>
+                    copyToClipboard(`dig +short control.${deploymentData.domainName}`)
+                  }
+                >
+                  <Copy className="w-4 h-4" />
+                </TkButton>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Should return the same address as
+                <code> tailscale ip {deploymentData.gatewayHostname}</code>.
+              </p>
+            </div>
+
+            <TkAlert>
+              <AlertCircle className="h-4 w-4" />
+              <TkAlertDescription>
+                Each cluster node also appears as a separate tailnet device
+                so you can SSH directly. The <code>tailscale</code> CLI on
+                your laptop must be logged in to the same tailnet.
+              </TkAlertDescription>
+            </TkAlert>
+          </TkCardContent>
+        </TkCard>
+      )}
 
       {/* SSO Credentials */}
       <TkCard className="mb-6">

@@ -202,9 +202,7 @@ export function generateDynamicInventory() {
     inventory.all.vars.tailscale_api_token = config.tailscaleApiToken
     inventory.all.vars.tailscale_oauth_client_id = config.tailscaleOauthClientId
     inventory.all.vars.tailscale_oauth_client_secret = config.tailscaleOauthClientSecret
-    if (config.gatewayHostname) {
-      inventory.all.vars.gateway_hostname = config.gatewayHostname
-    }
+    inventory.all.vars.gateway_hostname = config.gatewayHostname
   }
 
   // Ingress IP configuration — only meaningful in ZeroTier mode (Cilium L2

@@ -594,6 +594,12 @@ export default function Configuration() {
       }
     }
 
+    // Resolve the gateway hostname default once, here. Downstream
+    // consumers (sessionStorage readers, inventory generator, playbooks)
+    // can then trust the value is always populated.
+    const resolvedGatewayHostname =
+      config.gatewayHostname || `${config.clusterName}-gw`
+
     const savePayload: any = {
       cloudflareToken: config.cloudflareToken,
       githubToken: config.githubToken,
@@ -611,9 +617,7 @@ export default function Configuration() {
       savePayload.tailscaleApiToken = config.tailscaleApiToken
       savePayload.tailscaleOauthClientId = config.tailscaleOauthClientId
       savePayload.tailscaleOauthClientSecret = config.tailscaleOauthClientSecret
-      if (config.gatewayHostname) {
-        savePayload.gatewayHostname = config.gatewayHostname
-      }
+      savePayload.gatewayHostname = resolvedGatewayHostname
     }
 
     try {
@@ -642,9 +646,7 @@ export default function Configuration() {
       configToSave.tailscaleApiToken = config.tailscaleApiToken
       configToSave.tailscaleOauthClientId = config.tailscaleOauthClientId
       configToSave.tailscaleOauthClientSecret = config.tailscaleOauthClientSecret
-      if (config.gatewayHostname) {
-        configToSave.gatewayHostname = config.gatewayHostname
-      }
+      configToSave.gatewayHostname = resolvedGatewayHostname
     }
     localStorage.setItem('thinkube-config', JSON.stringify(configToSave))
 
@@ -661,9 +663,7 @@ export default function Configuration() {
       sessionStorage.setItem('tailscaleApiToken', config.tailscaleApiToken)
       sessionStorage.setItem('tailscaleOauthClientId', config.tailscaleOauthClientId)
       sessionStorage.setItem('tailscaleOauthClientSecret', config.tailscaleOauthClientSecret)
-      if (config.gatewayHostname) {
-        sessionStorage.setItem('gatewayHostname', config.gatewayHostname)
-      }
+      sessionStorage.setItem('gatewayHostname', resolvedGatewayHostname)
     }
 
     if (config.githubToken) {

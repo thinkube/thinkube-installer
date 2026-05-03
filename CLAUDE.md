@@ -122,7 +122,49 @@ The installer uses **two different** inventory generators at different stages:
 1. **Minimal** (`minimalInventory.js`): Used only for SSH key setup. Contains just `ansible_host` + `ansible_user`.
 2. **Full** (`inventoryGenerator.js`): Used for all deployment playbooks. Contains roles, network config, tokens, hardware info.
 
+A third **`overlayInventory.js`** is used for the install-overlay playbooks
+(install-zerotier / install-tailscale) that run before the network step has
+populated session state.
+
 `PlaybookExecutorStream.tsx` selects which to use based on `playbookName`.
+
+### Overlay Network Providers
+
+The installer supports two overlay providers, picked by the user on the
+configuration page (`overlayProvider` in inventory):
+
+- **ZeroTier** — original path. Cilium's k8s-snap built-in load balancer
+  (L2 mode) claims static IPs from the user-defined overlay subnet for the
+  Gateway and BIND9. Inventory variables: `overlay_cidr`,
+  `overlay_subnet_prefix`, `lb_ip_start_octet` / `lb_ip_end_octet`,
+  `primary_ingress_ip_octet`, `dns_external_ip_octet`. (The legacy
+  `metallb_*` names were renamed to `lb_*` in commit `712b12f` /
+  installer commit `f2e9ee3`; no MetalLB is or was ever deployed.)
+
+- **Tailscale + Operator** — required because NVIDIA recommends Tailscale
+  for remote work on DGX Spark. Cilium's L2 LB is disabled (can't traverse
+  Tailscale's L3 mesh); the Tailscale Kubernetes Operator
+  (`40_thinkube/core/infrastructure/tailscale-operator/10_deploy.yaml`)
+  exposes annotated Services as tailnet devices. The Envoy Gateway Service
+  and `bind9-external` are both annotated with
+  `tailscale.com/expose: "true"` and a `tailscale.com/hostname`. Their
+  tailnet IPs are discovered from `Service.status.loadBalancer.ingress`
+  by `dns-server/10_deploy.yaml`, `coredns/10_deploy.yaml`,
+  `coredns/15_configure_node_dns.yaml`, and
+  `harbor-images/14_build_base_images.yaml`. Inventory variables:
+  `tailscale_auth_key`, `tailscale_api_token`,
+  `tailscale_oauth_client_id`, `tailscale_oauth_client_secret`,
+  `gateway_hostname` (optional — defaults to `<cluster_name>-gw`).
+  `overlay_cidr` / `lb_ip_*_octet` / `primary_ingress_ip*` are NOT
+  emitted in Tailscale mode.
+
+The deploy queue in `frontend/src/pages/deploy.tsx` inserts the
+`tailscale-operator` step (Tailscale mode only) after k8s install and
+before gateway-api, and `dns-server` runs after gateway-api so the
+Operator-assigned IP is available to discover.
+
+Full design + remaining work: `TAILSCALE_OPERATOR_MIGRATION.md` at the
+repo root.
 
 ### WebSocket Communication
 
