@@ -210,9 +210,9 @@ export function generateDynamicInventory() {
   // assigns IPs and the dns-server / gateway-api playbooks discover them
   // from Service status.
   if (overlayProvider === 'zerotier') {
-    inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
+    inventory.all.vars.primary_gateway_ip_octet = networkConfig.primaryGatewayOctet || "200"
     inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
-    inventory.all.vars.primary_ingress_ip = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
+    inventory.all.vars.primary_gateway_ip = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryGatewayOctet || "200")
   }
 
   // Container build architecture configuration — auto-derived from detected node architectures

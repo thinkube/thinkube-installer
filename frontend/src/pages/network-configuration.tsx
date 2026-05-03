@@ -40,7 +40,7 @@ interface NetworkConfig {
   cidr: string;
   gateway: string;
   overlayCIDR: string;
-  primaryIngressOctet: string;
+  primaryGatewayOctet: string;
   dnsExternalOctet: string;
   lbStartOctet: string;
   lbEndOctet: string;
@@ -140,7 +140,7 @@ export default function NetworkConfigurationPage() {
     cidr: "192.168.1.0/24",
     gateway: "192.168.1.1",
     overlayCIDR: "",
-    primaryIngressOctet: "200",
+    primaryGatewayOctet: "200",
     dnsExternalOctet: "205",
     lbStartOctet: "200",
     lbEndOctet: "210",
@@ -339,7 +339,7 @@ export default function NetworkConfigurationPage() {
   const isIngressIPInRange = (): boolean => {
     const start = parseInt(networkConfig.lbStartOctet);
     const end = parseInt(networkConfig.lbEndOctet);
-    const primary = parseInt(networkConfig.primaryIngressOctet);
+    const primary = parseInt(networkConfig.primaryGatewayOctet);
 
     if (!start || !end || !primary) return false;
 
@@ -369,7 +369,7 @@ export default function NetworkConfigurationPage() {
     const dnsOctet = networkConfig.dnsExternalOctet;
     if (!dnsOctet) return false;
 
-    if (dnsOctet === networkConfig.primaryIngressOctet) {
+    if (dnsOctet === networkConfig.primaryGatewayOctet) {
       return true;
     }
 
@@ -847,7 +847,7 @@ export default function NetworkConfigurationPage() {
       {/* Gateway IP Configuration — ZeroTier mode only.
           (Cluster runs Gateway API via Envoy Gateway; the "Ingress" name
           is gone everywhere user-facing. The inventory variables
-          primary_ingress_ip* still use the legacy name pending a separate
+          primary_gateway_ip* still use the legacy name pending a separate
           rename across both repos.) */}
       {overlayProvider === "zerotier" && (
         <TkCard className="mb-6">
@@ -887,19 +887,19 @@ export default function NetworkConfigurationPage() {
                     min={1}
                     max={254}
                     placeholder="200"
-                    value={networkConfig.primaryIngressOctet}
+                    value={networkConfig.primaryGatewayOctet}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      updateNetworkConfig("primaryIngressOctet", e.target.value)
+                      updateNetworkConfig("primaryGatewayOctet", e.target.value)
                     }
                     className={cn(
                       "w-20",
-                      (!isValidIngressOctet(networkConfig.primaryIngressOctet) ||
-                        isIngressIPInUse(networkConfig.primaryIngressOctet)) &&
+                      (!isValidIngressOctet(networkConfig.primaryGatewayOctet) ||
+                        isIngressIPInUse(networkConfig.primaryGatewayOctet)) &&
                         "border-warning focus-visible:ring-warning"
                     )}
                   />
                 </div>
-                {isIngressIPInUse(networkConfig.primaryIngressOctet) && (
+                {isIngressIPInUse(networkConfig.primaryGatewayOctet) && (
                   <p className="text-xs text-warning mt-1">
                     This IP is already assigned to another ZeroTier member
                   </p>
@@ -1041,7 +1041,7 @@ networkConfig.overlayCIDR
                     </TkAlertDescription>
                   ) : (
                     <TkAlertDescription>
-                      Primary ingress IP ({networkConfig.primaryIngressOctet}) must
+                      Primary ingress IP ({networkConfig.primaryGatewayOctet}) must
                       be within the Load Balancer range
                     </TkAlertDescription>
                   )}
@@ -1049,7 +1049,7 @@ networkConfig.overlayCIDR
               </TkAlert>
             )}
 
-            {networkConfig.primaryIngressOctet &&
+            {networkConfig.primaryGatewayOctet &&
               networkConfig.lbStartOctet &&
               networkConfig.lbEndOctet &&
               !isLbRangeInvalid() && (
@@ -1076,7 +1076,7 @@ networkConfig.overlayCIDR
                           {getNetworkBase(
 networkConfig.overlayCIDR
                           )}
-                          .{networkConfig.primaryIngressOctet}
+                          .{networkConfig.primaryGatewayOctet}
                         </span>
                       </li>
                     </ul>

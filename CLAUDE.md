@@ -137,7 +137,7 @@ configuration page (`overlayProvider` in inventory):
   (L2 mode) claims static IPs from the user-defined overlay subnet for the
   Gateway and BIND9. Inventory variables: `overlay_cidr`,
   `overlay_subnet_prefix`, `lb_ip_start_octet` / `lb_ip_end_octet`,
-  `primary_ingress_ip_octet`, `dns_external_ip_octet`. (The legacy
+  `primary_gateway_ip_octet`, `dns_external_ip_octet`. (The legacy
   `metallb_*` names were renamed to `lb_*` in commit `712b12f` /
   installer commit `f2e9ee3`; no MetalLB is or was ever deployed.)
 
@@ -155,7 +155,7 @@ configuration page (`overlayProvider` in inventory):
   `tailscale_auth_key`, `tailscale_api_token`,
   `tailscale_oauth_client_id`, `tailscale_oauth_client_secret`,
   `gateway_hostname` (optional — defaults to `<cluster_name>-gw`).
-  `overlay_cidr` / `lb_ip_*_octet` / `primary_ingress_ip*` are NOT
+  `overlay_cidr` / `lb_ip_*_octet` / `primary_gateway_ip*` are NOT
   emitted in Tailscale mode.
 
 The deploy queue in `frontend/src/pages/deploy.tsx` inserts the
