@@ -492,10 +492,12 @@ ${logOutput.map(log => log.message).join('\n')}`
       )
     }
 
+    const hasOutput = isExecuting || logOutput.length > 0
+
     return (
       <div className="playbook-executor">
-        {/* Only show when executing */}
-        {isExecuting && (
+        {/* Show while executing, or after completion if any output was captured */}
+        {hasOutput && (
           <div>
             {renderPlaybookQueue()}
 
@@ -512,7 +514,7 @@ ${logOutput.map(log => log.message).join('\n')}`
             )}
 
             {/* Live Output Log */}
-            {isExecuting && (
+            {hasOutput && (
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-muted-foreground">Live Output:</span>
