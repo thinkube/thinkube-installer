@@ -167,13 +167,26 @@ ${logOutput.map(log => log.message).join('\n')}`
           try {
             let inventoryYAML = ''
 
-            // Check if this is SSH-related playbook - use minimal inventory
+            // SSH-setup playbooks run before the network step, so they use a
+            // minimal inventory with just hosts + connection info.
             if (playbookName === 'setup-ssh-keys' || playbookName === 'test-ssh-connectivity') {
               const { generateMinimalInventory, minimalInventoryToYAML } = await import(
                 '../utils/minimalInventory.js'
               )
               const minimalInventory = generateMinimalInventory()
               inventoryYAML = minimalInventoryToYAML(minimalInventory)
+            } else if (
+              playbookName === 'install-zerotier' ||
+              playbookName === 'install-tailscale'
+            ) {
+              // Overlay-install runs before network-configuration, so the full
+              // inventory generator can't be used yet — it would fail on the
+              // missing networkConfiguration. Build an overlay-only inventory.
+              const { generateOverlayInventory, overlayInventoryToYAML } = await import(
+                '../utils/overlayInventory.js'
+              )
+              const overlayInventory = generateOverlayInventory()
+              inventoryYAML = overlayInventoryToYAML(overlayInventory)
             } else {
               const { generateDynamicInventory, inventoryToYAML } = await import(
                 '../utils/inventoryGenerator.js'

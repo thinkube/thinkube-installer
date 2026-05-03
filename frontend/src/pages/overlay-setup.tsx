@@ -90,13 +90,27 @@ export default function OverlaySetup() {
 
     setIpAllocationLoading(true)
     try {
+      // Allocate IPs for all cluster nodes plus the controller (the host
+      // running the installer also joins the overlay network).
+      const hostnames = serverNodes.map((n) => n.hostname)
+      const hasLocal = serverNodes.some((n) =>
+        JSON.parse(sessionStorage.getItem("discoveredServers") || "[]").some(
+          (s: any) => s.hostname === n.hostname && s.is_local,
+        ),
+      )
+      if (!hasLocal) hostnames.push("controller")
+
       const response = await axios.post("/api/overlay/allocate-ips", {
-        hostnames: serverNodes.map((n) => n.hostname),
+        hostnames,
         network_id: networkId,
         api_token: apiToken,
       })
 
       if (response.data.allocations) {
+        sessionStorage.setItem(
+          "overlayIpAllocations",
+          JSON.stringify(response.data.allocations),
+        )
         setNodes((prev) =>
           prev.map((node) => ({
             ...node,
