@@ -104,6 +104,8 @@ export default function Configuration() {
   const [tailscaleVerified, setTailscaleVerified] = useState(false)
   const [verifyingGithub, setVerifyingGithub] = useState(false)
   const [githubVerified, setGithubVerified] = useState(false)
+  const [verifyingHf, setVerifyingHf] = useState(false)
+  const [hfVerified, setHfVerified] = useState(false)
 
   // Load saved configuration on mount
   useEffect(() => {
@@ -196,6 +198,12 @@ export default function Configuration() {
     setGithubVerified(false)
     setErrors(prev => ({ ...prev, githubToken: '' }))
   }, [config.githubToken])
+
+  // Reset HuggingFace verification when token changes
+  useEffect(() => {
+    setHfVerified(false)
+    setErrors(prev => ({ ...prev, hfToken: '' }))
+  }, [config.hfToken])
 
   const isValid = useMemo(() => {
     const baseValid = config.clusterName &&
@@ -367,6 +375,45 @@ export default function Configuration() {
     }
   }
 
+  const verifyHf = async () => {
+    if (!config.hfToken) {
+      setErrors(prev => ({ ...prev, hfToken: 'HuggingFace token is required' }))
+      setHfVerified(false)
+      return false
+    }
+
+    setVerifyingHf(true)
+    setErrors(prev => ({ ...prev, hfToken: '' }))
+
+    try {
+      const response = await axios.post('/api/verify-huggingface', {
+        token: config.hfToken
+      })
+
+      if (response.data.valid) {
+        setHfVerified(true)
+        setErrors(prev => ({ ...prev, hfToken: '' }))
+        return true
+      } else {
+        setErrors(prev => ({
+          ...prev,
+          hfToken: response.data.message || 'Invalid HuggingFace token'
+        }))
+        setHfVerified(false)
+        return false
+      }
+    } catch (error: any) {
+      setErrors(prev => ({
+        ...prev,
+        hfToken: error.response?.data?.detail || 'Failed to verify HuggingFace token'
+      }))
+      setHfVerified(false)
+      return false
+    } finally {
+      setVerifyingHf(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -418,6 +465,14 @@ export default function Configuration() {
       const githubValid = await verifyGithub()
       if (!githubValid) {
         alert('Please provide a valid GitHub token or leave it empty')
+        return
+      }
+    }
+
+    if (config.hfToken && !hfVerified) {
+      const hfValid = await verifyHf()
+      if (!hfValid) {
+        alert('Please provide a valid HuggingFace token or leave it empty')
         return
       }
     }
@@ -950,9 +1005,27 @@ export default function Configuration() {
                   placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
                   value={config.hfToken}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, hfToken: e.target.value })}
-                  className={cn("pr-10 font-mono", errors.hfToken && "border-destructive")}
+                  className={cn("pr-16 font-mono", errors.hfToken && "border-destructive")}
                 />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
+                  {config.hfToken && (
+                    <TkButton
+                      type="button"
+                      intent="ghost"
+                      size="sm"
+                      className="h-auto p-1"
+                      onClick={verifyHf}
+                      disabled={verifyingHf}
+                    >
+                      {verifyingHf ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : hfVerified ? (
+                        <CheckCircle2 className="h-3 w-3 text-success" />
+                      ) : (
+                        <span className="text-xs">Verify</span>
+                      )}
+                    </TkButton>
+                  )}
                   <TkButton
                     type="button"
                     intent="ghost"
@@ -970,6 +1043,9 @@ export default function Configuration() {
               </div>
               {errors.hfToken && (
                 <p className="text-xs text-destructive">{errors.hfToken}</p>
+              )}
+              {hfVerified && (
+                <p className="text-xs text-success">✓ Token verified with HuggingFace</p>
               )}
               <p className="text-xs text-muted-foreground">
                 Required for downloading models from HuggingFace Hub
