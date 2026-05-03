@@ -29,6 +29,14 @@ if PROFILER_ENABLED:
     logger.info("TK_PROFILER enabled - detailed logging and profiling active")
 
 
+async def _safe_send_error(websocket: WebSocket, message: str) -> None:
+    """Send an error frame, swallowing failures from already-closed sockets."""
+    try:
+        await websocket.send_json({"type": "error", "message": message})
+    except Exception as exc:
+        logger.debug(f"Could not send error frame ({message!r}): {exc}")
+
+
 @router.websocket("/ws/playbook/{playbook_name:path}")
 async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
     """Stream Ansible playbook execution output via WebSocket"""
@@ -50,17 +58,17 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
             logger.info(f"Received parameters: {list(data.keys())}")
         except asyncio.TimeoutError:
             logger.error("Timeout waiting for WebSocket parameters")
-            await websocket.send_json({
-                "type": "error",
-                "message": "Timeout waiting for execution parameters"
-            })
+            await _safe_send_error(websocket, "Timeout waiting for execution parameters")
+            return
+        except WebSocketDisconnect:
+            # Client closed the socket without sending parameters — usually
+            # means an exception in the frontend's onopen handler. Nothing to
+            # send back; just unwind cleanly.
+            logger.info("Client disconnected before sending parameters")
             return
         except Exception as e:
             logger.error(f"Error receiving parameters: {e}")
-            await websocket.send_json({
-                "type": "error",
-                "message": f"Error receiving parameters: {str(e)}"
-            })
+            await _safe_send_error(websocket, f"Error receiving parameters: {str(e)}")
             return
         
         # Extract dynamic inventory if provided
@@ -407,12 +415,12 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
             process.terminate()
             await process.wait()
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
-        await websocket.send_json({
-            "type": "error",
-            "message": str(e)
-        })
-        await websocket.close()
+        logger.error(f"WebSocket error: {e}", exc_info=True)
+        await _safe_send_error(websocket, str(e))
+        try:
+            await websocket.close()
+        except Exception:
+            pass
     finally:
         # Close profiler log file if open (and not already closed in failure handling)
         if PROFILER_ENABLED and 'log_fh' in locals() and log_fh and not log_fh.closed:
