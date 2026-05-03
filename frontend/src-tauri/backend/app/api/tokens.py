@@ -148,6 +148,12 @@ async def save_configuration(config: Dict) -> TokenResponse:
             env_vars['TAILSCALE_AUTH_KEY'] = config['tailscaleAuthKey']
         if config.get('tailscaleApiToken'):
             env_vars['TAILSCALE_API_TOKEN'] = config['tailscaleApiToken']
+        if config.get('tailscaleOauthClientId'):
+            env_vars['TAILSCALE_OAUTH_CLIENT_ID'] = config['tailscaleOauthClientId']
+        if config.get('tailscaleOauthClientSecret'):
+            env_vars['TAILSCALE_OAUTH_CLIENT_SECRET'] = config['tailscaleOauthClientSecret']
+        if config.get('gatewayHostname'):
+            env_vars['GATEWAY_HOSTNAME'] = config['gatewayHostname']
         if config.get('githubOrg'):
             env_vars['GITHUB_ORG'] = config['githubOrg']
         if config.get('clusterName'):
@@ -190,6 +196,12 @@ async def load_configuration() -> Dict:
             config['tailscaleAuthKey'] = env_vars['TAILSCALE_AUTH_KEY']
         if 'TAILSCALE_API_TOKEN' in env_vars:
             config['tailscaleApiToken'] = env_vars['TAILSCALE_API_TOKEN']
+        if 'TAILSCALE_OAUTH_CLIENT_ID' in env_vars:
+            config['tailscaleOauthClientId'] = env_vars['TAILSCALE_OAUTH_CLIENT_ID']
+        if 'TAILSCALE_OAUTH_CLIENT_SECRET' in env_vars:
+            config['tailscaleOauthClientSecret'] = env_vars['TAILSCALE_OAUTH_CLIENT_SECRET']
+        if 'GATEWAY_HOSTNAME' in env_vars:
+            config['gatewayHostname'] = env_vars['GATEWAY_HOSTNAME']
         if 'GITHUB_ORG' in env_vars:
             config['githubOrg'] = env_vars['GITHUB_ORG']
         if 'CLUSTER_NAME' in env_vars:
@@ -218,11 +230,16 @@ async def check_tokens() -> Dict[str, bool]:
             "github": "GITHUB_TOKEN" in env_vars,
             "zerotier": "ZEROTIER_TOKEN" in env_vars or "ZEROTIER_API_TOKEN" in env_vars,
             "tailscale": "TAILSCALE_AUTH_KEY" in env_vars and "TAILSCALE_API_TOKEN" in env_vars,
+            "tailscaleOperator": (
+                "TAILSCALE_OAUTH_CLIENT_ID" in env_vars
+                and "TAILSCALE_OAUTH_CLIENT_SECRET" in env_vars
+            ),
         }
     except Exception:
         return {
             "cloudflare": False,
             "github": False,
             "zerotier": False,
+            "tailscaleOperator": False,
             "tailscale": False,
         }

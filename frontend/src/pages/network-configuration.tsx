@@ -814,11 +814,45 @@ export default function NetworkConfigurationPage() {
         </TkCardContent>
       </TkCard>
 
-      {/* Ingress IP Configuration */}
-      {(
+      {/* Tailscale mode: nothing to configure here. The Tailscale Operator
+          assigns the Gateway's tailnet IP at runtime, the per-host overlay
+          IPs are auto-assigned by Tailscale, and the operator hostname was
+          collected on the configuration page next to the OAuth client. */}
+      {overlayProvider === "tailscale" && (
         <TkCard className="mb-6">
           <TkCardHeader>
-            <TkCardTitle>Ingress IP Configuration</TkCardTitle>
+            <TkCardTitle>Gateway IP Configuration</TkCardTitle>
+          </TkCardHeader>
+          <TkCardContent>
+            <TkAlert className="bg-info/10 border-info/50">
+              <Info className="h-5 w-5 text-info" />
+              <div>
+                <TkAlertTitle className="font-bold">
+                  Managed by the Tailscale Operator
+                </TkAlertTitle>
+                <TkAlertDescription className="text-sm">
+                  In Tailscale mode the cluster Gateway is exposed as a
+                  single tailnet device. Its IP is assigned automatically
+                  from Tailscale's <code>100.64.0.0/10</code> CGNAT range
+                  when the operator runs during deployment — there's
+                  nothing to pick here. The Gateway hostname was set on
+                  the configuration page (next to the OAuth client).
+                </TkAlertDescription>
+              </div>
+            </TkAlert>
+          </TkCardContent>
+        </TkCard>
+      )}
+
+      {/* Gateway IP Configuration — ZeroTier mode only.
+          (Cluster runs Gateway API via Envoy Gateway; the "Ingress" name
+          is gone everywhere user-facing. The inventory variables
+          primary_ingress_ip* still use the legacy name pending a separate
+          rename across both repos.) */}
+      {overlayProvider === "zerotier" && (
+        <TkCard className="mb-6">
+          <TkCardHeader>
+            <TkCardTitle>Gateway IP Configuration</TkCardTitle>
           </TkCardHeader>
           <TkCardContent>
             <TkAlert className="mb-4 bg-info/10 border-info/50">
@@ -836,7 +870,7 @@ export default function NetworkConfigurationPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <TkLabel>
-                  Primary Ingress IP
+                  Primary Gateway IP
                   <span className="text-xs text-muted-foreground ml-2">
                     For main services
                   </span>
@@ -1037,7 +1071,7 @@ networkConfig.overlayCIDR
                         </span>
                       </li>
                       <li>
-                        Primary Ingress:{" "}
+                        Primary Gateway:{" "}
                         <span className="font-mono">
                           {getNetworkBase(
 networkConfig.overlayCIDR

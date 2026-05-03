@@ -57,44 +57,52 @@ export function generateDynamicInventory() {
   const configuredPhysicalServers = networkConfiguration.physicalServers
   
   
-  // Validate required network configuration
+  // Validate required network configuration. The overlayCIDR + Cilium L2
+  // LB IP pool only matter in ZeroTier mode. In Tailscale mode the
+  // operator assigns IPs dynamically (see TAILSCALE_OPERATOR_MIGRATION.md).
   if (!networkConfig.cidr) {
     throw new Error('Network CIDR is required.')
   }
-  
+
   if (!networkConfig.gateway) {
     throw new Error('Network gateway is required.')
   }
-  
-  if (!networkConfig.overlayCIDR) {
+
+  if (overlayProvider === 'zerotier' && !networkConfig.overlayCIDR) {
     throw new Error('Overlay network CIDR is required.')
   }
-  
+
   // Build inventory structure
   const inventory = {
     all: {
       vars: {
         // Global variables from user configuration
         domain_name: config.domainName,
+        cluster_name: config.clusterName,
         admin_username: 'tkadmin',
         system_username: config.systemUsername,
         auth_realm_username: 'thinkube',
         ansible_python_interpreter: '/usr/bin/python3',
         ansible_become_pass: "{{ lookup('env', 'ANSIBLE_BECOME_PASSWORD') }}",
         home: "{{ lookup('env', 'HOME') }}",
-        
+
         // Network configuration (user-provided values only)
         network_cidr: networkConfig.cidr,
         network_gateway: networkConfig.gateway,
         dns_servers: ["8.8.8.8", "8.8.4.4"],
         dns_search_domains: [],  // No custom DNS search domains to prevent wildcard matching
-        
+
         // Network mode — always overlay
         network_mode: 'overlay',
-        
-        // Cilium load balancer IP range (k8s-snap built-in load balancer)
-        lb_ip_start_octet: networkConfig.lbStartOctet || "200",
-        lb_ip_end_octet: networkConfig.lbEndOctet || "210",
+
+        // Cilium load balancer IP range (k8s-snap built-in load balancer).
+        // Only used in ZeroTier mode; in Tailscale mode the Tailscale
+        // Operator assigns LB IPs dynamically and the playbook skips
+        // `k8s enable load-balancer` entirely.
+        ...(overlayProvider === 'zerotier' && {
+          lb_ip_start_octet: networkConfig.lbStartOctet || "200",
+          lb_ip_end_octet: networkConfig.lbEndOctet || "210",
+        }),
         
         // Kubernetes configuration (will be configured later with k8s-snap)
         
@@ -180,8 +188,10 @@ export function generateDynamicInventory() {
   
   // Overlay network configuration
   inventory.all.vars.overlay_provider = overlayProvider
-  inventory.all.vars.overlay_cidr = networkConfig.overlayCIDR
-  inventory.all.vars.overlay_subnet_prefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.'
+  if (overlayProvider === 'zerotier') {
+    inventory.all.vars.overlay_cidr = networkConfig.overlayCIDR
+    inventory.all.vars.overlay_subnet_prefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.'
+  }
 
   // Provider-specific variables
   if (overlayProvider === 'zerotier') {
@@ -190,12 +200,22 @@ export function generateDynamicInventory() {
   } else {
     inventory.all.vars.tailscale_auth_key = config.tailscaleAuthKey
     inventory.all.vars.tailscale_api_token = config.tailscaleApiToken
+    inventory.all.vars.tailscale_oauth_client_id = config.tailscaleOauthClientId
+    inventory.all.vars.tailscale_oauth_client_secret = config.tailscaleOauthClientSecret
+    if (config.gatewayHostname) {
+      inventory.all.vars.gateway_hostname = config.gatewayHostname
+    }
   }
 
-  // Ingress IP configuration
-  inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
-  inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
-  inventory.all.vars.primary_ingress_ip = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
+  // Ingress IP configuration — only meaningful in ZeroTier mode (Cilium L2
+  // LB picks IPs from the overlay subnet). In Tailscale mode the operator
+  // assigns IPs and the dns-server / gateway-api playbooks discover them
+  // from Service status.
+  if (overlayProvider === 'zerotier') {
+    inventory.all.vars.primary_ingress_ip_octet = networkConfig.primaryIngressOctet || "200"
+    inventory.all.vars.dns_external_ip_octet = networkConfig.dnsExternalOctet
+    inventory.all.vars.primary_ingress_ip = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.') + '.' + (networkConfig.primaryIngressOctet || "200")
+  }
 
   // Container build architecture configuration — auto-derived from detected node architectures
   const savedBuildArch = sessionStorage.getItem('buildArchitecture')
@@ -239,11 +259,18 @@ export function generateDynamicInventory() {
     const normalizedArch = serverArch.toLowerCase() === 'aarch64' ? 'arm64' :
                           serverArch.toLowerCase() === 'arm64' ? 'arm64' : 'x86_64'
 
+    // ZeroTier: ssh to the overlay IP and pin overlay_ip per host so the
+    // playbooks can advertise it. Tailscale: ssh over the LAN (we don't
+    // know the tailnet IP until the node joins) and skip overlay_ip — the
+    // tailnet IP is auto-assigned and discovered at runtime.
     const serverDef = {
-      ansible_host: server.overlayIP || server.ip,
+      ansible_host:
+        overlayProvider === 'zerotier' ? (server.overlayIP || server.ip) : server.ip,
       lan_ip: server.ip || server.localIP || '',
       arch: normalizedArch,
-      overlay_ip: server.overlayIP || server.ip,
+    }
+    if (overlayProvider === 'zerotier') {
+      serverDef.overlay_ip = server.overlayIP || server.ip
     }
 
     // Special handling for local connection
@@ -393,16 +420,18 @@ export function generateDynamicInventory() {
       controllerArch = 'arm64'
     }
     
-    // Get controller overlay IP from network configuration
-    const overlayPrefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.')
-    const controllerOverlayIP = networkConfig.controllerOverlayIP || `${overlayPrefix}.10`
-
+    // Controller overlay IP. ZeroTier mode picks one out of the user-defined
+    // overlay subnet. Tailscale mode auto-assigns the controller's tailnet IP
+    // when the host joins the tailnet, so we don't pin overlay_ip up front.
     const controllerDef = {
       ansible_connection: 'local',
       ansible_host: '127.0.0.1',
       lan_ip: controllerIP !== 'localhost' ? controllerIP : '127.0.0.1',
-      overlay_ip: controllerOverlayIP,
       arch: controllerArch
+    }
+    if (overlayProvider === 'zerotier') {
+      const overlayPrefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.')
+      controllerDef.overlay_ip = networkConfig.controllerOverlayIP || `${overlayPrefix}.10`
     }
     
     // Add controller to inventory. The controller always joins the overlay

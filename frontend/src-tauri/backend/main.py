@@ -28,6 +28,7 @@ from app.api.system import router as system_router
 from app.api.playbooks import router as playbooks_router
 from app.api.playbook_stream import router as playbook_stream_router
 from app.api.zerotier import router as zerotier_router
+from app.api.tailscale import router as tailscale_router
 from app.api.tokens import router as tokens_router
 from app.api.github import router as github_router
 from app.api.huggingface import router as huggingface_router
@@ -69,6 +70,7 @@ app.include_router(system_router)
 app.include_router(playbooks_router)
 app.include_router(playbook_stream_router)
 app.include_router(zerotier_router)
+app.include_router(tailscale_router)
 app.include_router(tokens_router)
 app.include_router(github_router)
 app.include_router(huggingface_router)
