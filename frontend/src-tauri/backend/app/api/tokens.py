@@ -138,10 +138,16 @@ async def save_configuration(config: Dict) -> TokenResponse:
             env_vars['GITHUB_TOKEN'] = config['githubToken']
         if config.get('hfToken'):
             env_vars['HF_TOKEN'] = config['hfToken']
+        if config.get('overlayProvider'):
+            env_vars['OVERLAY_PROVIDER'] = config['overlayProvider']
         if config.get('zerotierApiToken'):
             env_vars['ZEROTIER_API_TOKEN'] = config['zerotierApiToken']
         if config.get('zerotierNetworkId'):
             env_vars['ZEROTIER_NETWORK_ID'] = config['zerotierNetworkId']
+        if config.get('tailscaleAuthKey'):
+            env_vars['TAILSCALE_AUTH_KEY'] = config['tailscaleAuthKey']
+        if config.get('tailscaleApiToken'):
+            env_vars['TAILSCALE_API_TOKEN'] = config['tailscaleApiToken']
         if config.get('githubOrg'):
             env_vars['GITHUB_ORG'] = config['githubOrg']
         if config.get('clusterName'):
@@ -174,10 +180,16 @@ async def load_configuration() -> Dict:
             config['githubToken'] = env_vars['GITHUB_TOKEN']
         if 'HF_TOKEN' in env_vars:
             config['hfToken'] = env_vars['HF_TOKEN']
+        if 'OVERLAY_PROVIDER' in env_vars:
+            config['overlayProvider'] = env_vars['OVERLAY_PROVIDER']
         if 'ZEROTIER_API_TOKEN' in env_vars:
             config['zerotierApiToken'] = env_vars['ZEROTIER_API_TOKEN']
         if 'ZEROTIER_NETWORK_ID' in env_vars:
             config['zerotierNetworkId'] = env_vars['ZEROTIER_NETWORK_ID']
+        if 'TAILSCALE_AUTH_KEY' in env_vars:
+            config['tailscaleAuthKey'] = env_vars['TAILSCALE_AUTH_KEY']
+        if 'TAILSCALE_API_TOKEN' in env_vars:
+            config['tailscaleApiToken'] = env_vars['TAILSCALE_API_TOKEN']
         if 'GITHUB_ORG' in env_vars:
             config['githubOrg'] = env_vars['GITHUB_ORG']
         if 'CLUSTER_NAME' in env_vars:
@@ -204,11 +216,13 @@ async def check_tokens() -> Dict[str, bool]:
         return {
             "cloudflare": "CLOUDFLARE_TOKEN" in env_vars,
             "github": "GITHUB_TOKEN" in env_vars,
-            "zerotier": "ZEROTIER_TOKEN" in env_vars or "ZEROTIER_API_TOKEN" in env_vars
+            "zerotier": "ZEROTIER_TOKEN" in env_vars or "ZEROTIER_API_TOKEN" in env_vars,
+            "tailscale": "TAILSCALE_AUTH_KEY" in env_vars and "TAILSCALE_API_TOKEN" in env_vars,
         }
     except Exception:
         return {
             "cloudflare": False,
             "github": False,
-            "zerotier": False
+            "zerotier": False,
+            "tailscale": False,
         }
