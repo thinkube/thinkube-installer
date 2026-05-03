@@ -83,22 +83,16 @@ Pure rename, lands first. Both repos in lockstep.
 - **1.3** Rename in `30_networking/10_setup_zerotier.yaml`,
   `11_setup_tailscale.yaml`, `25_configure_remote_controller.yaml`.
 - **1.4** Rename in `30_networking/README.md`.
-- **1.5** Add backward-compat shim at top of `k8s/10_install_k8s.yaml`:
-  if old `metallb_ip_*_octet` defined and new ones aren't, alias with
-  deprecation warning.
 
 **`thinkube-installer` repo:**
 
-- **1.6** Rename in `frontend/src/utils/inventoryGenerator.js`
+- **1.5** Rename in `frontend/src/utils/inventoryGenerator.js`
   (`metallbStartOctet` → `lbStartOctet`, etc.). Output `lb_ip_*_octet`
   to inventory.
-- **1.7** Rename in `frontend/src/pages/network-configuration.tsx` —
+- **1.6** Rename in `frontend/src/pages/network-configuration.tsx` —
   state fields, labels updated to "Cilium load balancer IP range".
-- **1.8** Rename in any backend reference (`configuration.py`,
+- **1.7** Rename in any backend reference (`configuration.py`,
   `tokens.py` — quick grep first).
-- **1.9** Migration shim in inventory generator: if
-  `localStorage["thinkube-config"]` has the old field, copy to the new
-  one on load.
 
 **Validation:** ZeroTier dry-run still produces a working deploy.
 
@@ -357,12 +351,10 @@ earlier work stays.)
   No CoreDNS changes were made.
 - **7.4** Reinstall test: tear down, redeploy from same `~/.env`, all
   four Tailscale credentials persist.
-- **7.5** Backward-compat: existing ZeroTier inventory using
-  `metallb_ip_start_octet` still deploys via Phase 1.5 alias.
-- **7.6** OAuth client expiration: confirm operator continues working
+- **7.5** OAuth client expiration: confirm operator continues working
   past 90 days (sanity check that we're not accidentally using the API
   token for the operator).
-- **7.7** UI guidance walkthrough: validate that a user who has never
+- **7.6** UI guidance walkthrough: validate that a user who has never
   set up the operator before can complete the OAuth client creation
   using only the on-screen instructions (no external docs).
 

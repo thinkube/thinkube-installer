@@ -93,8 +93,8 @@ export function generateDynamicInventory() {
         network_mode: 'overlay',
         
         // Cilium load balancer IP range (k8s-snap built-in load balancer)
-        lb_ip_start_octet: (networkConfig.lbStartOctet || networkConfig.metallbStartOctet) || "200",
-        lb_ip_end_octet: (networkConfig.lbEndOctet || networkConfig.metallbEndOctet) || "210",
+        lb_ip_start_octet: networkConfig.lbStartOctet || "200",
+        lb_ip_end_octet: networkConfig.lbEndOctet || "210",
         
         // Kubernetes configuration (will be configured later with k8s-snap)
         

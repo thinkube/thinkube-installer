@@ -689,19 +689,9 @@ export default function NetworkConfigurationPage() {
       const savedConfig = sessionStorage.getItem("networkConfiguration");
       if (savedConfig) {
         const parsed = JSON.parse(savedConfig);
-        // Migration: an earlier installer release saved metallbStartOctet /
-        // metallbEndOctet. Copy them to the new lb* names if present so the
-        // page restores cleanly across installer upgrades.
-        const nc = parsed.networkConfig || {};
-        if (nc.metallbStartOctet && !nc.lbStartOctet) {
-          nc.lbStartOctet = nc.metallbStartOctet;
-        }
-        if (nc.metallbEndOctet && !nc.lbEndOctet) {
-          nc.lbEndOctet = nc.metallbEndOctet;
-        }
         const currentOverlayCIDR = networkConfig.overlayCIDR;
         const currentLocalCIDR = networkConfig.cidr;
-        setNetworkConfig({ ...networkConfig, ...nc });
+        setNetworkConfig({ ...networkConfig, ...parsed.networkConfig });
 
         setNetworkConfig((prev) => ({
           ...prev,
