@@ -1022,6 +1022,69 @@ async def verify_zerotier(request: Dict[str, Any]):
         return {"valid": False, "message": f"Verification error: {str(e)}"}
 
 
+@router.post("/verify-tailscale")
+async def verify_tailscale(request: Dict[str, Any]):
+    """Verify Tailscale API access token and pre-auth key."""
+    try:
+        api_token = (request.get('api_token') or '').strip()
+        auth_key = (request.get('auth_key') or '').strip()
+
+        if not api_token or not auth_key:
+            return {"valid": False, "message": "API token and auth key are required"}
+
+        # Auth keys look like: tskey-auth-<keyID>-<secret>
+        if not auth_key.startswith("tskey-auth-"):
+            return {"valid": False, "message": "Auth key must start with 'tskey-auth-'"}
+
+        key_parts = auth_key.split("-")
+        if len(key_parts) < 4 or not key_parts[2]:
+            return {"valid": False, "message": "Auth key format is invalid"}
+        key_id = key_parts[2]
+
+        import aiohttp
+        headers = {"Authorization": f"Bearer {api_token}"}
+        async with aiohttp.ClientSession() as session:
+            # 1. Validate the API access token against the default tailnet ("-").
+            async with session.get(
+                "https://api.tailscale.com/api/v2/tailnet/-/devices",
+                headers=headers,
+            ) as token_resp:
+                if token_resp.status == 401:
+                    return {"valid": False, "message": "Invalid API access token"}
+                if token_resp.status == 403:
+                    return {"valid": False, "message": "API token lacks permission for this tailnet"}
+                if token_resp.status >= 400:
+                    return {"valid": False, "message": f"Tailscale API error: {token_resp.status}"}
+
+            # 2. Look up the auth key by its ID to confirm it exists and is usable.
+            async with session.get(
+                f"https://api.tailscale.com/api/v2/tailnet/-/keys/{key_id}",
+                headers=headers,
+            ) as key_resp:
+                if key_resp.status == 404:
+                    return {"valid": False, "message": "Auth key not found in this tailnet"}
+                if key_resp.status == 403:
+                    # Token works but lacks keys:read scope — accept with a soft note.
+                    return {
+                        "valid": True,
+                        "message": "API token verified (auth key scope unavailable, format OK)",
+                    }
+                if key_resp.status >= 400:
+                    return {"valid": False, "message": f"Tailscale API error: {key_resp.status}"}
+
+                key_data = await key_resp.json()
+                if key_data.get("revoked"):
+                    return {"valid": False, "message": "Auth key has been revoked"}
+                if key_data.get("invalid"):
+                    return {"valid": False, "message": "Auth key is invalid or expired"}
+
+                return {"valid": True, "message": "Tailscale credentials verified"}
+
+    except Exception as e:
+        logger.error(f"Failed to verify Tailscale credentials: {e}")
+        return {"valid": False, "message": f"Verification error: {str(e)}"}
+
+
 @router.get("/system/check-inventory")
 async def check_inventory():
     """Check if inventory.yaml exists and return its content"""
