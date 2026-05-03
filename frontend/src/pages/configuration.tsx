@@ -1077,7 +1077,7 @@ export default function Configuration() {
                               (the policy-file definition is{' '}
                               {tailscaleVerified
                                 ? 'in place'
-                                : 'put in place once your API token verifies'}
+                                : 'put in place when you click Verify on the API access token above — do that first or the tag won\'t appear in Tailscale\'s tag picker'}
                               )
                             </span>
                           </li>
@@ -1101,16 +1101,7 @@ export default function Configuration() {
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           setConfig({ ...config, tailscaleOauthClientId: e.target.value })
                         }
-                        disabled={!tailscaleVerified}
-                        title={
-                          tailscaleVerified
-                            ? ''
-                            : 'Verify your API access token first — that step prepares your tailnet policy file.'
-                        }
-                        className={cn(
-                          errors.tailscaleOauthClient && 'border-destructive',
-                          !tailscaleVerified && 'opacity-50 cursor-not-allowed',
-                        )}
+                        className={cn(errors.tailscaleOauthClient && 'border-destructive')}
                       />
                     </div>
 
@@ -1128,21 +1119,13 @@ export default function Configuration() {
                               tailscaleOauthClientSecret: e.target.value,
                             })
                           }
-                          disabled={!tailscaleVerified}
-                          title={
-                            tailscaleVerified
-                              ? ''
-                              : 'Verify your API access token first — that step prepares your tailnet policy file.'
-                          }
                           className={cn(
                             'pr-24',
                             errors.tailscaleOauthClient && 'border-destructive',
-                            !tailscaleVerified && 'opacity-50 cursor-not-allowed',
                           )}
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
-                          {tailscaleVerified &&
-                            config.tailscaleOauthClientId &&
+                          {config.tailscaleOauthClientId &&
                             config.tailscaleOauthClientSecret && (
                               <TkButton
                                 type="button"
@@ -1167,7 +1150,6 @@ export default function Configuration() {
                             size="sm"
                             className="h-auto p-1"
                             onClick={() => setShowTailscaleOauthSecret(!showTailscaleOauthSecret)}
-                            disabled={!tailscaleVerified}
                           >
                             {showTailscaleOauthSecret ? (
                               <EyeOff className="h-4 w-4 text-muted-foreground" />
