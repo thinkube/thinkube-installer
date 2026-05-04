@@ -548,18 +548,24 @@ export default function OverlayCredentials() {
                 <TkAlertDescription>
                   <ol className="text-xs space-y-2 list-decimal pl-4">
                     <li>
-                      Open{" "}
+                      In the Tailscale admin console go to{" "}
+                      <strong>Settings → Trust Credentials</strong>{" "}
+                      (
                       <a
                         href="https://login.tailscale.com/admin/settings/oauth"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                       >
-                        Tailscale Admin → Trust credentials
+                        direct link
                       </a>
-                      .
+                      ).
                     </li>
-                    <li>Click <strong>+ Credential → OAuth client</strong>.</li>
+                    <li>
+                      Click <strong>+ Credential</strong>, choose{" "}
+                      <strong>OAuth</strong>, then click{" "}
+                      <strong>Continue</strong>.
+                    </li>
                     <li>
                       On the scopes screen, leave the dropdown on{" "}
                       <strong>Custom</strong> and check:
