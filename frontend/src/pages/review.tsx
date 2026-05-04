@@ -245,7 +245,7 @@ export default function Review() {
                 Overlay Provider
               </p>
               <p className="font-semibold capitalize">
-                {config.overlayProvider || "zerotier"}
+                {config.overlayProvider}
               </p>
             </div>
           </div>

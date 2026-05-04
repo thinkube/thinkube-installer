@@ -631,7 +631,12 @@ export default function NetworkConfigurationPage() {
       const serverNetworkInfo: ServerNetworkInfo[] = JSON.parse(
         sessionStorage.getItem("serverNetworkInfo") || "[]"
       );
-      const savedProvider = sessionStorage.getItem("overlayProvider") || "zerotier";
+      const savedProvider = sessionStorage.getItem("overlayProvider");
+      if (!savedProvider) {
+        throw new Error(
+          "Overlay provider not selected — go back to the overlay credentials screen.",
+        );
+      }
       setOverlayProvider(savedProvider);
 
       const serversToUse =

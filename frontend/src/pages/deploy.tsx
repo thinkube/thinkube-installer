@@ -191,7 +191,12 @@ export default function Deploy() {
     })
 
     // Phase 2: Networking — overlay routing setup (provider-specific)
-    const overlayProvider = config.overlayProvider || 'zerotier'
+    const overlayProvider = config.overlayProvider as 'zerotier' | 'tailscale' | undefined
+    if (!overlayProvider) {
+      throw new Error(
+        'Overlay provider missing from saved configuration — re-run the wizard.',
+      )
+    }
 
     if (overlayProvider === 'zerotier') {
       queue.push({

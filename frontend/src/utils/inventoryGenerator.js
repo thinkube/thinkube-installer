@@ -36,7 +36,12 @@ export function generateDynamicInventory() {
   }
   
   // Overlay provider credential validation
-  const overlayProvider = config.overlayProvider || 'zerotier'
+  const overlayProvider = config.overlayProvider
+  if (!overlayProvider) {
+    throw new Error(
+      'Overlay provider missing from saved configuration — re-run the wizard.',
+    )
+  }
   if (overlayProvider === 'zerotier') {
     if (!config.zerotierNetworkId) {
       throw new Error('ZeroTier network ID is required.')
@@ -261,14 +266,19 @@ export function generateDynamicInventory() {
     // playbooks can advertise it. Tailscale: ssh over the LAN (we don't
     // know the tailnet IP until the node joins) and skip overlay_ip — the
     // tailnet IP is auto-assigned and discovered at runtime.
+    if (overlayProvider === 'zerotier' && !server.overlayIP) {
+      throw new Error(
+        `Overlay IP missing for ${hostname} — go back to the network configuration screen.`,
+      )
+    }
     const serverDef = {
       ansible_host:
-        overlayProvider === 'zerotier' ? (server.overlayIP || server.ip) : server.ip,
+        overlayProvider === 'zerotier' ? server.overlayIP : server.ip,
       lan_ip: server.ip || server.localIP || '',
       arch: normalizedArch,
     }
     if (overlayProvider === 'zerotier') {
-      serverDef.overlay_ip = server.overlayIP || server.ip
+      serverDef.overlay_ip = server.overlayIP
     }
 
     // Special handling for local connection

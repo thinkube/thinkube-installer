@@ -47,7 +47,12 @@ export default function OverlaySetup() {
   const providerLabel = overlayProvider === "zerotier" ? "ZeroTier" : "Tailscale"
 
   useEffect(() => {
-    const provider = (sessionStorage.getItem("overlayProvider") || "zerotier") as OverlayProvider
+    const provider = sessionStorage.getItem("overlayProvider") as OverlayProvider | null
+    if (!provider) {
+      throw new Error(
+        "Overlay provider not selected — go back to the overlay credentials screen.",
+      )
+    }
     setOverlayProvider(provider)
 
     const discoveredServers = JSON.parse(sessionStorage.getItem("discoveredServers") || "[]")

@@ -22,7 +22,12 @@ export function generateOverlayInventory() {
     throw new Error('No servers discovered. Please complete server discovery first.')
   }
 
-  const provider = sessionStorage.getItem('overlayProvider') || 'zerotier'
+  const provider = sessionStorage.getItem('overlayProvider')
+  if (!provider) {
+    throw new Error(
+      'Overlay provider not selected — go back to the overlay credentials screen.',
+    )
+  }
   const ansibleUser = sessionStorage.getItem('systemUsername') || 'ubuntu'
   const config = JSON.parse(localStorage.getItem('thinkube-config') || '{}')
   const ipAllocations = JSON.parse(sessionStorage.getItem('overlayIpAllocations') || '{}')

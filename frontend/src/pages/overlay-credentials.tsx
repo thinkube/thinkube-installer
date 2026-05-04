@@ -80,8 +80,6 @@ export default function OverlayCredentials() {
   // saved values, regardless of which provider was selected first.
   useEffect(() => {
     const hydrate = async () => {
-      const provider = (sessionStorage.getItem("overlayProvider") || "zerotier") as OverlayProvider
-      setOverlayProvider(provider)
       setClusterName(sessionStorage.getItem("clusterName") || "")
 
       // ~/.env is the durable store the installer writes credentials into.
@@ -97,6 +95,16 @@ export default function OverlayCredentials() {
       }
       const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
       const merged = { ...envCfg, ...localCfg }
+
+      // Provider preference comes from (in order): the in-progress wizard
+      // run (sessionStorage), then the durable store (localStorage / env).
+      // Only fall back to "zerotier" as the initial UI state for a brand-
+      // new install — never silently flip a returning Tailscale user.
+      const sessionProvider = sessionStorage.getItem("overlayProvider") as OverlayProvider | null
+      const provider: OverlayProvider =
+        sessionProvider || (merged.overlayProvider as OverlayProvider) || "zerotier"
+      setOverlayProvider(provider)
+      sessionStorage.setItem("overlayProvider", provider)
 
       setZt({
         networkId: merged.zerotierNetworkId || "",
