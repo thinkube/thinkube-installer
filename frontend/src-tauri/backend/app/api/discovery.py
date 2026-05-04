@@ -35,6 +35,81 @@ GPU_FALLBACK_NAMES = {
 }
 
 
+async def detect_lvm_status(
+    ip_address: str,
+    username: str,
+    password: str = None,
+    is_local: bool = False,
+) -> dict:
+    """Detect whether the node's root LV can be grown into free VG space.
+
+    Mirrors thinkube-control's add-node detect_lvm_status (requires sudo
+    to query vgs/lvs). Returns {lvm_expandable, lvm_free_gb, lvm_lv_path}.
+    No-op result when root isn't on LVM, the volume group is already full,
+    or the probe fails.
+    """
+    if not password:
+        # Without sudo we can't run vgs/lvs reliably; skip.
+        return {"lvm_expandable": False, "lvm_free_gb": 0, "lvm_lv_path": ""}
+
+    probe = f"""set -e
+echo '{password}' | sudo -S bash -c '
+root_dev=$(df / 2>/dev/null | tail -1 | awk "{{print \\$1}}")
+if echo "$root_dev" | grep -q "/dev/mapper/"; then
+  vg_name=$(lvs --noheadings -o vg_name "$root_dev" 2>/dev/null | tr -d " ")
+  if [ -n "$vg_name" ]; then
+    vg_free=$(vgs --noheadings --nosuffix --units g -o vg_free "$vg_name" 2>/dev/null | tr -d " " | cut -d. -f1)
+    lv_path=$(lvs --noheadings -o lv_path "$root_dev" 2>/dev/null | tr -d " ")
+    echo "$vg_free $lv_path"
+  fi
+fi
+' 2>/dev/null
+"""
+
+    try:
+        if is_local:
+            process = await asyncio.create_subprocess_shell(
+                probe,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(process.communicate(), timeout=20)
+        else:
+            ssh_cmd = [
+                "sshpass", "-p", password,
+                "ssh", "-o", "ConnectTimeout=10",
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "UserKnownHostsFile=/dev/null",
+                "-o", "PreferredAuthentications=password",
+                "-o", "PubkeyAuthentication=no",
+                f"{username}@{ip_address}",
+                "bash -s",
+            ]
+            process = await asyncio.create_subprocess_exec(
+                *ssh_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, _ = await asyncio.wait_for(
+                process.communicate(input=probe.encode()),
+                timeout=20,
+            )
+
+        parts = stdout.decode().strip().split()
+        if len(parts) >= 2 and parts[0].isdigit():
+            free_gb = int(parts[0])
+            return {
+                "lvm_expandable": free_gb > 10,
+                "lvm_free_gb": free_gb,
+                "lvm_lv_path": parts[1],
+            }
+    except Exception as exc:
+        logger.warning(f"LVM detection failed for {ip_address}: {exc}")
+
+    return {"lvm_expandable": False, "lvm_free_gb": 0, "lvm_lv_path": ""}
+
+
 async def get_real_hardware_info(ip_address: str, username: str = "thinkube", password: str = None):
     """Get actual hardware information via SSH commands"""
     
@@ -306,8 +381,17 @@ echo "}"
             "architecture": raw_data.get("architecture", "unknown"),
             "nvidia_driver_installed": raw_data.get("nvidia_driver_installed", False),
             "nvidia_driver_version": raw_data.get("nvidia_driver_version", ""),
-            "driver_status": "none"  # Will be set below: compatible/old/missing/none
+            "driver_status": "none",  # Will be set below: compatible/old/missing/none
+            "lvm_expandable": False,
+            "lvm_free_gb": 0,
+            "lvm_lv_path": "",
         }
+
+        # Detect LVM volume group free space (requires sudo). Same approach
+        # as thinkube-control's add-node flow — flag when the root LV uses
+        # only a fraction of its volume group so the deploy can grow it.
+        lvm_status = await detect_lvm_status(ip_address, username, password, is_local)
+        hardware_info.update(lvm_status)
         
         # Process GPU information
         nvidia_gpus = []

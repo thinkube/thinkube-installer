@@ -166,6 +166,16 @@ export default function Deploy() {
       name: 'ansible/00_initial_setup/20_setup_env.yaml'
     })
 
+    // Reclaim the rest of the disk on Ubuntu Server LVM installs (the
+    // default root LV is ~100 GB regardless of disk size). No-op when
+    // root isn't on LVM or the VG is already fully allocated.
+    queue.push({
+      id: 'expand-lvm',
+      phase: 'initial',
+      title: 'Expanding LVM root volume to use full disk',
+      name: 'ansible/00_initial_setup/15_expand_lvm.yaml'
+    })
+
     queue.push({
       id: 'python-setup',
       phase: 'initial',
@@ -508,6 +518,7 @@ export default function Deploy() {
     const rollbackMap: Record<string, string> = {
       // Initial setup - no rollback
       'env-setup': null,
+      'expand-lvm': null,
       'python-setup': null,
       'github-cli': null,
       'zerotier-setup': null,

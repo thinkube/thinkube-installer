@@ -37,6 +37,9 @@ interface Hardware {
   nvidia_driver_version?: string
   driver_status?: "compatible" | "old" | "missing"
   architecture?: string
+  lvm_expandable?: boolean
+  lvm_free_gb?: number
+  lvm_lv_path?: string
 }
 
 interface Network {
@@ -328,6 +331,18 @@ export default function HardwareDetection() {
                       />
                     )}
                   </div>
+                )}
+
+                {/* LVM Expansion Notice */}
+                {server.hardware?.lvm_expandable && (
+                  <TkAlert className="mt-4 bg-warning/10 text-warning border-warning/20">
+                    <Info className="h-5 w-5" />
+                    <TkAlertDescription>
+                      Root volume uses only {Math.round(server.hardware.disk_gb)} GB
+                      — {server.hardware.lvm_free_gb} GB available in the volume
+                      group. Will be expanded automatically during installation.
+                    </TkAlertDescription>
+                  </TkAlert>
                 )}
 
                 {/* Detection Error */}
