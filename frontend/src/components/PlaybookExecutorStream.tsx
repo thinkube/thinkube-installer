@@ -81,6 +81,21 @@ export const PlaybookExecutorStream = forwardRef<PlaybookExecutorRef, PlaybookEx
     const websocketRef = useRef<WebSocket | null>(null)
     const startTimeRef = useRef<number>(0)
 
+    // Idle detection: track when we last received WebSocket output and
+    // tick `now` every 5s so the UI can render "no output for X seconds"
+    // when an SSH session wedges or the remote stops emitting progress.
+    // The ansible.cfg now uses ServerAliveInterval=15 so a real wedge
+    // dies in ~45s, but sometimes a single task is just genuinely slow
+    // (large image pulls, k8s waits) — surfacing the silence lets the
+    // user tell "still running" from "stuck".
+    const lastOutputAtRef = useRef<number>(Date.now())
+    const [now, setNow] = useState<number>(Date.now())
+    useEffect(() => {
+      if (!isExecuting) return
+      const id = window.setInterval(() => setNow(Date.now()), 5000)
+      return () => window.clearInterval(id)
+    }, [isExecuting])
+
     // Task summary - track unique tasks rather than host executions
     const [taskSummary, setTaskSummary] = useState<TaskSummary>({
       total: 0,
@@ -131,6 +146,8 @@ ${logOutput.map(log => log.message).join('\n')}`
       setTaskSummary({ total: 0, ok: 0, changed: 0, skipped: 0, failed: 0 })
       seenTasksRef.current = new Set()
       startTimeRef.current = Date.now()
+      lastOutputAtRef.current = Date.now()
+      setNow(Date.now())
 
       // Connect WebSocket
       connectWebSocket(params)
@@ -335,6 +352,9 @@ ${logOutput.map(log => log.message).join('\n')}`
         task_number: data.task_number
       }
 
+      // Refresh the silence timer on every message we receive.
+      lastOutputAtRef.current = Date.now()
+
       // Update ref synchronously
       logOutputRef.current = [...logOutputRef.current, newLogEntry]
 
@@ -523,6 +543,19 @@ ${logOutput.map(log => log.message).join('\n')}`
                     <span className="text-sm text-muted-foreground">Task {taskCount}</span>
                   )}
                 </div>
+                {(() => {
+                  const idleSec = Math.floor((now - lastOutputAtRef.current) / 1000)
+                  if (idleSec < 60) return null
+                  const mins = Math.floor(idleSec / 60)
+                  const secs = idleSec % 60
+                  const pretty = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+                  return (
+                    <div className="text-xs text-warning mt-1">
+                      No output for {pretty} — task may be doing slow work
+                      (image pull, k8s wait) or the SSH session may be stuck.
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
