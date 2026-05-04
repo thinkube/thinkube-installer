@@ -18,7 +18,6 @@ import {
   EyeOff,
   Loader2,
   CheckCircle2,
-  AlertTriangle,
   Package,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -486,8 +485,7 @@ export default function Configuration() {
             <TkCardTitle>GitHub Integration (Required)</TkCardTitle>
           </TkCardHeader>
           <TkCardContent>
-            <TkAlert className="mb-4 bg-warning/10 border-warning text-warning">
-              <AlertTriangle className="h-4 w-4" />
+            <TkAlert className="mb-4">
               <TkAlertDescription>
                 GitHub access is required for Thinkube core components. Many services depend on Git repositories for configuration and deployment.
               </TkAlertDescription>

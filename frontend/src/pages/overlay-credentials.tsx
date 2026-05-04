@@ -77,22 +77,38 @@ export default function OverlayCredentials() {
 
   // Hydrate from previous step + persisted values.
   useEffect(() => {
-    const provider = (sessionStorage.getItem("overlayProvider") || "zerotier") as OverlayProvider
-    setOverlayProvider(provider)
-    setClusterName(sessionStorage.getItem("clusterName") || "")
+    const hydrate = async () => {
+      const provider = (sessionStorage.getItem("overlayProvider") || "zerotier") as OverlayProvider
+      setOverlayProvider(provider)
+      setClusterName(sessionStorage.getItem("clusterName") || "")
 
-    const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
-    if (provider === "zerotier") {
-      setZt({
-        networkId: localCfg.zerotierNetworkId || "",
-        apiToken: localCfg.zerotierApiToken || "",
-      })
-    } else {
-      setTs({
-        authKey: localCfg.tailscaleAuthKey || "",
-        apiToken: localCfg.tailscaleApiToken || "",
-      })
+      // ~/.env is the durable store the installer writes credentials into.
+      // localStorage holds the in-progress wizard state. Read the env first
+      // (so reinstalls / fresh wizard runs don't re-prompt), then layer
+      // localStorage on top in case the user has unsaved edits.
+      let envCfg: any = {}
+      try {
+        const resp = await axios.get("/api/load-configuration")
+        if (resp.data.exists) envCfg = resp.data.config
+      } catch {
+        /* load is optional */
+      }
+      const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
+      const merged = { ...envCfg, ...localCfg }
+
+      if (provider === "zerotier") {
+        setZt({
+          networkId: merged.zerotierNetworkId || "",
+          apiToken: merged.zerotierApiToken || "",
+        })
+      } else {
+        setTs({
+          authKey: merged.tailscaleAuthKey || "",
+          apiToken: merged.tailscaleApiToken || "",
+        })
+      }
     }
+    hydrate()
   }, [])
 
   // Reset verification state when credentials change.

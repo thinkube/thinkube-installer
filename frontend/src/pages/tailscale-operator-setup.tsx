@@ -42,14 +42,27 @@ export default function TailscaleOperatorSetup() {
   const [copiedTag, setCopiedTag] = useState(false)
   const [continueError, setContinueError] = useState("")
 
-  // Hydrate. The user got here from /overlay-network in Tailscale mode, so
-  // tag:k8s-operator + tag:k8s are already in their tailnet's policy file.
+  // Hydrate. The user got here from /overlay-credentials in Tailscale mode,
+  // so tag:k8s-operator + tag:k8s are already in their tailnet's policy
+  // file. Pull persisted credentials from ~/.env (durable) and overlay
+  // any in-progress wizard edits from localStorage.
   useEffect(() => {
-    setClusterName(sessionStorage.getItem("clusterName") || "")
-    const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
-    setOauthClientId(localCfg.tailscaleOauthClientId || "")
-    setOauthClientSecret(localCfg.tailscaleOauthClientSecret || "")
-    setGatewayHostname(localCfg.gatewayHostname || "")
+    const hydrate = async () => {
+      setClusterName(sessionStorage.getItem("clusterName") || "")
+      let envCfg: any = {}
+      try {
+        const resp = await axios.get("/api/load-configuration")
+        if (resp.data.exists) envCfg = resp.data.config
+      } catch {
+        /* load is optional */
+      }
+      const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
+      const merged = { ...envCfg, ...localCfg }
+      setOauthClientId(merged.tailscaleOauthClientId || "")
+      setOauthClientSecret(merged.tailscaleOauthClientSecret || "")
+      setGatewayHostname(merged.gatewayHostname || "")
+    }
+    hydrate()
   }, [])
 
   // Reset verification when credentials change.
