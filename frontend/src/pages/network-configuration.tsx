@@ -746,11 +746,17 @@ export default function NetworkConfigurationPage() {
                   <TkLabel>
                     Overlay Network CIDR
                     <span className="text-xs text-muted-foreground ml-2">
-                      Remote access network
+                      {overlayProvider === "tailscale"
+                        ? "Auto-assigned by Tailscale (100.64.0.0/10)"
+                        : "Remote access network"}
                     </span>
                   </TkLabel>
                   <TkInput
-                    value={networkConfig.overlayCIDR}
+                    value={
+                      overlayProvider === "tailscale"
+                        ? "100.64.0.0/10"
+                        : networkConfig.overlayCIDR
+                    }
                     readOnly
                     className="bg-muted"
                   />
@@ -758,14 +764,14 @@ export default function NetworkConfigurationPage() {
 
                 <div className="space-y-2">
                   <TkLabel>
-                    Kubernetes Cluster CIDR
+                    Node Network CIDR
                     <span className="text-xs text-muted-foreground ml-2">
-                      Node network
+                      Local LAN where the cluster nodes live
                     </span>
                   </TkLabel>
                   <TkInput
                     value={networkConfig.cidr}
-                    placeholder="10.0.0.0/24"
+                    placeholder="192.168.1.0/24"
                     readOnly
                     className="bg-muted"
                     title="Auto-detected from cluster nodes"
