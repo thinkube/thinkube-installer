@@ -29,6 +29,7 @@ import InstallationPage from './pages/installation';
 import CompletePage from './pages/complete';
 import OverlaySetupPage from './pages/overlay-setup';
 import OverlayCredentialsPage from './pages/overlay-credentials';
+import TailscaleOperatorSetupPage from './pages/tailscale-operator-setup';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
           <Route path="/network-configuration" element={<NetworkConfigurationPage />} />
           <Route path="/configuration" element={<ConfigurationPage />} />
           <Route path="/overlay-credentials" element={<OverlayCredentialsPage />} />
+          <Route path="/tailscale-operator-setup" element={<TailscaleOperatorSetupPage />} />
           <Route path="/overlay-setup" element={<OverlaySetupPage />} />
           <Route path="/ssh-setup" element={<SshSetupPage />} />
           <Route path="/gpu-driver-check" element={<GpuDriverCheckPage />} />
