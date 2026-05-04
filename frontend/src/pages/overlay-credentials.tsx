@@ -75,7 +75,9 @@ export default function OverlayCredentials() {
   const [continuing, setContinuing] = useState(false)
   const [continueError, setContinueError] = useState("")
 
-  // Hydrate from previous step + persisted values.
+  // Hydrate from previous step + persisted values. Load BOTH providers'
+  // credentials so switching the provider toggle immediately reveals the
+  // saved values, regardless of which provider was selected first.
   useEffect(() => {
     const hydrate = async () => {
       const provider = (sessionStorage.getItem("overlayProvider") || "zerotier") as OverlayProvider
@@ -96,17 +98,14 @@ export default function OverlayCredentials() {
       const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
       const merged = { ...envCfg, ...localCfg }
 
-      if (provider === "zerotier") {
-        setZt({
-          networkId: merged.zerotierNetworkId || "",
-          apiToken: merged.zerotierApiToken || "",
-        })
-      } else {
-        setTs({
-          authKey: merged.tailscaleAuthKey || "",
-          apiToken: merged.tailscaleApiToken || "",
-        })
-      }
+      setZt({
+        networkId: merged.zerotierNetworkId || "",
+        apiToken: merged.zerotierApiToken || "",
+      })
+      setTs({
+        authKey: merged.tailscaleAuthKey || "",
+        apiToken: merged.tailscaleApiToken || "",
+      })
     }
     hydrate()
   }, [])
