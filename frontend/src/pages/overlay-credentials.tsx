@@ -12,7 +12,15 @@ import {
   TkCardTitle,
 } from "thinkube-style/components/cards-data"
 import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
-import { TkInput, TkLabel } from "thinkube-style/components/forms-inputs"
+import {
+  TkInput,
+  TkLabel,
+  TkSelect,
+  TkSelectContent,
+  TkSelectItem,
+  TkSelectTrigger,
+  TkSelectValue,
+} from "thinkube-style/components/forms-inputs"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
 import {
@@ -309,7 +317,40 @@ export default function OverlayCredentials() {
   }
 
   return (
-    <TkPageWrapper title="Overlay Network Credentials">
+    <TkPageWrapper title="Overlay Network">
+      <TkCard className="mb-6">
+        <TkCardHeader>
+          <TkCardTitle>Overlay Network Provider</TkCardTitle>
+        </TkCardHeader>
+        <TkCardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Choose how cluster nodes will be connected. The choice drives
+            which credentials you fill in below.
+          </p>
+          <TkSelect
+            value={overlayProvider}
+            onValueChange={(value: string) => {
+              const next = value as OverlayProvider
+              setOverlayProvider(next)
+              sessionStorage.setItem("overlayProvider", next)
+            }}
+          >
+            <TkSelectTrigger id="overlayProviderSelect">
+              <TkSelectValue />
+            </TkSelectTrigger>
+            <TkSelectContent>
+              <TkSelectItem value="zerotier">ZeroTier</TkSelectItem>
+              <TkSelectItem value="tailscale">Tailscale</TkSelectItem>
+            </TkSelectContent>
+          </TkSelect>
+          <p className="text-xs text-muted-foreground">
+            {overlayProvider === "zerotier"
+              ? "ZeroTier: software-defined networking with centralized control."
+              : "Tailscale: WireGuard-based mesh VPN (recommended for DGX Spark)."}
+          </p>
+        </TkCardContent>
+      </TkCard>
+
       {overlayProvider === "zerotier" && (
         <TkCard className="mb-6">
           <TkCardHeader>

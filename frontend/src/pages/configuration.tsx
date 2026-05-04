@@ -12,13 +12,6 @@ import { TkLabel } from "thinkube-style/components/forms-inputs"
 import { TkButton } from "thinkube-style/components/buttons-badges"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
 import {
-  TkSelect,
-  TkSelectContent,
-  TkSelectItem,
-  TkSelectTrigger,
-  TkSelectValue,
-} from "thinkube-style/components/forms-inputs"
-import {
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -36,7 +29,6 @@ interface ConfigData {
   clusterName: string
   domainName: string
   cloudflareToken: string
-  overlayProvider: string
   githubToken: string
   githubOrg: string
   hfToken: string
@@ -58,7 +50,6 @@ export default function Configuration() {
     clusterName: 'thinkube',
     domainName: '',
     cloudflareToken: '',
-    overlayProvider: 'zerotier',
     githubToken: '',
     githubOrg: '',
     hfToken: ''
@@ -95,7 +86,6 @@ export default function Configuration() {
           setConfig(prev => ({
             ...prev,
             ...(savedConfig.cloudflareToken && { cloudflareToken: savedConfig.cloudflareToken }),
-            ...(savedConfig.overlayProvider && { overlayProvider: savedConfig.overlayProvider }),
             ...(savedConfig.githubToken && { githubToken: savedConfig.githubToken }),
             ...(savedConfig.githubOrg && { githubOrg: savedConfig.githubOrg }),
             ...(savedConfig.hfToken && { hfToken: savedConfig.hfToken }),
@@ -115,7 +105,6 @@ export default function Configuration() {
             ...prev,
             ...(parsed.domainName && { domainName: parsed.domainName }),
             ...(parsed.clusterName && { clusterName: parsed.clusterName }),
-            ...(parsed.overlayProvider && { overlayProvider: parsed.overlayProvider }),
           }))
         } catch (e) {
           // Ignore parse errors
@@ -337,7 +326,6 @@ export default function Configuration() {
       githubOrg: config.githubOrg,
       clusterName: config.clusterName,
       domainName: config.domainName,
-      overlayProvider: config.overlayProvider,
     }
 
     try {
@@ -351,16 +339,20 @@ export default function Configuration() {
     const systemUsername = sessionStorage.getItem('systemUsername')
 
     const configToSave: any = {
-      overlayProvider: config.overlayProvider,
       clusterName: config.clusterName,
       domainName: config.domainName,
       githubOrg: config.githubOrg,
       sudoPassword: sudoPassword,
       systemUsername: systemUsername,
     }
-    localStorage.setItem('thinkube-config', JSON.stringify(configToSave))
+    // Preserve any overlay-related fields written by /overlay-credentials so
+    // we don't clobber them when the user revisits this page.
+    const existingLocal = JSON.parse(localStorage.getItem('thinkube-config') || '{}')
+    localStorage.setItem(
+      'thinkube-config',
+      JSON.stringify({ ...existingLocal, ...configToSave }),
+    )
 
-    sessionStorage.setItem('overlayProvider', config.overlayProvider)
     sessionStorage.setItem('cloudflareToken', config.cloudflareToken)
     sessionStorage.setItem('domainName', config.domainName)
     sessionStorage.setItem('clusterName', config.clusterName)
@@ -487,50 +479,6 @@ export default function Configuration() {
             </div>
           </TkCardContent>
         </TkCard>
-
-        {/* Overlay Network Configuration */}
-        <TkCard className="mb-6">
-            <TkCardHeader>
-              <TkCardTitle>Overlay Network Configuration</TkCardTitle>
-            </TkCardHeader>
-            <TkCardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Configure overlay networking to connect distributed nodes securely over the internet.
-              </p>
-
-              <div className="space-y-2 mb-6">
-                <div className="flex items-center justify-between">
-                  <TkLabel htmlFor="overlayProvider">Overlay Network Provider</TkLabel>
-                  <span className="text-xs text-muted-foreground">Choose your preferred overlay network</span>
-                </div>
-                <TkSelect
-                  value={config.overlayProvider}
-                  onValueChange={(value: string) => setConfig({ ...config, overlayProvider: value })}
-                >
-                  <TkSelectTrigger id="overlayProvider">
-                    <TkSelectValue />
-                  </TkSelectTrigger>
-                  <TkSelectContent>
-                    <TkSelectItem value="zerotier">ZeroTier</TkSelectItem>
-                    <TkSelectItem value="tailscale">Tailscale</TkSelectItem>
-                  </TkSelectContent>
-                </TkSelect>
-                <p className="text-xs text-muted-foreground">
-                  {config.overlayProvider === 'zerotier'
-                    ? 'ZeroTier: Software-defined networking with centralized control'
-                    : 'Tailscale: WireGuard-based mesh VPN (recommended for DGX Spark)'}
-                </p>
-              </div>
-
-              <TkAlert>
-                <TkAlertDescription>
-                  You'll enter your{' '}
-                  {config.overlayProvider === 'zerotier' ? 'ZeroTier' : 'Tailscale'}{' '}
-                  credentials on the next screen.
-                </TkAlertDescription>
-              </TkAlert>
-            </TkCardContent>
-          </TkCard>
 
         {/* GitHub Integration */}
         <TkCard className="mb-6">
@@ -734,7 +682,7 @@ export default function Configuration() {
             type="submit"
             disabled={!isValid}
           >
-            Continue to Overlay Credentials
+            Continue to Overlay Network
             <ChevronRight className="w-5 h-5 ml-2" />
           </TkButton>
         </div>
