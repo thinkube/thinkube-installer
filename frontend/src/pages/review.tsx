@@ -106,7 +106,10 @@ export default function Review() {
             memory: node.memory || hwInfo?.hardware?.memory_gb || 0,
             disk: node.disk || hwInfo?.hardware?.disk_gb || 0,
             hasGPU: hwInfo?.hardware?.gpu_detected || false,
-            overlayIP: networkInfo?.overlayIP || networkInfo?.ip || "",
+            // Don't fall back to the LAN IP — overlay and local are
+            // distinct things. In Tailscale mode this is genuinely
+            // unknown until deploy; the renderer below handles that.
+            overlayIP: networkInfo?.overlayIP || "",
             localIP: networkInfo?.localIP || hwInfo?.network?.ip_address || ""
           }
 
@@ -286,14 +289,23 @@ export default function Review() {
 
                     {/* Network information */}
                     <div className="text-sm mt-2 space-y-1">
-                      {node.overlayIP && (
+                      {node.overlayIP ? (
                         <div>
                           <span className="text-muted-foreground">
                             Overlay:
                           </span>{" "}
                           <span className="font-mono">{node.overlayIP}</span>
                         </div>
-                      )}
+                      ) : config.overlayProvider === "tailscale" ? (
+                        <div>
+                          <span className="text-muted-foreground">
+                            Overlay:
+                          </span>{" "}
+                          <span className="italic text-muted-foreground">
+                            Auto-assigned by Tailscale at deploy
+                          </span>
+                        </div>
+                      ) : null}
                       {node.localIP && (
                         <div>
                           <span className="text-muted-foreground">Local:</span>{" "}

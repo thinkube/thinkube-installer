@@ -636,10 +636,19 @@ export default function NetworkConfigurationPage() {
             (n) => n.hostname === server.hostname
           );
 
+          // In Tailscale mode the overlay IP is assigned by the Tailscale
+          // daemon at deploy time, so leave it empty here. Falling back to
+          // the local LAN IP would mislead the user into thinking that
+          // address was their tailnet IP.
+          const initialOverlayIP =
+            savedProvider === "tailscale"
+              ? ""
+              : (server as any).overlayIP || server.ip || "";
+
           return {
             hostname: server.hostname || server.ip,
             ip: netInfo?.localIP || "",
-            overlayIP: (server as any).overlayIP || server.ip || "",
+            overlayIP: initialOverlayIP,
             localIP: netInfo?.localIP || "",
           };
         });
@@ -701,7 +710,9 @@ export default function NetworkConfigurationPage() {
         if (parsed.physicalServers) setPhysicalServers(parsed.physicalServers);
       }
 
-      if (networkConfig.overlayCIDR) {
+      // Pre-assigning overlay IPs only makes sense in ZeroTier mode —
+      // Tailscale assigns its own from 100.64.0.0/10 at deploy time.
+      if (savedProvider !== "tailscale" && networkConfig.overlayCIDR) {
         assignOverlayIPs();
       }
     };
@@ -1150,9 +1161,19 @@ networkConfig.overlayCIDR
                     </TkTableCell>
                     <TkTableCell>
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm text-muted-foreground">
-                          {server.overlayIP || server.ip}
-                        </span>
+                        {server.overlayIP ? (
+                          <span className="text-sm text-muted-foreground font-mono">
+                            {server.overlayIP}
+                          </span>
+                        ) : overlayProvider === "tailscale" ? (
+                          <span className="text-sm text-muted-foreground italic">
+                            Auto-assigned at deploy
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">
+                            {server.ip}
+                          </span>
+                        )}
                         {server.overlayIP &&
                           isOverlayIPInUse(server.overlayIP) && (
                             <span className="text-xs text-warning">
