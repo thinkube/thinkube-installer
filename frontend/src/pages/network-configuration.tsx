@@ -230,6 +230,13 @@ export default function NetworkConfigurationPage() {
 
   // Computed: Configuration validity
   const isConfigurationValid = useMemo(() => {
+    // In Tailscale mode the per-server overlay IPs and the overlay CIDR
+    // are assigned by Tailscale at deploy time — there's nothing for the
+    // user to fill in here, so we only validate the node LAN.
+    if (overlayProvider === "tailscale") {
+      return !!networkConfig.cidr && isValidIP(networkConfig.gateway);
+    }
+
     const allServersValid = physicalServers.every(
       (s) => s.overlayIP && isValidIP(s.overlayIP)
     );
@@ -240,7 +247,7 @@ export default function NetworkConfigurationPage() {
       networkConfig.overlayCIDR;
 
     return allServersValid && networkValid && ipConflicts.length === 0;
-  }, [physicalServers, networkConfig, ipConflicts]);
+  }, [overlayProvider, physicalServers, networkConfig, ipConflicts]);
 
   // Computed: Control plane hostname
   const controlPlaneHostname = useMemo(() => {
