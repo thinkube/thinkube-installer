@@ -123,10 +123,10 @@ export default function OverlayCredentials() {
     setContinueError("")
   }, [ts.authKey, ts.apiToken])
 
-  const verifyZt = async () => {
+  const verifyZt = async (): Promise<boolean> => {
     if (!zt.networkId || !zt.apiToken) {
       setZtError("Both Network ID and API token are required")
-      return
+      return false
     }
     setVerifyingZt(true)
     setZtError("")
@@ -137,22 +137,24 @@ export default function OverlayCredentials() {
       })
       if (resp.data.valid) {
         setZtVerified(true)
-      } else {
-        setZtVerified(false)
-        setZtError(resp.data.message || "Invalid credentials")
+        return true
       }
+      setZtVerified(false)
+      setZtError(resp.data.message || "Invalid credentials")
+      return false
     } catch (err: any) {
       setZtVerified(false)
       setZtError(err.response?.data?.detail || "Failed to verify ZeroTier credentials")
+      return false
     } finally {
       setVerifyingZt(false)
     }
   }
 
-  const verifyTs = async () => {
+  const verifyTs = async (): Promise<boolean> => {
     if (!ts.authKey || !ts.apiToken) {
       setTsError("Both Auth Key and API Token are required")
-      return
+      return false
     }
     setVerifyingTs(true)
     setTsError("")
@@ -163,26 +165,47 @@ export default function OverlayCredentials() {
       })
       if (resp.data.valid) {
         setTsVerified(true)
-      } else {
-        setTsVerified(false)
-        setTsError(resp.data.message || "Invalid credentials")
+        return true
       }
+      setTsVerified(false)
+      setTsError(resp.data.message || "Invalid credentials")
+      return false
     } catch (err: any) {
       setTsVerified(false)
       setTsError(err.response?.data?.detail || "Failed to verify Tailscale credentials")
+      return false
     } finally {
       setVerifyingTs(false)
     }
   }
 
+  // Continue is enabled as soon as the relevant fields are filled in.
+  // If the credentials haven't been verified yet, handleContinue runs
+  // the verify automatically and only blocks if the API rejects them
+  // (matches the configuration screen's Cloudflare/GitHub/HF pattern).
   const canContinue = useMemo(() => {
-    if (overlayProvider === "zerotier") return ztVerified
-    return tsVerified
-  }, [overlayProvider, ztVerified, tsVerified])
+    if (overlayProvider === "zerotier") return !!zt.networkId && !!zt.apiToken
+    return !!ts.authKey && !!ts.apiToken
+  }, [overlayProvider, zt.networkId, zt.apiToken, ts.authKey, ts.apiToken])
 
   const handleContinue = async () => {
     setContinuing(true)
     setContinueError("")
+
+    if (overlayProvider === "zerotier" && !ztVerified) {
+      const ok = await verifyZt()
+      if (!ok) {
+        setContinuing(false)
+        return
+      }
+    }
+    if (overlayProvider === "tailscale" && !tsVerified) {
+      const ok = await verifyTs()
+      if (!ok) {
+        setContinuing(false)
+        return
+      }
+    }
     const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
     const savePayload: any = { overlayProvider, clusterName }
 

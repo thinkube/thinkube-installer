@@ -71,10 +71,10 @@ export default function TailscaleOperatorSetup() {
     setVerifyError("")
   }, [oauthClientId, oauthClientSecret])
 
-  const verifyOauth = async () => {
+  const verifyOauth = async (): Promise<boolean> => {
     if (!oauthClientId || !oauthClientSecret) {
       setVerifyError("Both Client ID and Client Secret are required")
-      return
+      return false
     }
     setVerifying(true)
     setVerifyError("")
@@ -85,15 +85,17 @@ export default function TailscaleOperatorSetup() {
       })
       if (resp.data.valid) {
         setVerified(true)
-      } else {
-        setVerified(false)
-        setVerifyError(resp.data.message || "Invalid OAuth client")
+        return true
       }
+      setVerified(false)
+      setVerifyError(resp.data.message || "Invalid OAuth client")
+      return false
     } catch (err: any) {
       setVerified(false)
       setVerifyError(
         err.response?.data?.detail || "Failed to verify Tailscale OAuth client",
       )
+      return false
     } finally {
       setVerifying(false)
     }
@@ -109,10 +111,22 @@ export default function TailscaleOperatorSetup() {
     }
   }
 
-  const canContinue = useMemo(() => verified, [verified])
+  // Continue is enabled as soon as both fields are filled in. If the
+  // OAuth client hasn't been verified yet, handleContinue runs the
+  // verify automatically and only blocks if the API rejects it.
+  const canContinue = useMemo(
+    () => !!oauthClientId && !!oauthClientSecret,
+    [oauthClientId, oauthClientSecret],
+  )
 
   const handleContinue = async () => {
     setContinueError("")
+
+    if (!verified) {
+      const ok = await verifyOauth()
+      if (!ok) return
+    }
+
     const resolvedGatewayHostname = gatewayHostname || `${clusterName}-gw`
 
     const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
