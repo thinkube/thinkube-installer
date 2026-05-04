@@ -355,10 +355,10 @@ export default function OverlaySetup() {
         <TkButton
           type="button"
           intent="ghost"
-          onClick={() => navigate("/configuration")}
+          onClick={() => navigate("/overlay-credentials")}
         >
           <ChevronLeft className="w-5 h-5 mr-2" />
-          Back to Configuration
+          Back to Overlay Credentials
         </TkButton>
         <TkButton
           onClick={() => navigate("/network-configuration")}

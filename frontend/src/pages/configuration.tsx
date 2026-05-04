@@ -37,13 +37,6 @@ interface ConfigData {
   domainName: string
   cloudflareToken: string
   overlayProvider: string
-  zerotierNetworkId: string
-  zerotierApiToken: string
-  tailscaleAuthKey: string
-  tailscaleApiToken: string
-  tailscaleOauthClientId: string
-  tailscaleOauthClientSecret: string
-  gatewayHostname: string
   githubToken: string
   githubOrg: string
   hfToken: string
@@ -53,11 +46,6 @@ interface ValidationErrors {
   clusterName: string
   domainName: string
   cloudflareToken: string
-  zerotierNetworkId: string
-  zerotierApiToken: string
-  tailscaleAuthKey: string
-  tailscaleApiToken: string
-  tailscaleOauthClient: string
   githubToken: string
   githubOrg: string
   hfToken: string
@@ -71,13 +59,6 @@ export default function Configuration() {
     domainName: '',
     cloudflareToken: '',
     overlayProvider: 'zerotier',
-    zerotierNetworkId: '',
-    zerotierApiToken: '',
-    tailscaleAuthKey: '',
-    tailscaleApiToken: '',
-    tailscaleOauthClientId: '',
-    tailscaleOauthClientSecret: '',
-    gatewayHostname: '',
     githubToken: '',
     githubOrg: '',
     hfToken: ''
@@ -87,35 +68,17 @@ export default function Configuration() {
     clusterName: '',
     domainName: '',
     cloudflareToken: '',
-    zerotierNetworkId: '',
-    zerotierApiToken: '',
-    tailscaleAuthKey: '',
-    tailscaleApiToken: '',
-    tailscaleOauthClient: '',
     githubToken: '',
     githubOrg: '',
     hfToken: ''
   })
 
   const [showCloudflareToken, setShowCloudflareToken] = useState(false)
-  const [showZerotierToken, setShowZerotierToken] = useState(false)
-  const [showTailscaleAuthKey, setShowTailscaleAuthKey] = useState(false)
-  const [showTailscaleApiToken, setShowTailscaleApiToken] = useState(false)
-  const [showTailscaleOauthSecret, setShowTailscaleOauthSecret] = useState(false)
   const [showGithubToken, setShowGithubToken] = useState(false)
   const [showHfToken, setShowHfToken] = useState(false)
-  const [showOperatorWalkthrough, setShowOperatorWalkthrough] = useState(false)
-  const [tagOwnersStatus, setTagOwnersStatus] = useState<string>('')
-  const [copiedTag, setCopiedTag] = useState(false)
 
   const [verifyingCloudflare, setVerifyingCloudflare] = useState(false)
   const [cloudflareVerified, setCloudflareVerified] = useState(false)
-  const [verifyingZerotier, setVerifyingZerotier] = useState(false)
-  const [zerotierVerified, setZerotierVerified] = useState(false)
-  const [verifyingTailscale, setVerifyingTailscale] = useState(false)
-  const [tailscaleVerified, setTailscaleVerified] = useState(false)
-  const [verifyingTailscaleOauth, setVerifyingTailscaleOauth] = useState(false)
-  const [tailscaleOauthVerified, setTailscaleOauthVerified] = useState(false)
   const [verifyingGithub, setVerifyingGithub] = useState(false)
   const [githubVerified, setGithubVerified] = useState(false)
   const [verifyingHf, setVerifyingHf] = useState(false)
@@ -133,17 +96,6 @@ export default function Configuration() {
             ...prev,
             ...(savedConfig.cloudflareToken && { cloudflareToken: savedConfig.cloudflareToken }),
             ...(savedConfig.overlayProvider && { overlayProvider: savedConfig.overlayProvider }),
-            ...(savedConfig.zerotierApiToken && { zerotierApiToken: savedConfig.zerotierApiToken }),
-            ...(savedConfig.zerotierNetworkId && { zerotierNetworkId: savedConfig.zerotierNetworkId }),
-            ...(savedConfig.tailscaleAuthKey && { tailscaleAuthKey: savedConfig.tailscaleAuthKey }),
-            ...(savedConfig.tailscaleApiToken && { tailscaleApiToken: savedConfig.tailscaleApiToken }),
-            ...(savedConfig.tailscaleOauthClientId && {
-              tailscaleOauthClientId: savedConfig.tailscaleOauthClientId,
-            }),
-            ...(savedConfig.tailscaleOauthClientSecret && {
-              tailscaleOauthClientSecret: savedConfig.tailscaleOauthClientSecret,
-            }),
-            ...(savedConfig.gatewayHostname && { gatewayHostname: savedConfig.gatewayHostname }),
             ...(savedConfig.githubToken && { githubToken: savedConfig.githubToken }),
             ...(savedConfig.githubOrg && { githubOrg: savedConfig.githubOrg }),
             ...(savedConfig.hfToken && { hfToken: savedConfig.hfToken }),
@@ -202,25 +154,6 @@ export default function Configuration() {
     setErrors(prev => ({ ...prev, cloudflareToken: '' }))
   }, [config.cloudflareToken, config.domainName])
 
-  // Reset ZeroTier verification when credentials change
-  useEffect(() => {
-    setZerotierVerified(false)
-    setErrors(prev => ({ ...prev, zerotierApiToken: '' }))
-  }, [config.zerotierApiToken, config.zerotierNetworkId])
-
-  // Reset Tailscale verification when credentials change
-  useEffect(() => {
-    setTailscaleVerified(false)
-    setTagOwnersStatus('')
-    setErrors(prev => ({ ...prev, tailscaleApiToken: '' }))
-  }, [config.tailscaleAuthKey, config.tailscaleApiToken])
-
-  // Reset OAuth verification when those credentials change
-  useEffect(() => {
-    setTailscaleOauthVerified(false)
-    setErrors(prev => ({ ...prev, tailscaleOauthClient: '' }))
-  }, [config.tailscaleOauthClientId, config.tailscaleOauthClientSecret])
-
   // Reset GitHub verification when token changes
   useEffect(() => {
     setGithubVerified(false)
@@ -234,19 +167,16 @@ export default function Configuration() {
   }, [config.hfToken])
 
   const isValid = useMemo(() => {
-    const baseValid = config.clusterName &&
-           config.domainName &&
-           config.cloudflareToken &&
-           config.githubToken &&
-           config.githubOrg &&
-           !errors.clusterName &&
-           !errors.domainName &&
-           !errors.githubOrg
-
-    if (config.overlayProvider === 'tailscale') {
-      return baseValid && config.tailscaleAuthKey && config.tailscaleApiToken
-    }
-    return baseValid && config.zerotierNetworkId && config.zerotierApiToken
+    return (
+      config.clusterName &&
+      config.domainName &&
+      config.cloudflareToken &&
+      config.githubToken &&
+      config.githubOrg &&
+      !errors.clusterName &&
+      !errors.domainName &&
+      !errors.githubOrg
+    )
   }, [config, errors])
 
   const verifyCloudflare = async () => {
@@ -284,106 +214,6 @@ export default function Configuration() {
     }
   }
 
-  const verifyZerotier = async () => {
-    if (!config.zerotierApiToken || !config.zerotierNetworkId) {
-      setErrors(prev => ({ ...prev, zerotierApiToken: 'Both API token and Network ID are required' }))
-      setZerotierVerified(false)
-      return false
-    }
-
-    setVerifyingZerotier(true)
-    setErrors(prev => ({ ...prev, zerotierApiToken: '' }))
-
-    try {
-      const response = await axios.post('/api/verify-zerotier', {
-        api_token: config.zerotierApiToken,
-        network_id: config.zerotierNetworkId
-      })
-
-      if (response.data.valid) {
-        setZerotierVerified(true)
-        setErrors(prev => ({ ...prev, zerotierApiToken: '' }))
-        return true
-      } else {
-        setErrors(prev => ({
-          ...prev,
-          zerotierApiToken: response.data.message || 'Invalid credentials'
-        }))
-        setZerotierVerified(false)
-        return false
-      }
-    } catch (error: any) {
-      setErrors(prev => ({
-        ...prev,
-        zerotierApiToken: error.response?.data?.detail || 'Failed to verify ZeroTier credentials'
-      }))
-      setZerotierVerified(false)
-      return false
-    } finally {
-      setVerifyingZerotier(false)
-    }
-  }
-
-  const verifyTailscale = async () => {
-    if (!config.tailscaleAuthKey || !config.tailscaleApiToken) {
-      setErrors(prev => ({ ...prev, tailscaleApiToken: 'Both Auth Key and API Token are required' }))
-      setTailscaleVerified(false)
-      return false
-    }
-
-    setVerifyingTailscale(true)
-    setTagOwnersStatus('')
-    setErrors(prev => ({ ...prev, tailscaleApiToken: '' }))
-
-    try {
-      const response = await axios.post('/api/verify-tailscale', {
-        api_token: config.tailscaleApiToken,
-        auth_key: config.tailscaleAuthKey
-      })
-
-      if (!response.data.valid) {
-        setErrors(prev => ({
-          ...prev,
-          tailscaleApiToken: response.data.message || 'Invalid credentials'
-        }))
-        setTailscaleVerified(false)
-        return false
-      }
-
-      setTailscaleVerified(true)
-      setErrors(prev => ({ ...prev, tailscaleApiToken: '' }))
-
-      // Once the API token works, idempotently install the operator's
-      // required tag ownership in the tailnet policy file. Without this
-      // the user can't pick `tag:k8s-operator` when they generate the
-      // OAuth client in the next step.
-      try {
-        const aclResp = await axios.post('/api/tailscale/ensure-acl-tags', {
-          api_token: config.tailscaleApiToken,
-        })
-        if (aclResp.data.ok) {
-          setTagOwnersStatus(aclResp.data.message || 'Tailnet policy file prepared')
-        } else {
-          setTagOwnersStatus(`Could not update policy file: ${aclResp.data.message}`)
-        }
-      } catch (err: any) {
-        setTagOwnersStatus(
-          `Could not update policy file: ${err.response?.data?.detail || err.message}`
-        )
-      }
-
-      return true
-    } catch (error: any) {
-      setErrors(prev => ({
-        ...prev,
-        tailscaleApiToken: error.response?.data?.detail || 'Failed to verify Tailscale credentials'
-      }))
-      setTailscaleVerified(false)
-      return false
-    } finally {
-      setVerifyingTailscale(false)
-    }
-  }
 
   const verifyGithub = async () => {
     if (!config.githubToken) {
@@ -421,60 +251,6 @@ export default function Configuration() {
       return false
     } finally {
       setVerifyingGithub(false)
-    }
-  }
-
-  const verifyTailscaleOauth = async () => {
-    if (!config.tailscaleOauthClientId || !config.tailscaleOauthClientSecret) {
-      setErrors(prev => ({
-        ...prev,
-        tailscaleOauthClient: 'Both Client ID and Client Secret are required',
-      }))
-      setTailscaleOauthVerified(false)
-      return false
-    }
-
-    setVerifyingTailscaleOauth(true)
-    setErrors(prev => ({ ...prev, tailscaleOauthClient: '' }))
-
-    try {
-      const response = await axios.post('/api/verify-tailscale-oauth', {
-        client_id: config.tailscaleOauthClientId,
-        client_secret: config.tailscaleOauthClientSecret,
-      })
-
-      if (response.data.valid) {
-        setTailscaleOauthVerified(true)
-        setErrors(prev => ({ ...prev, tailscaleOauthClient: '' }))
-        return true
-      } else {
-        setErrors(prev => ({
-          ...prev,
-          tailscaleOauthClient: response.data.message || 'Invalid OAuth client',
-        }))
-        setTailscaleOauthVerified(false)
-        return false
-      }
-    } catch (error: any) {
-      setErrors(prev => ({
-        ...prev,
-        tailscaleOauthClient:
-          error.response?.data?.detail || 'Failed to verify Tailscale OAuth client',
-      }))
-      setTailscaleOauthVerified(false)
-      return false
-    } finally {
-      setVerifyingTailscaleOauth(false)
-    }
-  }
-
-  const copyOperatorTag = async () => {
-    try {
-      await navigator.clipboard.writeText('tag:k8s-operator')
-      setCopiedTag(true)
-      setTimeout(() => setCopiedTag(false), 2000)
-    } catch {
-      /* clipboard may be unavailable; ignore */
     }
   }
 
@@ -538,46 +314,6 @@ export default function Configuration() {
       }
     }
 
-    if (config.overlayProvider === 'zerotier') {
-      if (!config.zerotierApiToken || !config.zerotierNetworkId) {
-        alert('ZeroTier API token and Network ID are required')
-        return
-      }
-      if (!zerotierVerified) {
-        const zerotierValid = await verifyZerotier()
-        if (!zerotierValid) {
-          alert('Please provide valid ZeroTier credentials with network access')
-          return
-        }
-      }
-    } else {
-      if (!config.tailscaleAuthKey || !config.tailscaleApiToken) {
-        alert('Tailscale Auth Key and API Token are required')
-        return
-      }
-      if (!tailscaleVerified) {
-        const tailscaleValid = await verifyTailscale()
-        if (!tailscaleValid) {
-          alert('Please provide valid Tailscale credentials')
-          return
-        }
-      }
-      if (!config.tailscaleOauthClientId || !config.tailscaleOauthClientSecret) {
-        alert(
-          'Tailscale Operator OAuth Client ID and Secret are required. ' +
-            'Generate one at Tailscale Admin → Trust credentials.',
-        )
-        return
-      }
-      if (!tailscaleOauthVerified) {
-        const oauthValid = await verifyTailscaleOauth()
-        if (!oauthValid) {
-          alert('Please provide a valid Tailscale OAuth client for the operator')
-          return
-        }
-      }
-    }
-
     if (config.githubToken && !githubVerified) {
       const githubValid = await verifyGithub()
       if (!githubValid) {
@@ -594,12 +330,6 @@ export default function Configuration() {
       }
     }
 
-    // Resolve the gateway hostname default once, here. Downstream
-    // consumers (sessionStorage readers, inventory generator, playbooks)
-    // can then trust the value is always populated.
-    const resolvedGatewayHostname =
-      config.gatewayHostname || `${config.clusterName}-gw`
-
     const savePayload: any = {
       cloudflareToken: config.cloudflareToken,
       githubToken: config.githubToken,
@@ -608,16 +338,6 @@ export default function Configuration() {
       clusterName: config.clusterName,
       domainName: config.domainName,
       overlayProvider: config.overlayProvider,
-    }
-    if (config.overlayProvider === 'zerotier') {
-      savePayload.zerotierApiToken = config.zerotierApiToken
-      savePayload.zerotierNetworkId = config.zerotierNetworkId
-    } else {
-      savePayload.tailscaleAuthKey = config.tailscaleAuthKey
-      savePayload.tailscaleApiToken = config.tailscaleApiToken
-      savePayload.tailscaleOauthClientId = config.tailscaleOauthClientId
-      savePayload.tailscaleOauthClientSecret = config.tailscaleOauthClientSecret
-      savePayload.gatewayHostname = resolvedGatewayHostname
     }
 
     try {
@@ -638,33 +358,12 @@ export default function Configuration() {
       sudoPassword: sudoPassword,
       systemUsername: systemUsername,
     }
-    if (config.overlayProvider === 'zerotier') {
-      configToSave.zerotierNetworkId = config.zerotierNetworkId
-      configToSave.zerotierApiToken = config.zerotierApiToken
-    } else {
-      configToSave.tailscaleAuthKey = config.tailscaleAuthKey
-      configToSave.tailscaleApiToken = config.tailscaleApiToken
-      configToSave.tailscaleOauthClientId = config.tailscaleOauthClientId
-      configToSave.tailscaleOauthClientSecret = config.tailscaleOauthClientSecret
-      configToSave.gatewayHostname = resolvedGatewayHostname
-    }
     localStorage.setItem('thinkube-config', JSON.stringify(configToSave))
 
     sessionStorage.setItem('overlayProvider', config.overlayProvider)
     sessionStorage.setItem('cloudflareToken', config.cloudflareToken)
     sessionStorage.setItem('domainName', config.domainName)
     sessionStorage.setItem('clusterName', config.clusterName)
-
-    if (config.overlayProvider === 'zerotier') {
-      sessionStorage.setItem('zerotierApiToken', config.zerotierApiToken)
-      sessionStorage.setItem('zerotierNetworkId', config.zerotierNetworkId)
-    } else {
-      sessionStorage.setItem('tailscaleAuthKey', config.tailscaleAuthKey)
-      sessionStorage.setItem('tailscaleApiToken', config.tailscaleApiToken)
-      sessionStorage.setItem('tailscaleOauthClientId', config.tailscaleOauthClientId)
-      sessionStorage.setItem('tailscaleOauthClientSecret', config.tailscaleOauthClientSecret)
-      sessionStorage.setItem('gatewayHostname', resolvedGatewayHostname)
-    }
 
     if (config.githubToken) {
       sessionStorage.setItem('githubToken', config.githubToken)
@@ -675,7 +374,7 @@ export default function Configuration() {
       sessionStorage.setItem('hfToken', config.hfToken)
     }
 
-    navigate('/overlay-setup')
+    navigate('/overlay-credentials')
   }
 
   return (
@@ -823,376 +522,13 @@ export default function Configuration() {
                 </p>
               </div>
 
-              {/* ZeroTier Credentials */}
-              {config.overlayProvider === 'zerotier' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <TkLabel htmlFor="zerotierNetworkId">ZeroTier Network ID</TkLabel>
-                      <span className="text-xs text-muted-foreground">16-character network ID</span>
-                    </div>
-                    <TkInput
-                      id="zerotierNetworkId"
-                      type="text"
-                      placeholder="16-character network ID"
-                      value={config.zerotierNetworkId}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, zerotierNetworkId: e.target.value })}
-                      className={cn(errors.zerotierNetworkId && "border-destructive")}
-                    />
-                    {errors.zerotierNetworkId && (
-                      <p className="text-xs text-destructive">{errors.zerotierNetworkId}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <TkLabel htmlFor="zerotierApiToken">ZeroTier API Token</TkLabel>
-                      <span className="text-xs text-muted-foreground">For automatic node authorization</span>
-                    </div>
-                    <div className="relative">
-                      <TkInput
-                        id="zerotierApiToken"
-                        type={showZerotierToken ? 'text' : 'password'}
-                        placeholder="ZeroTier Central API Token"
-                        value={config.zerotierApiToken}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, zerotierApiToken: e.target.value })}
-                        className={cn("pr-24", errors.zerotierApiToken && "border-destructive")}
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
-                        {config.zerotierApiToken && config.zerotierNetworkId && (
-                          <TkButton
-                            type="button"
-                            intent="ghost"
-                            size="sm"
-                            className="h-auto p-1"
-                            onClick={verifyZerotier}
-                            disabled={verifyingZerotier}
-                          >
-                            {verifyingZerotier ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : zerotierVerified ? (
-                              <CheckCircle2 className="h-3 w-3 text-success" />
-                            ) : (
-                              <span className="text-xs">Verify</span>
-                            )}
-                          </TkButton>
-                        )}
-                        <TkButton
-                          type="button"
-                          intent="ghost"
-                          size="sm"
-                          className="h-auto p-1"
-                          onClick={() => setShowZerotierToken(!showZerotierToken)}
-                        >
-                          {showZerotierToken ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TkButton>
-                      </div>
-                    </div>
-                    {errors.zerotierApiToken && (
-                      <p className="text-xs text-destructive">{errors.zerotierApiToken}</p>
-                    )}
-                    {zerotierVerified && (
-                      <p className="text-xs text-success">✓ Token verified with network access</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Tailscale Credentials */}
-              {config.overlayProvider === 'tailscale' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <TkLabel htmlFor="tailscaleAuthKey">Tailscale Auth Key</TkLabel>
-                      <span className="text-xs text-muted-foreground">Auth key from admin console</span>
-                    </div>
-                    <div className="relative">
-                      <TkInput
-                        id="tailscaleAuthKey"
-                        type={showTailscaleAuthKey ? 'text' : 'password'}
-                        placeholder="tskey-auth-..."
-                        value={config.tailscaleAuthKey}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, tailscaleAuthKey: e.target.value })}
-                        className={cn("pr-10", errors.tailscaleAuthKey && "border-destructive")}
-                      />
-                      <TkButton
-                        type="button"
-                        intent="ghost"
-                        size="sm"
-                        className="h-auto p-1 absolute inset-y-0 right-0 mr-3"
-                        onClick={() => setShowTailscaleAuthKey(!showTailscaleAuthKey)}
-                      >
-                        {showTailscaleAuthKey ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </TkButton>
-                    </div>
-                    {errors.tailscaleAuthKey && (
-                      <p className="text-xs text-destructive">{errors.tailscaleAuthKey}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <TkLabel htmlFor="tailscaleApiToken">Tailscale API Token</TkLabel>
-                      <span className="text-xs text-muted-foreground">For automatic route approval</span>
-                    </div>
-                    <div className="relative">
-                      <TkInput
-                        id="tailscaleApiToken"
-                        type={showTailscaleApiToken ? 'text' : 'password'}
-                        placeholder="tskey-api-..."
-                        value={config.tailscaleApiToken}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, tailscaleApiToken: e.target.value })}
-                        className={cn("pr-24", errors.tailscaleApiToken && "border-destructive")}
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
-                        {config.tailscaleAuthKey && config.tailscaleApiToken && (
-                          <TkButton
-                            type="button"
-                            intent="ghost"
-                            size="sm"
-                            className="h-auto p-1"
-                            onClick={verifyTailscale}
-                            disabled={verifyingTailscale}
-                          >
-                            {verifyingTailscale ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : tailscaleVerified ? (
-                              <CheckCircle2 className="h-3 w-3 text-success" />
-                            ) : (
-                              <span className="text-xs">Verify</span>
-                            )}
-                          </TkButton>
-                        )}
-                        <TkButton
-                          type="button"
-                          intent="ghost"
-                          size="sm"
-                          className="h-auto p-1"
-                          onClick={() => setShowTailscaleApiToken(!showTailscaleApiToken)}
-                        >
-                          {showTailscaleApiToken ? (
-                            <EyeOff className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TkButton>
-                      </div>
-                    </div>
-                    {errors.tailscaleApiToken && (
-                      <p className="text-xs text-destructive">{errors.tailscaleApiToken}</p>
-                    )}
-                    {tailscaleVerified && (
-                      <p className="text-xs text-success">✓ API token verified</p>
-                    )}
-                    {tagOwnersStatus && (
-                      <p className="text-xs text-muted-foreground">{tagOwnersStatus}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Tailscale Operator credentials (gated on API token verify) */}
-              {config.overlayProvider === 'tailscale' && (
-                <div className="mt-6 pt-6 border-t border-border">
-                  <div className="mb-3">
-                    <h3 className="text-sm font-semibold">Operator credentials</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      The in-cluster operator exposes services on your tailnet. It needs an
-                      OAuth client. This is the one step Tailscale does not let us automate
-                      — about 30 seconds in their console.
-                    </p>
-                  </div>
-
-                  <div className="mb-3">
-                    <TkButton
-                      type="button"
-                      intent="ghost"
-                      size="sm"
-                      onClick={() => setShowOperatorWalkthrough(!showOperatorWalkthrough)}
-                    >
-                      {showOperatorWalkthrough
-                        ? '▼ Hide instructions'
-                        : '▶ How to generate an OAuth client'}
-                    </TkButton>
-                  </div>
-
-                  {showOperatorWalkthrough && (
-                    <TkAlert className="mb-4">
-                      <TkAlertDescription>
-                        <ol className="text-xs space-y-2 list-decimal pl-4">
-                          <li>
-                            Open{' '}
-                            <a
-                              href="https://login.tailscale.com/admin/settings/oauth"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline"
-                            >
-                              Tailscale Admin → Trust credentials
-                            </a>
-                            .
-                          </li>
-                          <li>Click <strong>+ Credential → OAuth client</strong>.</li>
-                          <li>
-                            On the scopes screen, leave the dropdown on{' '}
-                            <strong>Custom</strong> and check:
-                            <ul className="list-disc pl-5 mt-1 space-y-1">
-                              <li>
-                                Devices → <strong>Core</strong> · ☑ Read · ☑ Write
-                              </li>
-                              <li>
-                                Keys → <strong>Auth Keys</strong> · ☑ Read · ☑ Write
-                              </li>
-                            </ul>
-                            Leave everything else unchecked.
-                          </li>
-                          <li>
-                            Tag for this client:{' '}
-                            <code className="font-mono bg-muted px-1 rounded">
-                              tag:k8s-operator
-                            </code>{' '}
-                            <TkButton
-                              type="button"
-                              intent="ghost"
-                              size="sm"
-                              className="h-auto p-1 align-middle"
-                              onClick={copyOperatorTag}
-                            >
-                              {copiedTag ? (
-                                <CheckCircle2 className="h-3 w-3 text-success" />
-                              ) : (
-                                <span className="text-xs">Copy</span>
-                              )}
-                            </TkButton>
-                            <span className="text-muted-foreground">
-                              {' '}
-                              (the policy-file definition is{' '}
-                              {tailscaleVerified
-                                ? 'in place'
-                                : 'put in place when you click Verify on the API access token above — do that first or the tag won\'t appear in Tailscale\'s tag picker'}
-                              )
-                            </span>
-                          </li>
-                          <li>
-                            Click <strong>Generate</strong>. Tailscale shows the Client ID and
-                            Secret <em>once</em> — paste them below before closing the dialog.
-                          </li>
-                        </ol>
-                      </TkAlertDescription>
-                    </TkAlert>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <TkLabel htmlFor="tailscaleOauthClientId">OAuth Client ID</TkLabel>
-                      <TkInput
-                        id="tailscaleOauthClientId"
-                        type="text"
-                        placeholder="kEXAMPLE..."
-                        value={config.tailscaleOauthClientId}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          setConfig({ ...config, tailscaleOauthClientId: e.target.value })
-                        }
-                        className={cn(errors.tailscaleOauthClient && 'border-destructive')}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <TkLabel htmlFor="tailscaleOauthClientSecret">OAuth Client Secret</TkLabel>
-                      <div className="relative">
-                        <TkInput
-                          id="tailscaleOauthClientSecret"
-                          type={showTailscaleOauthSecret ? 'text' : 'password'}
-                          placeholder="tskey-client-..."
-                          value={config.tailscaleOauthClientSecret}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                            setConfig({
-                              ...config,
-                              tailscaleOauthClientSecret: e.target.value,
-                            })
-                          }
-                          className={cn(
-                            'pr-24',
-                            errors.tailscaleOauthClient && 'border-destructive',
-                          )}
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
-                          {config.tailscaleOauthClientId &&
-                            config.tailscaleOauthClientSecret && (
-                              <TkButton
-                                type="button"
-                                intent="ghost"
-                                size="sm"
-                                className="h-auto p-1"
-                                onClick={verifyTailscaleOauth}
-                                disabled={verifyingTailscaleOauth}
-                              >
-                                {verifyingTailscaleOauth ? (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : tailscaleOauthVerified ? (
-                                  <CheckCircle2 className="h-3 w-3 text-success" />
-                                ) : (
-                                  <span className="text-xs">Verify</span>
-                                )}
-                              </TkButton>
-                            )}
-                          <TkButton
-                            type="button"
-                            intent="ghost"
-                            size="sm"
-                            className="h-auto p-1"
-                            onClick={() => setShowTailscaleOauthSecret(!showTailscaleOauthSecret)}
-                          >
-                            {showTailscaleOauthSecret ? (
-                              <EyeOff className="h-4 w-4 text-muted-foreground" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </TkButton>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {errors.tailscaleOauthClient && (
-                    <p className="text-xs text-destructive mt-2">
-                      {errors.tailscaleOauthClient}
-                    </p>
-                  )}
-                  {tailscaleOauthVerified && (
-                    <p className="text-xs text-success mt-2">
-                      ✓ OAuth client verified — operator has the scopes it needs
-                    </p>
-                  )}
-
-                  <div className="space-y-2 mt-4 max-w-md">
-                    <TkLabel htmlFor="gatewayHostname">
-                      Gateway hostname on the tailnet
-                    </TkLabel>
-                    <TkInput
-                      id="gatewayHostname"
-                      type="text"
-                      placeholder={`${config.clusterName}-gw`}
-                      value={config.gatewayHostname}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        setConfig({ ...config, gatewayHostname: e.target.value })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      The hostname the operator claims for the cluster Gateway
-                      device on your tailnet. Leave blank to use{' '}
-                      <code>{`${config.clusterName}-gw`}</code>.
-                    </p>
-                  </div>
-                </div>
-              )}
+              <TkAlert>
+                <TkAlertDescription>
+                  You'll enter your{' '}
+                  {config.overlayProvider === 'zerotier' ? 'ZeroTier' : 'Tailscale'}{' '}
+                  credentials on the next screen.
+                </TkAlertDescription>
+              </TkAlert>
             </TkCardContent>
           </TkCard>
 
@@ -1398,7 +734,7 @@ export default function Configuration() {
             type="submit"
             disabled={!isValid}
           >
-            Setup Overlay Network
+            Continue to Overlay Credentials
             <ChevronRight className="w-5 h-5 ml-2" />
           </TkButton>
         </div>

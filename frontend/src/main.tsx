@@ -28,6 +28,7 @@ import DeployPage from './pages/deploy';
 import InstallationPage from './pages/installation';
 import CompletePage from './pages/complete';
 import OverlaySetupPage from './pages/overlay-setup';
+import OverlayCredentialsPage from './pages/overlay-credentials';
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
           <Route path="/role-assignment" element={<RoleAssignmentPage />} />
           <Route path="/network-configuration" element={<NetworkConfigurationPage />} />
           <Route path="/configuration" element={<ConfigurationPage />} />
+          <Route path="/overlay-credentials" element={<OverlayCredentialsPage />} />
           <Route path="/overlay-setup" element={<OverlaySetupPage />} />
           <Route path="/ssh-setup" element={<SshSetupPage />} />
           <Route path="/gpu-driver-check" element={<GpuDriverCheckPage />} />
