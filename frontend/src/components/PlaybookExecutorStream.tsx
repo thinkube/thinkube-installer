@@ -263,7 +263,11 @@ ${logOutput.map(log => log.message).join('\n')}`
               }
             }
 
-            if (playbookName.includes('github') || playbookName.includes('devpi')) {
+            if (
+              playbookName.includes('github') ||
+              playbookName.includes('devpi') ||
+              playbookName.includes('thinkube-control')
+            ) {
               const githubToken = sessionStorage.getItem('githubToken')
               if (githubToken) {
                 paramsWithInventory.environment = {
