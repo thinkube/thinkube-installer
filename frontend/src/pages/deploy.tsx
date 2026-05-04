@@ -166,6 +166,18 @@ export default function Deploy() {
       name: 'ansible/00_initial_setup/20_setup_env.yaml'
     })
 
+    // Move user-entered tokens (GitHub, HuggingFace, Tailscale, ZeroTier,
+    // Cloudflare) from the installer's subprocess env onto the control-
+    // plane's persistent ~/.env, so the installer machine can be wiped /
+    // repurposed and the cluster keeps working for re-runs and add-node.
+    // Canonical source/sink for these secrets — see playbook header.
+    queue.push({
+      id: 'persist-user-secrets',
+      phase: 'initial',
+      title: 'Persisting user secrets to control plane',
+      name: 'ansible/00_initial_setup/30_persist_user_secrets.yaml'
+    })
+
     // Reclaim the rest of the disk on Ubuntu Server LVM installs (the
     // default root LV is ~100 GB regardless of disk size). No-op when
     // root isn't on LVM or the VG is already fully allocated.

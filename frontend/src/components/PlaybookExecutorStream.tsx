@@ -217,6 +217,33 @@ ${logOutput.map(log => log.message).join('\n')}`
               inventory: inventoryYAML
             }
 
+            // The persist-user-secrets playbook is the canonical sink for
+            // user-entered tokens — pass every token we have so it can
+            // write them to the control plane's ~/.env in one shot.
+            if (playbookName.includes('30_persist_user_secrets')) {
+              const ENV_BY_KEY: Record<string, string> = {
+                GITHUB_TOKEN: 'githubToken',
+                GITHUB_USERNAME: 'githubUsername',
+                GITHUB_ORG: 'githubOrg',
+                HF_TOKEN: 'hfToken',
+                CLOUDFLARE_TOKEN: 'cloudflareToken',
+                TAILSCALE_AUTH_KEY: 'tailscaleAuthKey',
+                TAILSCALE_API_TOKEN: 'tailscaleApiToken',
+                TAILSCALE_OAUTH_CLIENT_ID: 'tailscaleOauthClientId',
+                TAILSCALE_OAUTH_CLIENT_SECRET: 'tailscaleOauthClientSecret',
+                ZEROTIER_NETWORK_ID: 'zerotierNetworkId',
+                ZEROTIER_AUTH_TOKEN: 'zerotierApiToken'
+              }
+              const envOut: Record<string, string> = {
+                ...(paramsWithInventory.environment || {})
+              }
+              for (const [envKey, storageKey] of Object.entries(ENV_BY_KEY)) {
+                const value = sessionStorage.getItem(storageKey)
+                if (value) envOut[envKey] = value
+              }
+              paramsWithInventory.environment = envOut
+            }
+
             if (playbookName.includes('zerotier')) {
               const zerotierApiToken = sessionStorage.getItem('zerotierApiToken')
               const zerotierNetworkId = sessionStorage.getItem('zerotierNetworkId')
