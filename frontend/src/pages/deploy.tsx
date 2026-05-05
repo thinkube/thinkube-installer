@@ -269,6 +269,13 @@ export default function Deploy() {
       })
     }
 
+    queue.push({
+      id: 'resource-policies',
+      phase: 'kubernetes',
+      title: 'Configuring Resource Policies',
+      name: 'ansible/40_thinkube/core/infrastructure/k8s/12_configure_resource_policies.yaml'
+    })
+
     // Tailscale Operator (Tailscale mode only). Must come after k8s install
     // (needs a working cluster) and before gateway-api (which annotates the
     // Gateway Service for the operator to expose). No-op in ZeroTier mode.
