@@ -582,8 +582,7 @@ ${logOutput.map(log => log.message).join('\n')}`
                   const pretty = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
                   return (
                     <div className="text-xs text-warning mt-1">
-                      No output for {pretty} — task may be doing slow work
-                      (image pull, k8s wait) or the SSH session may be stuck.
+                      No output for {pretty} — task may be doing slow work (large image pull or build, k8s wait or installation of large packages).
                     </div>
                   )
                 })()}
