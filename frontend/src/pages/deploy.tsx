@@ -484,8 +484,8 @@ export default function Deploy() {
     // Check if this is a rollback playbook
     const isRollback = currentPlaybook.phase === 'rollback' || currentPlaybook.id.startsWith('rollback-')
 
-    if (result.status === 'error' || result.status === 'failed') {
-      // For rollback failures, record the log and restore pre-rollback state
+    if (result.status === 'error' || result.status === 'failed' || result.status === 'cancelled') {
+      // For rollback failures/cancels, record the log and restore pre-rollback state
       if (isRollback) {
         dispatch({
           type: 'PLAYBOOK_SUCCESS',
@@ -501,7 +501,9 @@ export default function Deploy() {
           type: 'PLAYBOOK_FAILED',
           playbookId: currentPlaybook.id,
           logs,
-          error: result.message || 'Playbook execution failed'
+          error: result.status === 'cancelled'
+            ? 'Cancelled by user'
+            : (result.message || 'Playbook execution failed')
         })
       }
     } else {
