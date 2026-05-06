@@ -188,6 +188,26 @@ export default function Deploy() {
       name: 'ansible/00_initial_setup/15_expand_lvm.yaml'
     })
 
+    // DGX Spark host tuning — only enqueued when at least one discovered
+    // server is a GB10 / DGX Spark. The playbook itself re-checks per-host
+    // (DMI + nvidia-smi) and ends_host on non-Spark nodes, so it is a
+    // no-op on mixed clusters where some workers are AMD64.
+    const serverHardwareForSpark = typeof window !== 'undefined'
+      ? JSON.parse(sessionStorage.getItem('serverHardware') || '[]')
+      : []
+    const hasDgxSpark = serverHardwareForSpark.some((s: any) => {
+      const name = s?.hardware?.gpu_name || ''
+      return /GB10|DGX\s*Spark/i.test(name)
+    })
+    if (hasDgxSpark) {
+      queue.push({
+        id: 'dgx-spark-tune',
+        phase: 'initial',
+        title: 'Applying DGX Spark unified-memory tuning',
+        name: 'ansible/00_initial_setup/16_tune_dgx_spark.yaml'
+      })
+    }
+
     queue.push({
       id: 'python-setup',
       phase: 'initial',
