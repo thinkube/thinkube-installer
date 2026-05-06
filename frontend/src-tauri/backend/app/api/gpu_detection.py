@@ -30,6 +30,10 @@ class GpuNodeStatus(BaseModel):
     driver_status: str  # "compatible", "old", "missing", "unknown"
     min_required_version: str = "580.0"
     action_required: Optional[str] = None  # "install", "upgrade", null
+    # Compute capability of the GPU (e.g. "8.6"). Used to flag pre-Volta
+    # GPUs as architecturally unsupported regardless of driver version.
+    compute_cap: Optional[str] = None
+    gpu_supported: Optional[bool] = None  # False if compute_cap < 7.0
     error: Optional[str] = None
 
 
@@ -101,9 +105,11 @@ async def detect_gpu_on_node(
                 else:
                     gpu_name = "NVIDIA GPU"
 
-            # Check for NVIDIA driver
+            # Check for NVIDIA driver. Also pull compute_cap so we can flag
+            # pre-Volta cards (compute_cap < 7.0) as architecturally
+            # unsupported by the project policy — drivers can't fix that.
             result = await conn.run(
-                "nvidia-smi --query-gpu=name,driver_version --format=csv,noheader",
+                "nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader",
                 check=False
             )
 
@@ -125,20 +131,36 @@ async def detect_gpu_on_node(
             lines = smi_output.split('\n')
 
             if lines:
-                # Get first GPU info (format: "NVIDIA GB10, 580.95.05")
+                # Get first GPU info (format: "NVIDIA GB10, 580.95.05, 8.6")
                 first_line = lines[0].strip()
                 parts = [p.strip() for p in first_line.split(',')]
 
                 if len(parts) >= 2:
                     gpu_name = parts[0]
                     driver_version = parts[1]
+                    compute_cap = parts[2] if len(parts) >= 3 else None
+
+                    # Pre-Volta (compute_cap < 7.0) is unsupported by project
+                    # policy — driver upgrade won't help.
+                    gpu_supported: Optional[bool] = None
+                    if compute_cap:
+                        try:
+                            gpu_supported = float(compute_cap) >= 7.0
+                        except ValueError:
+                            gpu_supported = None
 
                     # Compare versions
                     try:
                         current_major = int(driver_version.split('.')[0])
                         required_major = int(min_version.split('.')[0])
 
-                        if current_major >= required_major:
+                        if gpu_supported is False:
+                            # Architecturally unsupported — no driver action
+                            # can fix this. Flag it as "unsupported_gpu" so
+                            # the UI can show the right message.
+                            driver_status = "unsupported_gpu"
+                            action_required = "exclude"
+                        elif current_major >= required_major:
                             driver_status = "compatible"
                             action_required = None
                         else:
@@ -158,7 +180,9 @@ async def detect_gpu_on_node(
                         driver_version=driver_version,
                         driver_status=driver_status,
                         min_required_version=min_version,
-                        action_required=action_required
+                        action_required=action_required,
+                        compute_cap=compute_cap,
+                        gpu_supported=gpu_supported,
                     )
 
             # Fallback if parsing fails

@@ -35,7 +35,9 @@ interface Hardware {
   gpu_count?: number
   gpu_model?: string
   nvidia_driver_version?: string
-  driver_status?: "compatible" | "old" | "missing"
+  driver_status?: "compatible" | "old" | "missing" | "unsupported_gpu" | "unknown"
+  compute_cap?: string
+  gpu_supported?: boolean
   architecture?: string
   lvm_expandable?: boolean
   lvm_free_gb?: number
@@ -113,6 +115,15 @@ export default function HardwareDetection() {
   const oldDriverServers = useMemo(() => {
     return gpuServers.filter(
       (server) => server.hardware?.driver_status === "old"
+    )
+  }, [gpuServers])
+
+  // Pre-Volta / architecturally unsupported GPUs. Driver upgrade won't fix
+  // these — the card itself is below the project's compute_cap >= 7.0
+  // requirement.
+  const unsupportedGpuServers = useMemo(() => {
+    return gpuServers.filter(
+      (server) => server.hardware?.driver_status === "unsupported_gpu"
     )
   }, [gpuServers])
 
@@ -466,6 +477,35 @@ export default function HardwareDetection() {
                 </TkAlertDescription>
               </TkAlert>
             )}
+
+            {/* Unsupported GPU architecture (pre-Volta) */}
+            {unsupportedGpuServers.length > 0 && (
+              <TkAlert className="bg-warning/10 text-warning border-warning/20">
+                <AlertTriangle className="h-6 w-6" />
+                <TkAlertDescription>
+                  <div>
+                    <h3 className="font-bold">Unsupported GPU Architecture</h3>
+                    <div className="text-sm mt-2">
+                      The following servers have GPUs older than Volta
+                      (compute capability &lt; 7.0). Thinkube does not support
+                      these for GPU workloads — upgrading the driver will not
+                      change this.
+                      <ul className="mt-2 space-y-1 ml-4">
+                        {unsupportedGpuServers.map((server) => (
+                          <li key={server.ip}>
+                            {server.hostname} — {server.hardware?.gpu_model || "GPU"}
+                            {server.hardware?.compute_cap && (
+                              <> (compute capability {server.hardware.compute_cap},
+                              requires &gt;= 7.0)</>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </TkAlertDescription>
+              </TkAlert>
+            )}
           </TkCardContent>
         </TkCard>
       )}
@@ -479,7 +519,7 @@ export default function HardwareDetection() {
               <XCircle className="h-6 w-6" />
               <TkAlertDescription>
                 <div>
-                  <h3 className="font-bold">Action Required</h3>
+                  <h3 className="font-bold">Action Required: Old Drivers</h3>
                   <div className="text-sm">
                     Servers with outdated NVIDIA drivers cannot be used for GPU
                     workloads. You have two options:
@@ -496,6 +536,25 @@ export default function HardwareDetection() {
                         cluster).
                       </li>
                     </ul>
+                  </div>
+                </div>
+              </TkAlertDescription>
+            </TkAlert>
+          )}
+
+          {/* Warning for unsupported GPU architecture */}
+          {unsupportedGpuServers.length > 0 && (
+            <TkAlert className="bg-destructive/10 text-destructive border-destructive/20">
+              <XCircle className="h-6 w-6" />
+              <TkAlertDescription>
+                <div>
+                  <h3 className="font-bold">Action Required: Unsupported GPU</h3>
+                  <div className="text-sm">
+                    Pre-Volta GPUs (compute capability &lt; 7.0) cannot be used
+                    for GPU workloads in Thinkube. Driver upgrades will not
+                    change this — the architecture itself is unsupported.
+                    Continuing will include the affected servers in the
+                    Kubernetes cluster but exclude them from GPU workloads.
                   </div>
                 </div>
               </TkAlertDescription>
