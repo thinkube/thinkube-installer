@@ -65,30 +65,19 @@ export default function SudoPassword() {
           (req: any) => req.status === "missing"
         )
 
-        // Check if we're in skip-config mode
-        const skipConfigMode = sessionStorage.getItem("skipConfigMode") === "true"
-
         if (hasToolsToInstall) {
           // Tools need installation - start the installation process
           const setupResponse = await axios.post("/api/run-setup", {
             sudo_password: sudoPassword
           })
 
-          if (setupResponse.data.status === "exists" || skipConfigMode) {
-            // If tools were already installed or we're in skip-config mode,
-            // check where to go next
-            if (skipConfigMode) {
-              navigate("/deploy")
-            } else {
-              navigate("/server-discovery")
-            }
+          if (setupResponse.data.status === "exists") {
+            // Tools were already installed; skip the progress page.
+            navigate("/server-discovery")
           } else {
             // Redirect to installation progress page
             navigate("/installation")
           }
-        } else if (skipConfigMode) {
-          // All tools already installed and in skip-config mode
-          navigate("/deploy")
         } else {
           // All tools are already installed, proceed normally
           navigate("/server-discovery")

@@ -1085,29 +1085,4 @@ async def verify_tailscale(request: Dict[str, Any]):
         return {"valid": False, "message": f"Verification error: {str(e)}"}
 
 
-@router.get("/system/check-inventory")
-async def check_inventory():
-    """Check if inventory.yaml exists and return its content"""
-    inventory_path = Path.home() / "thinkube" / "inventory" / "inventory.yaml"
-    
-    try:
-        if inventory_path.exists():
-            with open(inventory_path, 'r') as f:
-                content = f.read()
-            return {
-                "exists": True,
-                "path": str(inventory_path),
-                "content": content
-            }
-        else:
-            return {
-                "exists": False,
-                "path": str(inventory_path),
-                "content": None
-            }
-    except Exception as e:
-        logger.error(f"Error checking inventory: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # Deployment state management removed - installer always starts fresh

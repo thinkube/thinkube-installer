@@ -560,8 +560,9 @@ export default function Deploy() {
   }
 
   // Rollback mapping: deployment playbook id -> rollback playbook path
+  // (null values intentionally document "no rollback applicable").
   const getRollbackPlaybook = (deploymentId: string): string | null => {
-    const rollbackMap: Record<string, string> = {
+    const rollbackMap: Record<string, string | null> = {
       // Initial setup - no rollback
       'env-setup': null,
       'expand-lvm': null,

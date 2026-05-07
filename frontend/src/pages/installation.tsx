@@ -26,11 +26,6 @@ interface InstallationStatus {
 export default function Installation() {
   const navigate = useNavigate()
 
-  // Check if we're in skip-config mode
-  const skipConfigMode = typeof window !== 'undefined'
-    ? sessionStorage.getItem('skipConfigMode') === 'true'
-    : false
-
   const [status, setStatus] = useState<InstallationStatus>({
     phase: 'starting',
     progress: 0,
@@ -146,11 +141,7 @@ export default function Installation() {
   }, [status.logs, autoScroll])
 
   const continueNext = () => {
-    if (skipConfigMode) {
-      navigate('/deploy')
-    } else {
-      navigate('/server-discovery')
-    }
+    navigate('/server-discovery')
   }
 
   useEffect(() => {
@@ -258,7 +249,7 @@ export default function Installation() {
               className="gap-2"
               onClick={continueNext}
             >
-              {skipConfigMode ? 'Continue to Deployment' : 'Continue to Server Discovery'}
+              Continue to Server Discovery
               <ChevronRight className="w-5 h-5" />
             </TkButton>
           </div>
