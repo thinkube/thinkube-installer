@@ -15,13 +15,8 @@ import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
 import {
   TkInput,
   TkLabel,
-  TkSelect,
-  TkSelectContent,
-  TkSelectItem,
-  TkSelectTrigger,
-  TkSelectValue,
 } from "thinkube-style/components/forms-inputs"
-import { TkButton } from "thinkube-style/components/buttons-badges"
+import { TkBadge, TkButton } from "thinkube-style/components/buttons-badges"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
 import {
   ChevronLeft,
@@ -50,7 +45,9 @@ export default function OverlayCredentials() {
   const navigate = useNavigate()
 
   // Provider + cluster name come from the previous step (configuration page).
-  const [overlayProvider, setOverlayProvider] = useState<OverlayProvider>("zerotier")
+  // Alpha release: Tailscale is the only supported overlay; the dropdown is
+  // not exposed in the UI but the underlying state machine still tracks it.
+  const [overlayProvider, setOverlayProvider] = useState<OverlayProvider>("tailscale")
   const [clusterName, setClusterName] = useState<string>("")
 
   const [zt, setZt] = useState<ZerotierState>({ networkId: "", apiToken: "" })
@@ -96,13 +93,10 @@ export default function OverlayCredentials() {
       const localCfg = JSON.parse(localStorage.getItem("thinkube-config") || "{}")
       const merged = { ...envCfg, ...localCfg }
 
-      // Provider preference comes from (in order): the in-progress wizard
-      // run (sessionStorage), then the durable store (localStorage / env).
-      // Only fall back to "zerotier" as the initial UI state for a brand-
-      // new install — never silently flip a returning Tailscale user.
-      const sessionProvider = sessionStorage.getItem("overlayProvider") as OverlayProvider | null
-      const provider: OverlayProvider =
-        sessionProvider || (merged.overlayProvider as OverlayProvider) || "zerotier"
+      // Alpha release: lock the overlay provider to Tailscale regardless
+      // of any previously-persisted value, so a returning ZeroTier user
+      // is migrated to Tailscale instead of seeing a now-hidden UI path.
+      const provider: OverlayProvider = "tailscale"
       setOverlayProvider(provider)
       sessionStorage.setItem("overlayProvider", provider)
 
@@ -289,30 +283,15 @@ export default function OverlayCredentials() {
           <TkCardTitle>Overlay Network Provider</TkCardTitle>
         </TkCardHeader>
         <TkCardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Choose how cluster nodes will be connected. The choice drives
-            which credentials you fill in below.
-          </p>
-          <TkSelect
-            value={overlayProvider}
-            onValueChange={(value: string) => {
-              const next = value as OverlayProvider
-              setOverlayProvider(next)
-              sessionStorage.setItem("overlayProvider", next)
-            }}
-          >
-            <TkSelectTrigger id="overlayProviderSelect">
-              <TkSelectValue />
-            </TkSelectTrigger>
-            <TkSelectContent>
-              <TkSelectItem value="zerotier">ZeroTier</TkSelectItem>
-              <TkSelectItem value="tailscale">Tailscale</TkSelectItem>
-            </TkSelectContent>
-          </TkSelect>
+          <div className="flex items-center gap-2">
+            <TkBadge status="active">Tailscale</TkBadge>
+            <span className="text-sm text-muted-foreground">
+              WireGuard-based mesh VPN (recommended for DGX Spark).
+            </span>
+          </div>
           <p className="text-xs text-muted-foreground">
-            {overlayProvider === "zerotier"
-              ? "ZeroTier: software-defined networking with centralized control."
-              : "Tailscale: WireGuard-based mesh VPN (recommended for DGX Spark)."}
+            The alpha release supports Tailscale only. Additional overlay
+            providers will return in a future release.
           </p>
         </TkCardContent>
       </TkCard>

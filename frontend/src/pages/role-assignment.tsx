@@ -164,7 +164,7 @@ export default function RoleAssignment() {
         <TkCardContent className="pt-6">
           <h2 className="text-xl font-semibold mb-4">Role Requirements</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className={allNodes.length > 1 ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
             <div>
               <h3 className="font-semibold mb-2">Control Plane Node</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
@@ -175,15 +175,17 @@ export default function RoleAssignment() {
               </ul>
             </div>
 
-            <div>
-              <h3 className="font-semibold mb-2">Worker Nodes (Optional)</h3>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Additional nodes for workloads</li>
-                <li>• Not required for single-node setups</li>
-                <li>• GPU nodes for AI workloads</li>
-                <li>• More nodes = more capacity</li>
-              </ul>
-            </div>
+            {allNodes.length > 1 && (
+              <div>
+                <h3 className="font-semibold mb-2">Worker Nodes (Optional)</h3>
+                <ul className="text-sm space-y-1 text-muted-foreground">
+                  <li>• Additional nodes for workloads</li>
+                  <li>• Not required for single-node setups</li>
+                  <li>• GPU nodes for AI workloads</li>
+                  <li>• More nodes = more capacity</li>
+                </ul>
+              </div>
+            )}
           </div>
         </TkCardContent>
       </TkCard>
@@ -216,24 +218,40 @@ export default function RoleAssignment() {
                         </div>
                       </div>
 
-                      <TkSelect
-                        value={node.role || "none"}
-                        onValueChange={(value: string) => handleRoleChange(node.id, value === "none" ? "" : value)}
-                      >
-                        <TkSelectTrigger className="w-[180px]">
-                          <TkSelectValue placeholder="No Role" />
-                        </TkSelectTrigger>
-                        <TkSelectContent>
-                          <TkSelectItem value="none">No Role</TkSelectItem>
-                          <TkSelectItem value="worker">Worker</TkSelectItem>
-                          <TkSelectItem
-                            value="control_plane"
-                            disabled={!canBeControlPlane(node) || (controlPlaneNodes.length > 0 && node.role !== 'control_plane')}
-                          >
-                            Control Plane
-                          </TkSelectItem>
-                        </TkSelectContent>
-                      </TkSelect>
+                      {allNodes.length === 1 ? (
+                        // Single-server install: the only sensible role is
+                        // control plane. Show a static badge instead of a
+                        // dropdown so the user can't break validation by
+                        // flipping it to worker (which would leave the
+                        // cluster with zero control planes). If the server
+                        // can't be a control plane (cpu/ram too low), the
+                        // existing validation surfaces the error and gates
+                        // the Continue button.
+                        node.role === 'control_plane' ? (
+                          <TkBadge status="active">Control Plane</TkBadge>
+                        ) : (
+                          <TkBadge status="warning">Insufficient resources</TkBadge>
+                        )
+                      ) : (
+                        <TkSelect
+                          value={node.role || "none"}
+                          onValueChange={(value: string) => handleRoleChange(node.id, value === "none" ? "" : value)}
+                        >
+                          <TkSelectTrigger className="w-[180px]">
+                            <TkSelectValue placeholder="No Role" />
+                          </TkSelectTrigger>
+                          <TkSelectContent>
+                            <TkSelectItem value="none">No Role</TkSelectItem>
+                            <TkSelectItem value="worker">Worker</TkSelectItem>
+                            <TkSelectItem
+                              value="control_plane"
+                              disabled={!canBeControlPlane(node) || (controlPlaneNodes.length > 0 && node.role !== 'control_plane')}
+                            >
+                              Control Plane
+                            </TkSelectItem>
+                          </TkSelectContent>
+                        </TkSelect>
+                      )}
                     </div>
                   ))}
                 </div>

@@ -159,10 +159,11 @@ export default function ServerDiscovery() {
     }
   }
 
+  // Alpha release: only one server (the control plane) is installed via
+  // the desktop installer. Additional workers are added afterward via
+  // thinkube-control's add-nodes flow. Selection is therefore radio-style.
   const selectServer = (server: DiscoveredServer) => {
-    if (!selectedServers.find((s) => s.ip === server.ip)) {
-      setSelectedServers([...selectedServers, server])
-    }
+    setSelectedServers([server])
   }
 
   const proceedToNodeConfig = () => {

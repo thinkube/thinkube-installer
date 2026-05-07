@@ -12,7 +12,6 @@ import { TkBadge } from "thinkube-style/components/buttons-badges"
 import { TkPageWrapper } from "thinkube-style/components/utilities"
 import {
   ChevronLeft,
-  ChevronRight,
   Info,
   CheckCircle2,
   XCircle,
@@ -37,7 +36,7 @@ type OverlayProvider = "zerotier" | "tailscale"
 export default function OverlaySetup() {
   const navigate = useNavigate()
   const [nodes, setNodes] = useState<ServerNode[]>([])
-  const [overlayProvider, setOverlayProvider] = useState<OverlayProvider>("zerotier")
+  const [overlayProvider, setOverlayProvider] = useState<OverlayProvider>("tailscale")
   const [setupStarted, setSetupStarted] = useState(false)
   const [setupComplete, setSetupComplete] = useState(false)
   const [ipAllocationLoading, setIpAllocationLoading] = useState(false)
@@ -215,6 +214,16 @@ export default function OverlaySetup() {
   const allConnected = nodes.every((n) => n.status === "connected")
   const hasFailed = nodes.some((n) => n.status === "failed")
 
+  // Auto-advance once the playbook has succeeded on every node. Nothing
+  // user-actionable happens between "Setup Complete" and the next screen,
+  // so a manual Continue click below the (long) playbook log is just
+  // friction. Short delay so the user sees the success banner.
+  useEffect(() => {
+    if (!setupComplete || !allConnected) return
+    const t = setTimeout(() => navigate("/network-configuration"), 1500)
+    return () => clearTimeout(t)
+  }, [setupComplete, allConnected, navigate])
+
   return (
     <TkPageWrapper title={`${providerLabel} Overlay Setup`}>
       {/* Provider Info */}
@@ -355,7 +364,8 @@ export default function OverlaySetup() {
         </TkCardContent>
       </TkCard>
 
-      {/* Navigation */}
+      {/* Navigation: Back-only — Continue is automatic on success
+          (see the auto-advance effect above). */}
       <div className="flex justify-between mt-6">
         <TkButton
           type="button"
@@ -370,13 +380,6 @@ export default function OverlaySetup() {
         >
           <ChevronLeft className="w-5 h-5 mr-2" />
           Back
-        </TkButton>
-        <TkButton
-          onClick={() => navigate("/network-configuration")}
-          disabled={!setupComplete || !allConnected}
-        >
-          Configure Network
-          <ChevronRight className="w-5 h-5 ml-2" />
         </TkButton>
       </div>
     </TkPageWrapper>
