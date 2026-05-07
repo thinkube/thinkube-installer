@@ -89,3 +89,30 @@ Don't sell it as "reliability cleanup." Sell it as "thinkube can rebuild every w
 - Harbor pull-through cache settings need to be tuned so BuildKit pulling base images during a build doesn't hammer dockerhub directly.
 - Don't try to reuse the existing podman flow's containers.conf / registries.conf — BuildKit configures registries through its own daemon flags / TOML.
 - Estimated effort: significant. The MVP (BuildKit daemon + one WorkflowTemplate that builds python-base) is a few hours; getting the whole harbor-images catalog migrated, with caching dialed in and the ansible playbooks updated, is days. Pair this with the mirror-upstream task above for compounding airgap value.
+
+---
+
+## Sweep `k8s_info` + `until:` polling → `kubectl rollout status`
+
+**Status:** not started
+
+**Why:** During alpha-1 the thinkube-control deploy hit a false-failure because the `Verify backend deployment is running` task polled `k8s_info` for `replicas == readyReplicas` with `retries: 8, delay: 10` — an 80-second ceiling that's narrower than the kaniko build alone (~84s) on a fresh install. The fix in `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` (commit `ae647dc`) replaced both verify tasks with `kubectl rollout status --timeout=300s`, which returns immediately on real success or real failure (ImagePullBackOff, CrashLoopBackOff, ProgressDeadlineExceeded) instead of polling on a fixed schedule. The polling pattern is the wrong primitive: too short → false negatives, too long → user waits the full timeout on real failures.
+
+**What changes:**
+
+- Grep for the pattern across the playbook tree:
+  ```
+  grep -rln "kubernetes.core.k8s_info" ansible/ | xargs grep -l "until:"
+  ```
+  Last count: 131 files use `k8s_info`, 64 use `until:`. Not all are deployment-readiness checks (some wait for CRDs, secrets, custom-resource status fields), so this needs triage, not blind replace.
+
+- For each task that polls a Deployment / StatefulSet / DaemonSet for ready replicas, convert to `kubectl rollout status` with a generous timeout (300s baseline; longer for known-slow components like Harbor or JupyterHub).
+
+- For tasks that poll non-rollout objects (CRDs, secrets, certificates, custom-resource phase fields), keep `k8s_info` + `until:` but audit the retries × delay product against realistic ceilings — most are still too short.
+
+**Things to watch:**
+
+- `kubectl rollout status` requires `kubectl_bin` to be defined in the play. Most playbooks already set it; the few that don't will need it added.
+- The exit status of `kubectl rollout status` is the source of truth — drop the `failed_when: false` shims that were masking false-fail UX.
+- Some readiness checks gate downstream work via the registered fact (e.g., `when: backend_deployment.resources | length > 0` later in the play). Switching to `command:` loses that fact; either re-fetch with a short `k8s_info` after the rollout completes, or restructure the downstream gate.
+- Estimated effort: 1-2 days of careful triage + per-component testing. Do it in batches per component (one PR per `40_thinkube/<area>/`), not as one mega-sweep.
