@@ -40,7 +40,7 @@ The Linux scoping pass surfaced these as "almost certainly will break on macOS."
 
 ## Deliberately out of scope (don't touch)
 
-- **`scripts/install.sh` and `scripts/deploy.sh`** — Linux-only `.deb` install/deploy helpers. macOS users open the `.dmg` and drag the app to `/Applications`. Don't add `brew` or Homebrew branches to these scripts — leave them as Linux-only and document the macOS path in the README instead.
+- **`scripts/deploy.sh`** — Linux-only `.deb` build+install helper. macOS users open the `.dmg` and drag the app to `/Applications`. Don't add `brew` or Homebrew branches — leave it Linux-only and document the macOS path in the README instead.
 - **Code signing / notarization** — alpha is unsigned. The user right-clicks → Open the first time to bypass Gatekeeper. Add a one-line note in `README.md`.
 - **Anything in `ansible/` or the deploy targets** — those stay Ubuntu. Don't change Ansible playbooks for macOS.
 - **The frontend wizard's "Ubuntu" copy** — refers to deploy targets, which IS still Ubuntu. Don't reword.
