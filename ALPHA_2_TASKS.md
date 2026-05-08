@@ -37,6 +37,8 @@ Tasks deferred from alpha-1 to a follow-up release. Each entry is a brief; when 
 
 This is **not** an airgap story. A real airgap would also require mirroring apt (100s of GB of Ubuntu archive), conda/mamba (JupyterHub user kernels routinely pull from anaconda.org), NVIDIA's CUDA/cuDNN distribution, npm/yarn, and every curl-fetched binary embedded in user Containerfiles. Mirroring just what Thinkube itself uses for installation/upgrade doesn't make user image builds airgappable. Don't promise that.
 
+**Bonus capability the same daemons enable: private package hosting.** DevPi / Verdaccio / kellnr / Athens / Harbor each serve dual duty — they're caching proxies for the public registry AND they can host packages of your own that never leave your network. Once Thinkube grows internal libraries (e.g. a shared `thinkube-py` or `@thinkube/control-sdk`), you publish them to the same daemon, and consuming code installs them with the standard tooling (`pip install thinkube-py`, `npm install @thinkube/control-sdk`, etc.) — the package looks exactly like a public one to the dependency resolver, but the bytes stay inside the cluster. No extra infrastructure beyond what we'd stand up for the reliability fix. Worth keeping in mind when scoping each daemon's deployment (volume sizing, auth, backup), even if no internal library exists yet on day one.
+
 **What's already mirrored:**
 - Container images via **Harbor** (`registry.thinkube.com/library/...` and `thinkube/...`).
 - Python packages via **DevPi** (`root/stable` index, transparently caches PyPI).
