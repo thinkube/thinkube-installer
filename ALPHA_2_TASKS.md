@@ -45,9 +45,12 @@ Tasks deferred from alpha-1 to a follow-up release. Each entry is a brief; when 
 
 2. **Binaries fetched in image builds.** Audit the `ansible/40_thinkube/core/harbor-images/base-images/*.Containerfile.j2` set — crane, k9s, stern, kubectl, code-server (.deb), nerd-fonts zips, argo/argocd CLIs, tea, yq, etc. Pull these once at build-images time, store as OCI artifacts in Harbor (or a small static-blob namespace), and rewrite the Containerfiles to fetch from Harbor instead of the upstream URL. Side benefit: pinned versions across rebuilds, no more "the latest crane release moved" surprises.
 
-3. **(Stretch) Apt mirror.** Heavyweight (Ubuntu archive is 100s of GB), but a partial `apt-mirror`-style cache of just the packages Thinkube installs is feasible and would close most of the "build a new image" use case. Probably not worth doing for alpha-2 — flag for beta.
+3. **Go modules — Athens.** [Athens](https://github.com/gomods/athens) (CNCF sandbox) is the standard transparent proxy for Go modules. Runs as a small Deployment + PVC. Configured client-side with `GOPROXY=https://athens.thinkube.com,https://proxy.golang.org,direct` — Go's built-in fallback chain handles "if Athens has it use cache; if not fetch+cache; if Athens is down, go direct." That fallback is in the language runtime, so the UX is cleaner than DevPi (no per-project `index-url`). Becomes load-bearing the moment any cluster workload is built in Go (controllers, custom operators) — until then it's a nice-to-have.
+4. **Cargo crates — Panamax.** [Panamax](https://github.com/panamax-rs/panamax) is the closest DevPi analog for Rust: a transparent mirror of `crates.io` plus the `rustup` toolchain channels, designed for offline use. Configured per-project via `~/.cargo/config.toml` pointing `[source.crates-io]` at the mirror. If we also need to host private crates, [kellnr](https://kellnr.io) is the more featureful option (registry + proxy in one). Same caveat as Athens: only worth standing up once we have actual Rust workloads.
 
-4. **(Out of scope for now)** NVIDIA driver downloads, OS install media, ansible-galaxy collections — these are bootstrap-time concerns, not per-deploy concerns. Real airgap is bigger work.
+5. **(Stretch) Apt mirror.** Heavyweight (Ubuntu archive is 100s of GB), but a partial `apt-mirror`-style cache of just the packages Thinkube installs is feasible and would close most of the "build a new image" use case. Probably not worth doing for alpha-2 — flag for beta.
+
+6. **(Out of scope for now)** NVIDIA driver downloads, OS install media, ansible-galaxy collections — these are bootstrap-time concerns, not per-deploy concerns. Real airgap is bigger work.
 
 **Framing for alpha-2:**
 
