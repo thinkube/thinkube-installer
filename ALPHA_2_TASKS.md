@@ -119,3 +119,70 @@ This is **not** an airgap story. A real airgap would also require mirroring apt 
 - The exit status of `kubectl rollout status` is the source of truth — drop the `failed_when: false` shims that were masking false-fail UX.
 - Some readiness checks gate downstream work via the registered fact (e.g., `when: backend_deployment.resources | length > 0` later in the play). Switching to `command:` loses that fact; either re-fetch with a short `k8s_info` after the rollout completes, or restructure the downstream gate.
 - Estimated effort: 1-2 days of careful triage + per-component testing. Do it in batches per component (one PR per `40_thinkube/<area>/`), not as one mega-sweep.
+
+---
+
+## Diagnostic-on-failure blocks for every long wait task
+
+**Status:** not started
+
+**Why:** Multiple alpha-1 failures surfaced as opaque retry timeouts that gave the user no useful information. The Cilium-IPAM check on a new node is the canonical example: 12 retries × 10s of `cilium: daemon unreachable`, then `Module failed: non-zero return code` — and the user has no idea whether Cilium is genuinely broken, the pod is crashlooping, an init container failed, the node lost the network, or anything else. To diagnose, the user has to ssh to the control plane, run `kubectl get pods -n kube-system -l k8s-app=cilium -o wide`, identify the bad pod, `kubectl describe`, `kubectl logs`, etc. — i.e. exactly the kubectl-level debugging that's not supposed to reach the user. The same pattern recurs in every long-running wait throughout the install.
+
+**What changes:**
+
+Wrap each "wait for X to become Y" task with a paired "if it didn't, gather and print the diagnostic" task. Pattern:
+
+```yaml
+- block:
+    - name: Wait for Cilium IPAM to allocate pod CIDR
+      ansible.builtin.shell: |
+        k8s kubectl exec -n kube-system $(...) -- cilium status --brief
+      register: cilium_check
+      retries: 12
+      delay: 10
+      until: cilium_check.rc == 0
+  rescue:
+    - name: Gather Cilium diagnostic on failure
+      ansible.builtin.shell: |
+        echo "=== Cilium pod state on {{ inventory_hostname }} ==="
+        k8s kubectl get pod -n kube-system -l k8s-app=cilium --field-selector spec.nodeName={{ inventory_hostname }} -o wide
+        echo
+        echo "=== Init container exit codes ==="
+        k8s kubectl get pod ... -o jsonpath='...'
+        echo
+        echo "=== Last 50 lines of cilium-agent logs ==="
+        k8s kubectl logs ... -c cilium-agent --tail=50
+        echo
+        echo "=== If --previous available (after crash) ==="
+        k8s kubectl logs ... -c cilium-agent --previous --tail=20 2>/dev/null || true
+      register: cilium_diag
+      changed_when: false
+      failed_when: false
+    - name: Print Cilium diagnostic
+      ansible.builtin.debug:
+        msg: "{{ cilium_diag.stdout_lines }}"
+    - name: Re-raise the original failure
+      ansible.builtin.fail:
+        msg: "Cilium IPAM did not become ready on {{ inventory_hostname }} — see diagnostic above."
+```
+
+For today's case, this would have surfaced `level=fatal msg="Non-existent configuration directory /tmp/cilium/config-map"` (or, on the working retry, would just not have run at all). The user sees the actual error in their playbook output instead of needing me to ssh-and-kubectl through it.
+
+**Where to apply (initial scope):**
+
+Priority targets — the long waits that have caused the most opaque failures in alpha-1 testing:
+
+1. `core/infrastructure/k8s/20_join_workers.yaml` — Cilium IPAM check, node-Ready check.
+2. `core/argocd/11_deploy.yaml` — application sync wait (now without the `failed_when: false` mask, but still no diagnostic on timeout).
+3. `core/thinkube-control/12_deploy.yaml` — backend/frontend rollout (already uses `kubectl rollout status` which is reasonable, but a diagnostic on timeout adds ImagePull errors / pod events).
+4. `core/harbor-images/*` — image build workflow waits.
+5. `core/jupyterhub/11_deploy.yaml` — helm chart fetch + install + wait-for-pods.
+
+Per-component diagnostic content is where the design work is — generic "kubectl describe + kubectl logs" is fine as a baseline, but the real win is component-aware "what would I check first if this failed."
+
+**Things to watch:**
+
+- **Don't make the diagnostic the failure.** The original task's failure must still be the reason the play fails. The diagnostic is *informational output*, not a replacement for the failure. (Use `block: / rescue:` with a `fail:` at the end of the rescue, not `failed_when: false` on the wait task itself.)
+- **Don't crash inside the rescue.** Diagnostic commands themselves must `failed_when: false` and `changed_when: false` so a missing pod / API timeout / etc. doesn't mask the actual failure.
+- **Output volume.** Long log dumps inflate the playbook log noticeably. 50 lines per component is a reasonable default; bigger is OK if the component genuinely needs it.
+- **Estimated effort:** 1-2 hours per component for the first ~5 priority targets. Mostly mechanical once a per-component diagnostic snippet exists. Pair this with the `k8s_info` → `kubectl rollout status` sweep above — same files, same testing pass.
