@@ -29,11 +29,13 @@ Tasks deferred from alpha-1 to a follow-up release. Each entry is a brief; when 
 
 ---
 
-## Mirror upstream artifacts → "build without external network" mode
+## Mirror upstream artifacts to harden the install path
 
 **Status:** not started
 
-**Why:** During alpha-1 testing the install pipeline hit transient GitHub release-CDN EOFs four separate times in one afternoon (helm chart fetches for jupyterhub/argo-events, the crane binary in ci-utils, the nerd-fonts wget in code-server-dev). All were fixed locally with `--retry`/`--fail` flags, but the structural fragility is the same: a fresh install does dozens of one-shot downloads from `github.com` / `release-assets.githubusercontent.com` / random vendor CDNs, and any one of them dropping the connection at the wrong moment fails the install. Beyond reliability, mirroring also opens a real capability: a "build anything after bootstrap with no external network" mode that's genuinely useful for security-sensitive homelab/research deployments (an actual airgap is harder; this is the much closer "post-bootstrap airgap" variant).
+**Why:** During alpha-1 testing the install pipeline hit transient GitHub release-CDN EOFs four separate times in one afternoon (helm chart fetches for jupyterhub/argo-events, the crane binary in ci-utils, the nerd-fonts wget in code-server-dev), plus a fifth on the GitHub CLI keyring fetch in code-server-dev. All were fixed locally with `--retry`/`--fail` flags, but the structural fragility is the same: a fresh install does dozens of one-shot downloads from `github.com` / `release-assets.githubusercontent.com` / random vendor CDNs, and any one of them dropping the connection at the wrong moment fails the install. Mirroring those artifacts to Harbor / DevPi / Athens / Panamax removes the most common reason a fresh install errors out.
+
+This is **not** an airgap story. A real airgap would also require mirroring apt (100s of GB of Ubuntu archive), conda/mamba (JupyterHub user kernels routinely pull from anaconda.org), NVIDIA's CUDA/cuDNN distribution, npm/yarn, and every curl-fetched binary embedded in user Containerfiles. Mirroring just what Thinkube itself uses for installation/upgrade doesn't make user image builds airgappable. Don't promise that.
 
 **What's already mirrored:**
 - Container images via **Harbor** (`registry.thinkube.com/library/...` and `thinkube/...`).
@@ -48,13 +50,7 @@ Tasks deferred from alpha-1 to a follow-up release. Each entry is a brief; when 
 3. **Go modules — Athens.** [Athens](https://github.com/gomods/athens) (CNCF sandbox) is the standard transparent proxy for Go modules. Runs as a small Deployment + PVC. Configured client-side with `GOPROXY=https://athens.thinkube.com,https://proxy.golang.org,direct` — Go's built-in fallback chain handles "if Athens has it use cache; if not fetch+cache; if Athens is down, go direct." That fallback is in the language runtime, so the UX is cleaner than DevPi (no per-project `index-url`). Becomes load-bearing the moment any cluster workload is built in Go (controllers, custom operators) — until then it's a nice-to-have.
 4. **Cargo crates — Panamax.** [Panamax](https://github.com/panamax-rs/panamax) is the closest DevPi analog for Rust: a transparent mirror of `crates.io` plus the `rustup` toolchain channels, designed for offline use. Configured per-project via `~/.cargo/config.toml` pointing `[source.crates-io]` at the mirror. If we also need to host private crates, [kellnr](https://kellnr.io) is the more featureful option (registry + proxy in one). Same caveat as Athens: only worth standing up once we have actual Rust workloads.
 
-5. **(Stretch) Apt mirror.** Heavyweight (Ubuntu archive is 100s of GB), but a partial `apt-mirror`-style cache of just the packages Thinkube installs is feasible and would close most of the "build a new image" use case. Probably not worth doing for alpha-2 — flag for beta.
-
-6. **(Out of scope for now)** NVIDIA driver downloads, OS install media, ansible-galaxy collections — these are bootstrap-time concerns, not per-deploy concerns. Real airgap is bigger work.
-
-**Framing for alpha-2:**
-
-Primary benefit is reliability — alpha-1 testing hit five separate transient network failures in a single afternoon (GitHub release-CDN EOFs on helm charts, the GitHub CLI keyring, vendor-binary downloads in image builds). Mirroring those artifacts to Harbor / DevPi / Athens / Panamax removes the most common reason a fresh install errors out. As a side effect it also enables a "post-bootstrap airgap" mode (no external network needed for re-builds and re-deploys after the cluster comes up) that's genuinely useful for security-sensitive research setups and sites with bad ISPs — but treat that as a bonus, not the headline.
+**Out of scope:** apt mirror (Ubuntu archive too large to fully cache, and partial caches don't help unknown user image builds), conda/mamba mirror, NVIDIA CUDA/cuDNN, npm, OS install media, ansible-galaxy. These would each need their own mirror story and many have no clean solution. Picking them up would be a separate, much larger initiative — not part of this task.
 
 **Things to watch:**
 
