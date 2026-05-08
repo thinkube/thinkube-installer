@@ -54,7 +54,7 @@ Tasks deferred from alpha-1 to a follow-up release. Each entry is a brief; when 
 
 **Framing for alpha-2:**
 
-Don't sell it as "reliability cleanup." Sell it as "thinkube can rebuild every workload image, redeploy every helm chart, and re-provision every pinned binary without internet, after the initial bootstrap completes." That's a feature for users who care (research orgs, security-sensitive setups, sites with bad ISPs); for everyone else it just removes the failure mode where their install errors out because GitHub had a hiccup.
+Primary benefit is reliability — alpha-1 testing hit five separate transient network failures in a single afternoon (GitHub release-CDN EOFs on helm charts, the GitHub CLI keyring, vendor-binary downloads in image builds). Mirroring those artifacts to Harbor / DevPi / Athens / Panamax removes the most common reason a fresh install errors out. As a side effect it also enables a "post-bootstrap airgap" mode (no external network needed for re-builds and re-deploys after the cluster comes up) that's genuinely useful for security-sensitive research setups and sites with bad ISPs — but treat that as a bonus, not the headline.
 
 **Things to watch:**
 
