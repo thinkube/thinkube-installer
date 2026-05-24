@@ -4,15 +4,73 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Build script for thinkube installer (Tauri)
-# Builds packages for the current platform
+# Builds packages for the current platform.
+#
+# Usage:
+#   ./scripts/build.sh [--branch <ref>] [--repo-url <url>] [--metadata-repo <org/repo>]
+#
+#   --branch <ref>          Bake a default value for THINKUBE_BRANCH into
+#                           the binary. Without it the binary defaults to
+#                           `main` at runtime. With it, the .desktop-menu
+#                           launch path uses <ref> automatically; a user
+#                           who launches from a terminal with
+#                           THINKUBE_BRANCH set wins.
+#
+#   --repo-url <url>        Bake a default for THINKUBE_REPO_URL (the
+#                           thinkube repo URL the installer clones from).
+#                           Useful for distributing a fork-pinned deb.
+#
+#   --metadata-repo <org/repo>
+#                           Bake a default for THINKUBE_METADATA_REPO
+#                           (the metadata repo for channels / release
+#                           manifests). Useful for distributing a
+#                           metadata-fork-pinned deb.
+#
+# When any --branch / --repo-url / --metadata-repo is set, the output
+# .deb filename gets a sanitised suffix so multiple flavours can sit
+# side-by-side in installers/.
 
 set -e
+
+# Argument parsing ---------------------------------------------------------
+BUILD_BRANCH=""
+BUILD_REPO_URL=""
+BUILD_METADATA_REPO=""
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --branch)         BUILD_BRANCH="$2";        shift 2 ;;
+        --repo-url)       BUILD_REPO_URL="$2";      shift 2 ;;
+        --metadata-repo)  BUILD_METADATA_REPO="$2"; shift 2 ;;
+        -h|--help)
+            sed -n '6,30p' "$0"   # echo the usage block above
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $1" >&2
+            echo "Try $0 --help" >&2
+            exit 2
+            ;;
+    esac
+done
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "🏗️  Building thinkube installer..."
 echo ""
+if [ -n "$BUILD_BRANCH" ] || [ -n "$BUILD_REPO_URL" ] || [ -n "$BUILD_METADATA_REPO" ]; then
+    echo "🔖 Bake-in defaults:"
+    [ -n "$BUILD_BRANCH" ]        && echo "     THINKUBE_BRANCH         = $BUILD_BRANCH"
+    [ -n "$BUILD_REPO_URL" ]      && echo "     THINKUBE_REPO_URL       = $BUILD_REPO_URL"
+    [ -n "$BUILD_METADATA_REPO" ] && echo "     THINKUBE_METADATA_REPO  = $BUILD_METADATA_REPO"
+    echo ""
+fi
+
+# Export so the Rust build picks them up via option_env!()
+export THINKUBE_BUILD_BRANCH="$BUILD_BRANCH"
+export THINKUBE_BUILD_REPO_URL="$BUILD_REPO_URL"
+export THINKUBE_BUILD_METADATA_REPO="$BUILD_METADATA_REPO"
 
 # Detect platform
 OS="$(uname -s)"
@@ -142,21 +200,51 @@ if [ "$PLATFORM" = "Linux" ]; then
         echo ""
         echo "📝 Checksums created"
 
-        # Copy to installers directory
+        # Copy to installers directory, with a flavour suffix when any
+        # bake-in flag was set so multiple builds can coexist in
+        # installers/. Branch names (with `/`) become `-`.
+        FLAVOUR=""
+        if [ -n "$BUILD_BRANCH" ]; then
+            FLAVOUR="-$(echo "$BUILD_BRANCH" | tr '/' '-')"
+        fi
         echo ""
         echo "📁 Copying installers to friendly location..."
-        cp *.deb SHA256SUMS "$INSTALLERS_DIR/"
+        for src in *.deb; do
+            if [ -n "$FLAVOUR" ]; then
+                # thinkube-installer_0.1.0_arm64.deb
+                #   → thinkube-installer_0.1.0-FLAVOUR_arm64.deb
+                dst=$(echo "$src" | sed -E "s/(_[0-9]+\.[0-9]+\.[0-9]+)(_.*\.deb)/\1${FLAVOUR}\2/")
+                cp "$src" "$INSTALLERS_DIR/$dst"
+                echo "    $src → $dst"
+            else
+                cp "$src" "$INSTALLERS_DIR/"
+            fi
+        done
+        cp SHA256SUMS "$INSTALLERS_DIR/"
     fi
 elif [ "$PLATFORM" = "macOS" ]; then
     echo "📦 macOS packages created:"
     if [ -d "$BUNDLE_DIR/dmg" ]; then
         ls -lh "$BUNDLE_DIR/dmg/"*.dmg 2>/dev/null || echo "   No .dmg packages found"
 
-        # Copy DMG files
+        # Copy DMG files (with flavour suffix when bake-in was used)
         if ls "$BUNDLE_DIR/dmg/"*.dmg &> /dev/null; then
+            FLAVOUR=""
+            if [ -n "$BUILD_BRANCH" ]; then
+                FLAVOUR="-$(echo "$BUILD_BRANCH" | tr '/' '-')"
+            fi
             echo ""
             echo "📁 Copying installers to friendly location..."
-            cp "$BUNDLE_DIR/dmg/"*.dmg "$INSTALLERS_DIR/"
+            for src in "$BUNDLE_DIR/dmg/"*.dmg; do
+                if [ -n "$FLAVOUR" ]; then
+                    base=$(basename "$src")
+                    dst=$(echo "$base" | sed -E "s/(_[0-9]+\.[0-9]+\.[0-9]+)(_.*\.dmg)/\1${FLAVOUR}\2/")
+                    cp "$src" "$INSTALLERS_DIR/$dst"
+                    echo "    $base → $dst"
+                else
+                    cp "$src" "$INSTALLERS_DIR/"
+                fi
+            done
         fi
     fi
     if [ -d "$BUNDLE_DIR/macos" ]; then

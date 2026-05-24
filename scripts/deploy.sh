@@ -3,8 +3,14 @@
 # Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors
 # SPDX-License-Identifier: Apache-2.0
 
-# Deploy script for thinkube installer
-# Removes old package and installs the newly built one
+# Deploy script for thinkube installer.
+# Builds, removes any old install, installs the freshly built deb on
+# the local machine. Wrapper around build.sh + dpkg.
+#
+# All arguments are forwarded to build.sh — so:
+#   ./scripts/deploy.sh --branch feature/foo
+# produces and installs a deb baked with THINKUBE_BRANCH=feature/foo.
+# See scripts/build.sh --help for the full flag list.
 
 set -e
 
@@ -15,9 +21,10 @@ INSTALLERS_DIR="$PROJECT_DIR/installers"
 echo "🚀 Deploying thinkube installer..."
 echo ""
 
-# Always build first
+# Always build first; forward all arguments to build.sh so deploy.sh
+# accepts the same flags (--branch, --repo-url, --metadata-repo).
 echo "📦 Building installer..."
-"$SCRIPT_DIR/build.sh"
+"$SCRIPT_DIR/build.sh" "$@"
 echo ""
 echo "✅ Build complete, proceeding with deployment..."
 echo ""
@@ -26,11 +33,13 @@ echo ""
 ARCH=$(dpkg --print-architecture)
 echo "📦 Detected architecture: $ARCH"
 
-# Find the .deb package
-DEB_FILE="$INSTALLERS_DIR/thinkube-installer_0.1.0_${ARCH}.deb"
+# Find the freshest .deb for this architecture. With flavour suffixes
+# (from build.sh's --branch) the filename varies, so glob + mtime-sort
+# instead of hardcoding the path.
+DEB_FILE=$(ls -t "$INSTALLERS_DIR"/thinkube-installer_*_${ARCH}.deb 2>/dev/null | head -n1)
 
-if [ ! -f "$DEB_FILE" ]; then
-    echo "❌ Error: Package not found at $DEB_FILE after build"
+if [ -z "$DEB_FILE" ] || [ ! -f "$DEB_FILE" ]; then
+    echo "❌ Error: No thinkube-installer .deb for ${ARCH} found in $INSTALLERS_DIR after build"
     exit 1
 fi
 
