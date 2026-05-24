@@ -77,7 +77,7 @@ can be revisited post-0.1.0 without breaking the migration's contract.
 | `10_install_k8s.yaml:459-479` post-install patch of `cilium-config` ConfigMap to exclude ZeroTier (`devices: "k8s0 en+ eth+ wl+ bond+"`) plus DaemonSet rollout restart | `--set devices=...` (or `values.yaml`) passed at `helm install cilium`. No live ConfigMap patch, no restart dance. |
 | `10_install_k8s.yaml:330-352` bootstrap config (`containerd-base-dir`, `cluster-config.network/dns/local-storage/gateway`, `extra-node-kubelet-args`) | Kubeadm `InitConfiguration` + `ClusterConfiguration` + `KubeletConfiguration` in a single `kubeadm-config.yaml`. Same values, native API. |
 | `gpu_operator/10_deploy.yaml:372-380` toolkit env passes `/var/lib/k8s-containerd/k8s-containerd/...` paths | Same env keys, paths replaced with standard `/etc/containerd/config.toml`, `/run/containerd/containerd.sock`, `/etc/containerd/conf.d/`, `/var/lib/containerd/`. |
-| `gateway-api/10_deploy.yaml:101` probes k8s-snap for `gateway: enabled` in `k8s status --output-format yaml` and skips its own Gateway CRD install when present | Drop the probe. Always install Gateway API CRDs explicitly (`kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml`, already in the playbook at line 190 — just executes unconditionally). |
+| `gateway-api/10_deploy.yaml:101` probes k8s-snap for `gateway: enabled` in `k8s status --output-format yaml` and skips its own Gateway CRD install when present | Drop the probe. Always install Gateway API CRDs explicitly, bumped from `v1.2.1` (current playbook) to **`v1.5.1`** (required by Envoy Gateway 1.8 per the release manifest). Phase 3 PR updates the URL accordingly. |
 | `19_rollback_control.yaml` / `29_rollback_workers.yaml` (snap remove, CSI mount cleanup, ufw reset) | `kubeadm reset` + `apt purge` (kubeadm, kubelet, kubectl, containerd.io) + dataroot wipe + same ufw reset. |
 
 ### What stays unchanged
@@ -178,11 +178,11 @@ Shape: `v<K8S_MAJOR>.<K8S_MINOR>.<K8S_PATCH>+thinkube.<TK_MAJOR>.<TK_MINOR>.<TK_
 Examples:
 
 ```
-v1.31.4+thinkube.0.1.0    # Thinkube 0.1.0 on Kubernetes 1.31.4
-v1.31.4+thinkube.0.1.1    # Thinkube patch release, same K8s
-v1.31.5+thinkube.0.1.1    # K8s CVE patch — Thinkube unchanged
-v1.31.5+thinkube.0.1.2    # Thinkube patch on top of the K8s patch
-v1.32.1+thinkube.0.2.0    # K8s minor bump + Thinkube minor release
+v1.35.5+thinkube.0.1.0    # Thinkube 0.1.0 on Kubernetes 1.35.5
+v1.35.5+thinkube.0.1.1    # Thinkube patch release, same K8s
+v1.35.6+thinkube.0.1.1    # K8s CVE patch — Thinkube unchanged
+v1.35.6+thinkube.0.1.2    # Thinkube patch on top of the K8s patch
+v1.36.1+thinkube.0.2.0    # K8s minor bump + Thinkube minor release
 ```
 
 Rules:
@@ -193,7 +193,7 @@ Rules:
 - The full string is the unique artifact identifier. Two artifacts that
   install differently always differ in some part of the string.
 - Pre-releases use `-rc.N` between the K8s version and the `+thinkube`
-  suffix: `v1.31.4-rc.1+thinkube.0.2.0`.
+  suffix: `v1.35.5-rc.1+thinkube.0.2.0`.
 
 ### 5.2 thinkube-metadata schema additions
 
@@ -211,51 +211,46 @@ One file per Thinkube release. Pinned dependencies, single source of
 truth read by the installer, by playbooks, and by the channel publisher.
 
 ```yaml
-# thinkube-metadata/releases/v1.31.4+thinkube.0.1.0.yaml
-version: v1.31.4+thinkube.0.1.0
-released: 2026-06-15
+# thinkube-metadata/releases/v1.35.5+thinkube.0.1.0.yaml
+# Truncated — full file lives at thinkube-metadata/releases/v1.35.5+thinkube.0.1.0.yaml
+version: v1.35.5+thinkube.0.1.0
 kubernetes:
-  minor: "1.31"           # apt repo: pkgs.k8s.io/core:/stable:/v1.31/deb/
-  patch: "1.31.4"         # apt resolves as "kubeadm=1.31.4-1.1"
-  apt_revision: "1.1"     # the "-1.1" suffix on apt versions
+  minor: "1.35"           # apt repo: pkgs.k8s.io/core:/stable:/v1.35/deb/
+  patch: "1.35.5"         # apt resolves as "kubeadm=1.35.5-1.1"
+  apt_revision: "1.1"
+  eol: "2027-02-28"
 containerd:
   package: containerd.io
-  apt_version: "1.7.27-1" # from download.docker.com/linux/ubuntu
-runc:
-  bundled_with: containerd.io
+  apt_version: "2.2.4-1"  # latest 2.x; NRI plugin support for future Buildah work
+  apt_source: "https://download.docker.com/linux/ubuntu"
+cilium:
+  helm_repo: "https://helm.cilium.io"
+  chart: cilium
+  version: "1.19.4"       # battle-tested with K8s 1.35 via k8s-snap and RKE2
+openebs_rawfile:
+  helm_repo: "https://openebs.github.io/rawfile-localpv"
+  chart: rawfile-localpv
+  version: "0.13.1"       # avoids v0.14.0's breaking config changes
+envoy_gateway:
+  helm_repo: "https://docs.envoyproxy.io/release/v1.3.0"
+  chart: gateway-helm
+  version: "v1.8.0"       # supports K8s 1.32-1.35
+gateway_api_crds:
+  version: "v1.5.1"       # required by Envoy Gateway 1.8 (was v1.2.1 under k8s-snap)
+  url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.1/experimental-install.yaml"
+gpu_operator:
+  helm_repo: "https://helm.ngc.nvidia.com/nvidia"
+  chart: gpu-operator
+  version: "v26.3.1"      # patch bump from v26.3.0; v26.3 line validated on DGX Spark
 binaries:
   kubectl:
-    url: "https://dl.k8s.io/release/v1.31.4/bin/linux/{arch}/kubectl"
-    sha256_amd64: "..."
-    sha256_arm64: "..."
+    url: "https://dl.k8s.io/release/v1.35.5/bin/linux/{arch}/kubectl"
+    arches: [amd64, arm64]
   helm:
     version: "v3.16.4"
     url: "https://get.helm.sh/helm-v3.16.4-linux-{arch}.tar.gz"
-    sha256_amd64: "..."
-    sha256_arm64: "..."
-helm_charts:
-  cilium:
-    repo: "https://helm.cilium.io"
-    chart: cilium
-    version: "1.16.5"
-  openebs_rawfile:
-    repo: "https://openebs.github.io/rawfile-localpv"
-    chart: rawfile-localpv
-    version: "0.7.0"
-  envoy_gateway:
-    repo: "https://docs.envoyproxy.io/release/v1.3.0"
-    chart: gateway-helm
-    version: "v1.3.2"
-  gpu_operator:
-    repo: "https://helm.ngc.nvidia.com/nvidia"
-    chart: gpu-operator
-    version: "v26.3.0"
-  # ... one entry per chart the installer touches
-crds:
-  gateway_api:
-    version: "v1.2.1"
-    url: "https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/experimental-install.yaml"
-notes_url: "https://github.com/thinkube/thinkube/releases/tag/v1.31.4%2Bthinkube.0.1.0"
+    arches: [amd64, arm64]
+notes_url: "https://github.com/thinkube/thinkube/releases/tag/v1.35.5%2Bthinkube.0.1.0"
 ```
 
 The `{arch}` placeholder is resolved by the consumer (installer or
@@ -271,16 +266,21 @@ Served as a raw GitHub asset.
 ```json
 {
   "schema_version": 1,
-  "updated": "2026-06-15T14:00:00Z",
+  "updated": "2026-05-24T00:00:00Z",
   "channels": {
-    "stable":     "v1.31.4+thinkube.0.1.0",
-    "latest":     "v1.31.4+thinkube.0.1.0",
-    "testing":    null,
-    "v0.1":       "v1.31.4+thinkube.0.1.0",
-    "k8s-1.31":   "v1.31.4+thinkube.0.1.0"
+    "stable":     null,
+    "latest":     null,
+    "testing":    "v1.35.5+thinkube.0.1.0",
+    "v0.1":       null,
+    "k8s-1.35":   null
   }
 }
 ```
+
+The actual `channels.json` shipped with this migration has only the
+`testing` channel populated until the release is validated on real
+hardware. `stable`, `latest`, `v0.1`, and `k8s-1.35` are promoted by
+later edits to `channels.json` on `main`.
 
 Initial channels for 0.1.0:
 
@@ -289,7 +289,7 @@ Initial channels for 0.1.0:
 - `testing` — RC builds (`null` when no RC is in flight).
 - `v<TK_MINOR>` (`v0.1`, `v0.2`, …) — newest patch in that Thinkube
   minor.
-- `k8s-<K8S_MINOR>` (`k8s-1.31`, `k8s-1.32`, …) — newest version
+- `k8s-<K8S_MINOR>` (`k8s-1.35`, `k8s-1.36`, …) — newest version
   bundling that K8s minor.
 
 The two-axis pinning (`v0.<n>` vs `k8s-1.<n>`) lets users on a regulated
@@ -327,7 +327,7 @@ https://raw.githubusercontent.com/thinkube/thinkube-metadata/<TAG>/releases/<VER
 ```
 
 Each Thinkube release tags the corresponding `thinkube-metadata` commit
-(tag name matches: e.g. `v1.31.4+thinkube.0.1.0`). The release manifest
+(tag name matches: e.g. `v1.35.5+thinkube.0.1.0`). The release manifest
 is fetched via that tag, so even if `main` were force-pushed, an already-
 published release continues to resolve to the exact bytes it shipped
 with.
@@ -340,11 +340,11 @@ guess:
   "schema_version": 1,
   "updated": "2026-06-15T14:00:00Z",
   "channels": {
-    "stable":   { "version": "v1.31.4+thinkube.0.1.0", "metadata_tag": "v1.31.4+thinkube.0.1.0" },
-    "latest":   { "version": "v1.31.4+thinkube.0.1.0", "metadata_tag": "v1.31.4+thinkube.0.1.0" },
-    "testing":  null,
-    "v0.1":     { "version": "v1.31.4+thinkube.0.1.0", "metadata_tag": "v1.31.4+thinkube.0.1.0" },
-    "k8s-1.31": { "version": "v1.31.4+thinkube.0.1.0", "metadata_tag": "v1.31.4+thinkube.0.1.0" }
+    "stable":   null,
+    "latest":   null,
+    "testing":  { "version": "v1.35.5+thinkube.0.1.0", "metadata_tag": "v1.35.5+thinkube.0.1.0" },
+    "v0.1":     null,
+    "k8s-1.35": null
   }
 }
 ```
@@ -492,13 +492,13 @@ with `connectors` listing what's available and what it implements.
 The 0.1.0 release populates only the `self_hosted` connector:
 
 ```yaml
-version: v1.31.4+thinkube.0.1.0
+version: v1.35.5+thinkube.0.1.0
 
 cluster:                              # optional — private deployments only
-  kubernetes: "1.31.4"
-  cilium: "1.16.5"
-  openebs_rawfile: "0.7.0"
-  envoy_gateway: "1.3.2"
+  kubernetes: "1.35.5"
+  cilium: "1.19.4"
+  openebs_rawfile: "0.13.1"
+  envoy_gateway: "v1.8.0"
 
 platform:                             # the API contract
   api_version: "1"
@@ -1069,39 +1069,100 @@ Examples of right-sized PRs (from section 9.1 sub-branch list above):
       acceptance passed cleanly) at the new version
 - [ ] Single squash commit to `main` referencing the migration plan
 
-## 10. Open questions to resolve during implementation
+## 10. Decisions made during implementation
 
-The following are flagged as "decide when you hit them" rather than
-"decide up front":
+This section was originally "open questions." All items below were
+decided during Phase 1–2 implementation; preserving the rationale
+here so the plan stays a true record.
 
-1. **Kubernetes minor to target for 0.1.0**. Today's pin is K8s 1.35.0
-   (via k8s-snap rev 5046/5049). Choices for kubeadm: 1.31 (most
-   conservative, most third-party charts tested against), 1.32 (current
-   LTS-ish), 1.33 (newer). Recommendation: 1.31 — Cilium 1.16.x, OpenEBS
-   Rawfile, Envoy Gateway all have 1.31 support documented and field-
-   tested. 1.33 is fine if you'd rather skip ahead now and own a longer
-   support window.
+### Resolved version pins (release manifest `v1.35.5+thinkube.0.1.0`)
 
-2. **Cilium version**. Today bundled by k8s-snap (1.16-class). Pin to
-   1.16.5 in `releases/v0.1.0.yaml`. If we'd rather bump to 1.17, do it
-   here while we have a clean slate.
+1. **Kubernetes 1.35.5**. The initial plan recommended 1.31 as the
+   "documented compatibility" floor, but that recommendation was
+   wrong: 1.31 would have regressed from the current k8s-snap pin
+   of 1.35.0. Empirical evidence (k8s-snap with Cilium 1.19 in
+   production; RKE2 v1.35.5 also ships Cilium 1.19) shows K8s 1.35
+   + Cilium 1.19 works despite Cilium's CI matrix only documenting
+   K8s 1.31-1.34. Picked 1.35.5 (latest patch, released 2026-05-12,
+   EOL 2027-02-28) — no functional regression, real EOL runway.
 
-3. **OpenEBS Rawfile chart version**. The upstream chart at
-   `openebs/rawfile-localpv` is maintained but moves slowly. Pin to the
-   latest known-good when the migration starts.
+2. **Cilium 1.19.4**. Current stable line; Cilium 1.20 is only
+   pre-release. Battle-tested with K8s 1.35 in two production
+   distros (RKE2 and the existing k8s-snap installation).
 
-4. **Bootstrap-time vs. post-install Gateway API CRDs**. Two options:
-   - Install during k8s init (so cluster is "complete" out of the box)
-   - Install during `gateway-api/10_deploy.yaml` (current pattern,
-     already in place)
-   Recommendation: keep current pattern — separates concerns, smaller
-   k8s install playbook.
+3. **OpenEBS Rawfile 0.13.1**. v0.14.0 (released 4 days before
+   migration start) introduced breaking config changes around
+   storage pools; v0.13.1 (March 2026) is the most recent stable
+   point. v0.13.x is what gets pinned; v0.14 is reserved for a
+   later bump after the breaking-change story stabilises.
 
-5. **Resource manifest for Talos/k0s-style upgrade later**. The
-   `releases/v<VERSION>.yaml` schema is forward-compatible with an
-   upgrade playbook (it has enough information to know "which K8s patch
-   am I going from / to"). Defer the upgrade playbook to post-0.1.0; the
-   manifest is the prerequisite.
+4. **containerd.io 2.2.4-1**. Latest 2.x from Docker's apt repo.
+   Chosen over 1.7.x because: (a) NRI plugin support
+   (`io.containerd.cri.v1.runtime`) is required for the planned
+   Buildah-on-Kubernetes work in ALPHA_2_TASKS.md, (b) RKE2 v1.35.5
+   ships containerd 2.2.3, validating the 2.x line, (c) the
+   k8s-snap pain documented in canonical/k8s-snap#2529 was config
+   management (snap's hardcoded import path), not containerd 2.x
+   itself — with our own `/etc/containerd/config.toml` setting
+   `SystemdCgroup = true` on both CRI plugins, the failure class
+   cannot reach our users.
+
+5. **Envoy Gateway v1.8.0** + **Gateway API CRDs v1.5.1**. Envoy
+   Gateway 1.8 officially supports K8s 1.32-1.35 and requires
+   Gateway API v1.5.1 (up from v1.2.1 currently in the playbook).
+   Phase 3's gateway-api playbook PR coordinates the CRD bump.
+
+6. **NVIDIA GPU Operator v26.3.1**. Patch bump from v26.3.0 (the
+   version currently pinned in `gpu_operator/10_deploy.yaml`). The
+   v26.3 line is what's empirically validated on DGX Spark in the
+   user's environment — NVIDIA does not publish formal
+   K8s-version recommendations for DGX Spark, so the strongest
+   evidence is the existing setup's track record.
+
+### Other implementation decisions
+
+7. **Pod CIDR 10.244.0.0/16, Service CIDR 10.96.0.0/12**. Standard
+   K8s defaults. /16 pod range with Cilium's /24-per-node cluster-
+   pool IPAM gives ~256 nodes × ~250 pods, far above homelab scale.
+   No conflict with typical ZeroTier (10.x.x.x/24) or Tailscale
+   (100.64.0.0/10) overlays.
+
+8. **`kubeadm init --skip-phases=addon/kube-proxy`**. Cilium with
+   `kubeProxyReplacement: true` handles all service routing in
+   eBPF. Letting kubeadm install kube-proxy alongside would create
+   two competing dataplanes. Critical flag.
+
+9. **Cilium L2 LB via CRDs, not helm values**. The L2-announce
+   range is configured via `CiliumLoadBalancerIPPool` and
+   `CiliumL2AnnouncementPolicy` resources applied post-helm-install
+   (`templates/cilium-l2-lb.yaml.j2`), not via helm values. Cilium
+   1.19's helm chart doesn't expose IP pool blocks as values; the
+   CRDs are the supported configuration surface. ZeroTier mode
+   only — Tailscale mode disables `l2announcements` in the helm
+   values and the Tailscale Operator handles Service exposure.
+
+10. **Workers get vanilla `kubectl`/`helm` but no kubeconfig**.
+    Operators wanting cluster access SSH to the control plane.
+    Worker shell aliases for kubectl also dropped (workers aren't
+    where users run kubectl interactively).
+
+11. **containerd sandbox image pinned to
+    `registry.k8s.io/pause:3.10`**. Matches what kubeadm 1.35
+    expects via `kubeadm config images list`. Documented in
+    `containerd_install` role defaults; should bump with K8s minor
+    when that changes.
+
+12. **Bootstrap-time vs. post-install Gateway API CRDs** — kept
+    current pattern (installed by `gateway-api/10_deploy.yaml`,
+    not by `10_install_k8s.yaml`). Separates concerns, smaller
+    k8s install playbook.
+
+13. **Talos/k0s-style upgrade playbook** — deferred to post-0.1.0.
+    The `releases/v<VERSION>.yaml` schema is forward-compatible
+    with an upgrade playbook (it has enough information to know
+    "which K8s patch am I going from / to"), so the design isn't
+    blocked. Implementation happens after alpha when the user
+    base exists.
 
 ## 11. Implementation phases
 
@@ -1110,14 +1171,14 @@ branch should be in a working state at every phase boundary.
 
 ### Phase 1 — Foundation (no behaviour change yet)
 
-1. Add `thinkube-metadata/releases/v1.31.4+thinkube.0.1.0.yaml` (or
-   chosen K8s version)
+1. Add `thinkube-metadata/releases/v1.35.5+thinkube.0.1.0.yaml` ✓
+   ([thinkube-metadata#1](https://github.com/thinkube/thinkube-metadata/pull/1))
 2. Add `thinkube-metadata/channels.json` (initial: `testing` = the new
-   version, everything else `null`)
-3. Tag `thinkube-metadata` as `v1.31.4+thinkube.0.1.0` so the manifest
-   URL becomes immutably resolvable
+   version, everything else `null`) ✓ (same PR)
+3. Tag `thinkube-metadata` as `v1.35.5+thinkube.0.1.0` so the manifest
+   URL becomes immutably resolvable (done on PR merge)
 4. Add `containerd_install` and `kubeadm_install` roles (used by no
-   playbook yet)
+   playbook yet) ✓ ([thinkube#12](https://github.com/thinkube/thinkube/pull/12), [thinkube#13](https://github.com/thinkube/thinkube/pull/13))
 
 Exit criteria: existing k8s-snap install still works (no playbooks
 touched yet); the new roles apply cleanly when invoked manually.
