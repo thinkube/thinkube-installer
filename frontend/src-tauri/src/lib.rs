@@ -115,28 +115,44 @@ pub fn run() {
 
       println!("Backend directory: {}", backend_dir.display());
 
-      // Start backend based on OS and store the process handle
-      let backend_child;
+      // Build the backend spawn command. Both Linux and macOS use the
+      // same bash invocation; the cfg-gated branches existed previously
+      // but the body was identical, so they're collapsed here.
+      //
+      // Branch bake-in:
+      //   If the build was invoked as `scripts/build.sh --branch <name>`
+      //   then THINKUBE_BUILD_BRANCH is set at compile time. We forward
+      //   it to the Python backend as THINKUBE_BRANCH so the produced
+      //   binary defaults to that branch when launched from the .desktop
+      //   menu (where env vars from the user shell don't propagate).
+      //   A user who launches from a terminal with THINKUBE_BRANCH set
+      //   wins — Command::env only sets the var if we don't see it
+      //   already in our own env.
+      //
+      //   Same shape for THINKUBE_REPO_URL and THINKUBE_METADATA_REPO
+      //   so a fork-pinned deb is also buildable.
+      let backend_child = {
+        let mut cmd = Command::new("bash");
+        cmd.arg("-c")
+           .arg(format!("cd {} && source {}/bin/activate && python3 main.py",
+                        backend_dir.display(), venv_dir));
 
-      #[cfg(target_os = "linux")]
-      {
-        backend_child = Command::new("bash")
-          .arg("-c")
-          .arg(format!("cd {} && source {}/bin/activate && python3 main.py",
-                       backend_dir.display(), venv_dir))
-          .spawn()
-          .expect("Failed to start backend");
-      }
+        // Forward baked-in defaults unless the user has overridden them.
+        for (compile_env, runtime_env) in [
+          (option_env!("THINKUBE_BUILD_BRANCH"),         "THINKUBE_BRANCH"),
+          (option_env!("THINKUBE_BUILD_REPO_URL"),       "THINKUBE_REPO_URL"),
+          (option_env!("THINKUBE_BUILD_METADATA_REPO"),  "THINKUBE_METADATA_REPO"),
+        ] {
+          if let Some(baked) = compile_env {
+            if !baked.is_empty() && std::env::var(runtime_env).is_err() {
+              cmd.env(runtime_env, baked);
+              println!("Baked-in {}: {}", runtime_env, baked);
+            }
+          }
+        }
 
-      #[cfg(target_os = "macos")]
-      {
-        backend_child = Command::new("bash")
-          .arg("-c")
-          .arg(format!("cd {} && source {}/bin/activate && python3 main.py",
-                       backend_dir.display(), venv_dir))
-          .spawn()
-          .expect("Failed to start backend");
-      }
+        cmd.spawn().expect("Failed to start backend")
+      };
 
       // Store the backend process in app state
       app.manage(BackendProcess(Mutex::new(Some(backend_child))));
