@@ -27,8 +27,16 @@ class AnsibleEnvironment:
         self.ansible_bin = self.venv_dir / "bin" / "ansible-playbook"
         self.pip_bin = self.venv_dir / "bin" / "pip"
 
-        # Thinkube repository settings
-        self.thinkube_repo_url = "https://github.com/thinkube/thinkube.git"
+        # Thinkube repository settings.
+        # THINKUBE_REPO_URL overrides the upstream repo URL — set this when
+        # testing a fork without editing the installer source. Defaults to
+        # the upstream thinkube/thinkube on github.com.
+        # THINKUBE_BRANCH overrides the branch (default `main`).
+        # See thinkube-installer CONTRIBUTING.md for the fork-and-test
+        # workflow.
+        self.thinkube_repo_url = os.environ.get(
+            "THINKUBE_REPO_URL", "https://github.com/thinkube/thinkube.git"
+        )
         self.thinkube_branch = os.environ.get("THINKUBE_BRANCH", "main")
         self.thinkube_clone_dir = None  # Will be set during initialization
 
