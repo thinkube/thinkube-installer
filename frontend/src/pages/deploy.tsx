@@ -257,7 +257,7 @@ export default function Deploy() {
     queue.push({
       id: 'k8s',
       phase: 'kubernetes',
-      title: 'Installing Canonical Kubernetes',
+      title: 'Installing Kubernetes (kubeadm)',
       name: 'ansible/40_thinkube/core/infrastructure/k8s/10_install_k8s.yaml'
     })
 
