@@ -298,6 +298,11 @@ class AnsibleEnvironment:
         # Set ANSIBLE_HOME to avoid conflicts
         env["ANSIBLE_HOME"] = str(self.installer_dir)
 
+        # Pass the thinkube branch so playbooks can use it (e.g.,
+        # code-server's 15_configure_environment.yaml clones repos
+        # on the same branch the installer used).
+        env["THINKUBE_BRANCH"] = self.thinkube_branch
+
         return env
 
     def get_ansible_playbook_command(self) -> str:
