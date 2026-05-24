@@ -275,19 +275,16 @@ export default function Deploy() {
       })
     }
 
-    // GPU operator if needed
-    const serverHardware = typeof window !== 'undefined'
-      ? JSON.parse(sessionStorage.getItem('serverHardware') || '[]')
-      : []
-    const needsGPUOperator = serverHardware.some((s: any) => s.hardware?.gpu_detected)
-    if (needsGPUOperator) {
-      queue.push({
-        id: 'gpu-operator',
-        phase: 'kubernetes',
-        title: 'Installing NVIDIA GPU Operator',
-        name: 'ansible/40_thinkube/core/infrastructure/gpu_operator/00_install.yaml'
-      })
-    }
+    // GPU operator is always installed — it's cluster infrastructure that
+    // sits idle until a GPU node is added (via thinkube-control). The
+    // playbook handles "no supported GPU nodes" by skipping GPU-specific
+    // wait tasks and exiting cleanly.
+    queue.push({
+      id: 'gpu-operator',
+      phase: 'kubernetes',
+      title: 'Installing NVIDIA GPU Operator',
+      name: 'ansible/40_thinkube/core/infrastructure/gpu_operator/00_install.yaml'
+    })
 
     queue.push({
       id: 'resource-policies',
