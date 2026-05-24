@@ -767,7 +767,47 @@ The CONTRIBUTING.md also documents the per-repo worktree workflow
 already described in section 9.2, the per-PR scope discipline from
 section 9.4, and the matching-branch-names convention from section 9.1.
 
-### 6.11 README and docs
+### 6.11 Quality discipline: no interactive prompts in playbooks
+
+**Rule.** All Thinkube playbooks must be orchestratable end-to-end by
+the installer or by `thinkube-control`. Neither has UI surface for
+responding to `ansible.builtin.pause:` prompts, so an interactive
+prompt deadlocks the orchestrator.
+
+**Confirmation is a UI concern, not a playbook concern.** When a
+destructive flow needs the user to confirm "are you sure?", that
+prompt lives in the configurator (installer wizard, thinkube-control
+UI). The playbook just executes the requested operation. Invocation
+IS the commitment.
+
+This also means **playbooks do not implement safety gates internally**
+— no `assert` blocks requiring extra-vars, no `fail` tasks gated on
+"confirmed" flags. The orchestrator (or the operator running from
+CLI) is responsible for not invoking destructive playbooks
+accidentally; once invoked, the playbook runs.
+
+Note on "rollback during installation": during the installer's deploy
+queue, "rollback" means "fix the issue and re-run the failing step."
+The installer playbooks are idempotent; re-running converges to the
+desired state. The dedicated rollback playbooks (`19_rollback_control`,
+`29_rollback_workers`) are **separate operator-invoked tools** for
+destroying a deployed cluster — not part of the install flow.
+
+**Allowed:** `ansible.builtin.pause:` with `seconds:` or `minutes:`
+(timed pauses are non-blocking; the `prompt:` text is informational
+decoration the orchestrator's log stream displays). Replacing fixed-
+time waits with `wait_for` on actual conditions is preferable but
+tracked separately as an alpha-3 task.
+
+**Forbidden:** `ansible.builtin.pause:` with `prompt:` and no timer.
+
+**Enforcement.** `scripts/lint_no_interactive_prompts.py` walks
+`ansible/` and exits 1 on any forbidden pattern. Land it on `main`
+once `feature/kubeadm-rollback` has merged so the lint script's first
+run on `main` returns 0 (the two interactive prompts in the k8s-snap-
+era `29_rollback_workers.yaml` are removed by that branch).
+
+### 6.12 README and docs
 
 - `ansible/40_thinkube/core/infrastructure/k8s/README.md` — rewrite the
   "k8s-snap" sections to describe kubeadm install, the
@@ -895,6 +935,8 @@ test (control plane + worker, mixed amd64 / arm64 if possible):
       `argocd_*`, `bind9_*`) in `inventory/` and `ansible/40_thinkube/`,
       with the exception of implementation-specific tuning
       (documented).
+- [ ] `scripts/lint_no_interactive_prompts.py` exits 0 — no
+      interactive `pause:` prompts remain in any playbook (see §6.11).
 
 ## 9. Development process
 
@@ -1163,6 +1205,67 @@ here so the plan stays a true record.
     "which K8s patch am I going from / to"), so the design isn't
     blocked. Implementation happens after alpha when the user
     base exists.
+
+### Post-review decisions
+
+After the migration plan was first published, an external review
+surfaced several latent bugs and one design tension. Each was
+resolved as follows:
+
+14. **containerd config: single block, not dual.** Original template
+    set `SystemdCgroup = true` on both `io.containerd.cri.v1.runtime`
+    AND legacy `io.containerd.grpc.v1.cri` as "defensive coverage."
+    Since the containerd version is pinned (`apt-mark hold
+    containerd.io=2.2.4-1`), the live plugin behaviour is
+    deterministic; dual-block adds inconsistency potential without
+    safety. Switched to **`version = 3`** + single
+    `cri.v1.runtime` block (containerd 2.x native syntax). Open
+    hardware-validation item: NVIDIA GPU operator's toolkit drop-in
+    (`99-nvidia.toml`) is v2-syntax and may not merge under our v3
+    base. Fallback if needed: invert to `version = 2` + `grpc.v1.cri`
+    only (still single block).
+
+15. **Cilium IPAM mask `/23`, not `/24`.** The kubeadm
+    `KubeletConfiguration` sets `maxPods: 500`. Cilium's default
+    `clusterPoolIPv4MaskSize: 24` gives 254 usable IPs per node →
+    silent failure when scheduling past 254. `/23` gives 510 IPs,
+    covering `maxPods=500` with headroom. With the `/16` pod subnet
+    this still supports ~128 nodes (far above homelab scale).
+
+16. **`kubeadm init --skip-phases=addon/kube-proxy`** is mandatory
+    (already in the implementation; documented here for the plan
+    record). Cilium runs with `kubeProxyReplacement: true`; letting
+    kubeadm install kube-proxy alongside would create two competing
+    dataplanes.
+
+17. **`--upload-certs` is not an HA enabler by itself.** Comment
+    in `10_install_k8s.yaml` originally implied "future HA"; that
+    was misleading. HA requires `controlPlaneEndpoint` to be a
+    VIP/DNS fronting multiple API servers. Today the endpoint is
+    the single-node `k8s_stable_ip:6443`, so `--upload-certs` is
+    harmless but single-CP. Comment fixed to honest framing.
+
+18. **No interactive `pause:` prompts in playbooks; no internal
+    safety gates either** (see §6.11). All playbooks are orchestrated
+    by the installer or thinkube-control; neither can respond to
+    interactive prompts AND neither passes extra-vars. Confirmation
+    is a UI concern: the configurator decides whether to invoke a
+    destructive playbook based on its own UI prompts. The playbook
+    just runs. Enforced by `scripts/lint_no_interactive_prompts.py`.
+
+19. **etcd backup story is a known gap.** The dqlite → etcd
+    transition removes the dqlite snapshot mechanism (which the
+    user wasn't using anyway). Alpha contract is destroy-and-
+    rebuild; an `etcdctl snapshot save` cron + restore playbook
+    is deferred until the upgrade playbook lands. Documented as a
+    deliberate omission, not an oversight.
+
+20. **Timed pauses (`pause: seconds: N`) are non-blocking and
+    allowed.** 23 instances exist in the tree, mostly "wait for X
+    seconds for Y to settle." They don't deadlock the orchestrator
+    (timer expires automatically). Cleanup to replace fixed-time
+    waits with `wait_for` on actual conditions is tracked as an
+    ALPHA_3 task — not a migration blocker.
 
 ## 11. Implementation phases
 
