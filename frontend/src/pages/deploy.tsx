@@ -150,7 +150,12 @@ export default function Deploy() {
   const [state, dispatch] = useReducer(deployReducer, initialState)
   const executorRef = useRef<any>(null)
   const currentLogsRef = useRef<string>('')
-  const [resumePrompt, setResumePrompt] = useState<{ resumeIndex: number; completedCount: number; nextStep: string } | null>(null)
+  const [resumePrompt, setResumePrompt] = useState<{
+    resumeIndex: number
+    completedCount: number
+    nextStep: string
+    interruptedStep: string | null
+  } | null>(null)
 
   // Build playbook queue
   const buildQueue = async (): Promise<Playbook[]> => {
@@ -534,11 +539,12 @@ export default function Deploy() {
       // Persist completed step so deploy can resume on app restart
       if (!isRollback) {
         try {
-          const done = JSON.parse(sessionStorage.getItem('completedPlaybooks') || '[]') as string[]
+          const done = JSON.parse(localStorage.getItem('completedPlaybooks') || '[]') as string[]
           if (!done.includes(currentPlaybook.id)) {
             done.push(currentPlaybook.id)
-            sessionStorage.setItem('completedPlaybooks', JSON.stringify(done))
+            localStorage.setItem('completedPlaybooks', JSON.stringify(done))
           }
+          localStorage.removeItem('currentDeployStep')
         } catch { /* ignore */ }
       }
 
@@ -580,8 +586,13 @@ export default function Deploy() {
 
   // Clear all progress and start from step 1
   const handleStartFresh = () => {
-    try { sessionStorage.removeItem('completedPlaybooks') } catch { /* ignore */ }
+    try {
+      localStorage.removeItem('completedPlaybooks')
+      localStorage.removeItem('deployQueueIds')
+      localStorage.removeItem('currentDeployStep')
+    } catch { /* ignore */ }
     setResumePrompt(null)
+    localStorage.setItem('deployQueueIds', JSON.stringify(state.queue.map(p => p.id)))
     setTimeout(() => {
       dispatch({ type: 'START_PLAYBOOK', index: 0 })
     }, 200)
@@ -715,28 +726,42 @@ export default function Deploy() {
       const queue = await buildQueue()
       dispatch({ type: 'INIT_QUEUE', queue })
 
-      // Check for completed steps from a previous run
+      // Check for previous deploy progress (localStorage survives app restart)
       try {
-        const done = JSON.parse(sessionStorage.getItem('completedPlaybooks') || '[]') as string[]
-        if (done.length > 0) {
+        const storedQueueIds = localStorage.getItem('deployQueueIds')
+        const currentQueueIds = JSON.stringify(queue.map(p => p.id))
+        const done = JSON.parse(localStorage.getItem('completedPlaybooks') || '[]') as string[]
+        const interrupted = localStorage.getItem('currentDeployStep')
+        const interruptedStep = interrupted ? JSON.parse(interrupted) : null
+
+        // If the queue shape changed (different config), breadcrumbs are stale
+        if (storedQueueIds && storedQueueIds !== currentQueueIds) {
+          console.log('Queue shape changed since last run — clearing stale breadcrumbs')
+          localStorage.removeItem('completedPlaybooks')
+          localStorage.removeItem('deployQueueIds')
+          localStorage.removeItem('currentDeployStep')
+          // Fall through to fresh start below
+        } else if (done.length > 0) {
           const firstIncomplete = queue.findIndex(p => !done.includes(p.id))
           if (firstIncomplete === -1) {
+            localStorage.removeItem('currentDeployStep')
             dispatch({ type: 'COMPLETE' })
             return
           }
           if (firstIncomplete > 0) {
-            // Show resume prompt — let user choose Resume or Start Fresh
             setResumePrompt({
               resumeIndex: firstIncomplete,
               completedCount: firstIncomplete,
-              nextStep: queue[firstIncomplete].title
+              nextStep: queue[firstIncomplete].title,
+              interruptedStep: interruptedStep?.title || null
             })
             return
           }
         }
       } catch { /* start fresh */ }
 
-      // No completed steps — start from beginning
+      // No previous progress — store queue shape and start from beginning
+      localStorage.setItem('deployQueueIds', JSON.stringify(queue.map(p => p.id)))
       setTimeout(() => {
         dispatch({ type: 'START_PLAYBOOK', index: 0 })
       }, 500)
@@ -744,11 +769,19 @@ export default function Deploy() {
     init()
   }, [])
 
-  // Execute playbook when index changes
+  // Execute playbook when index changes — also persist which step is running
   useEffect(() => {
     if (state.status === 'running' && state.queue[state.currentIndex]) {
       const playbook = state.queue[state.currentIndex]
       currentLogsRef.current = '' // Reset logs for new playbook
+      // Persist running step so we know where it was interrupted on crash
+      try {
+        localStorage.setItem('currentDeployStep', JSON.stringify({
+          index: state.currentIndex,
+          id: playbook.id,
+          title: playbook.title
+        }))
+      } catch { /* ignore */ }
       setTimeout(() => executePlaybook(playbook), 200)
     }
   }, [state.currentIndex, state.status])
@@ -818,8 +851,13 @@ ${log.logs}`
             <TkAlert>
               <AlertCircle className="h-4 w-4" />
               <TkAlertDescription>
-                Previous deploy progress found: {resumePrompt.completedCount} of {state.queue.length} steps completed.
-                Next step: <strong>{resumePrompt.nextStep}</strong>
+                <div className="space-y-1">
+                  <div>Previous deploy progress found: <strong>{resumePrompt.completedCount}</strong> of {state.queue.length} steps completed.</div>
+                  {resumePrompt.interruptedStep && (
+                    <div>Last running step: <strong>{resumePrompt.interruptedStep}</strong> (interrupted)</div>
+                  )}
+                  <div>Next step: <strong>{resumePrompt.nextStep}</strong></div>
+                </div>
               </TkAlertDescription>
             </TkAlert>
             <div className="flex gap-3 mt-4">
@@ -827,7 +865,7 @@ ${log.logs}`
                 Resume from step {resumePrompt.resumeIndex + 1}
               </TkButton>
               <TkButton intent="secondary" onClick={handleStartFresh}>
-                Start Fresh
+                Start Fresh (from step 1)
               </TkButton>
             </div>
           </TkCardContent>
