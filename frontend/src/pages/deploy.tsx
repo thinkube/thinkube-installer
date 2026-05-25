@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useReducer, useEffect, useRef } from "react"
+import { useReducer, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { TkCard, TkCardContent } from "thinkube-style/components/cards-data"
 import { TkButton } from "thinkube-style/components/buttons-badges"
@@ -150,6 +150,7 @@ export default function Deploy() {
   const [state, dispatch] = useReducer(deployReducer, initialState)
   const executorRef = useRef<any>(null)
   const currentLogsRef = useRef<string>('')
+  const [resumePrompt, setResumePrompt] = useState<{ resumeIndex: number; completedCount: number; nextStep: string } | null>(null)
 
   // Build playbook queue
   const buildQueue = async (): Promise<Playbook[]> => {
@@ -560,6 +561,32 @@ export default function Deploy() {
     }
   }
 
+  // Resume from where we left off (skip completed steps)
+  const handleResume = () => {
+    if (!resumePrompt) return
+    const { resumeIndex } = resumePrompt
+    setResumePrompt(null)
+    for (let i = 0; i < resumeIndex; i++) {
+      dispatch({
+        type: 'PLAYBOOK_SUCCESS',
+        playbookId: state.queue[i].id,
+        logs: '(completed in previous run)'
+      })
+    }
+    setTimeout(() => {
+      dispatch({ type: 'START_PLAYBOOK', index: resumeIndex })
+    }, 200)
+  }
+
+  // Clear all progress and start from step 1
+  const handleStartFresh = () => {
+    try { sessionStorage.removeItem('completedPlaybooks') } catch { /* ignore */ }
+    setResumePrompt(null)
+    setTimeout(() => {
+      dispatch({ type: 'START_PLAYBOOK', index: 0 })
+    }, 200)
+  }
+
   // Retry failed playbook
   const handleRetry = () => {
     if (state.failedPlaybook) {
@@ -688,38 +715,30 @@ export default function Deploy() {
       const queue = await buildQueue()
       dispatch({ type: 'INIT_QUEUE', queue })
 
-      // Check for completed steps from a previous run (persisted in sessionStorage)
-      let resumeIndex = 0
+      // Check for completed steps from a previous run
       try {
         const done = JSON.parse(sessionStorage.getItem('completedPlaybooks') || '[]') as string[]
         if (done.length > 0) {
           const firstIncomplete = queue.findIndex(p => !done.includes(p.id))
           if (firstIncomplete === -1) {
-            // All steps already completed — go straight to complete
             dispatch({ type: 'COMPLETE' })
             return
           }
           if (firstIncomplete > 0) {
-            resumeIndex = firstIncomplete
-            console.log(
-              `Resuming deploy from step ${resumeIndex + 1}/${queue.length}` +
-              ` (${queue[resumeIndex].title}). ${resumeIndex} steps already completed.`
-            )
+            // Show resume prompt — let user choose Resume or Start Fresh
+            setResumePrompt({
+              resumeIndex: firstIncomplete,
+              completedCount: firstIncomplete,
+              nextStep: queue[firstIncomplete].title
+            })
+            return
           }
         }
-      } catch { /* sessionStorage unavailable — start fresh */ }
+      } catch { /* start fresh */ }
 
-      // Mark previously-completed steps as success in the UI
-      for (let i = 0; i < resumeIndex; i++) {
-        dispatch({
-          type: 'PLAYBOOK_SUCCESS',
-          playbookId: queue[i].id,
-          logs: '(completed in previous run)'
-        })
-      }
-
+      // No completed steps — start from beginning
       setTimeout(() => {
-        dispatch({ type: 'START_PLAYBOOK', index: resumeIndex })
+        dispatch({ type: 'START_PLAYBOOK', index: 0 })
       }, 500)
     }
     init()
@@ -791,6 +810,29 @@ ${log.logs}`
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Deploying Thinkube Infrastructure</h1>
       </div>
+
+      {/* Resume prompt — shown when completed steps are detected from a previous run */}
+      {resumePrompt && (
+        <TkCard className="mb-6">
+          <TkCardContent className="pt-6">
+            <TkAlert>
+              <AlertCircle className="h-4 w-4" />
+              <TkAlertDescription>
+                Previous deploy progress found: {resumePrompt.completedCount} of {state.queue.length} steps completed.
+                Next step: <strong>{resumePrompt.nextStep}</strong>
+              </TkAlertDescription>
+            </TkAlert>
+            <div className="flex gap-3 mt-4">
+              <TkButton onClick={handleResume}>
+                Resume from step {resumePrompt.resumeIndex + 1}
+              </TkButton>
+              <TkButton intent="secondary" onClick={handleStartFresh}>
+                Start Fresh
+              </TkButton>
+            </div>
+          </TkCardContent>
+        </TkCard>
+      )}
 
       {/* Subway Progress */}
       <TkCard className="mb-6">
