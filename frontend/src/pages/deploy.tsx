@@ -640,9 +640,6 @@ export default function Deploy() {
       return
     }
 
-    // Clear resume breadcrumbs — after rollback the step needs to re-run
-    try { sessionStorage.removeItem('completedPlaybooks') } catch { /* ignore */ }
-
     // Execute single rollback playbook
     const rollbackQueue: Playbook[] = [{
       id: `rollback-${playbook.id}`,
