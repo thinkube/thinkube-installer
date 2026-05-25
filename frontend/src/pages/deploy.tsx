@@ -112,14 +112,16 @@ function deployReducer(state: DeployState, action: DeployAction): DeployState {
       }
 
     case 'RESTORE_AFTER_ROLLBACK':
-      // Restore the pre-rollback state to show error UI with retry/rollback buttons
+      // Restore the pre-rollback state to show retry button.
+      // Replace the original error with a rollback-success message
+      // so the user knows the rollback worked.
       if (state.preRollbackQueue && state.preRollbackIndex !== null) {
         return {
           ...state,
           queue: state.preRollbackQueue,
           currentIndex: state.preRollbackIndex,
           status: 'failed',
-          error: state.preRollbackError,
+          error: 'Rollback completed successfully. Click Retry to re-run this step.',
           failedPlaybook: state.preRollbackQueue[state.preRollbackIndex],
           preRollbackQueue: null,
           preRollbackIndex: null,
