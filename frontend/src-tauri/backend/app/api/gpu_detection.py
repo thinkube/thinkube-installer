@@ -242,10 +242,11 @@ async def detect_drivers(request: GpuDetectionRequest) -> GpuDetectionResponse:
 
         # Calculate summary
         summary = {
-            "ready": 0,          # Compatible drivers or no GPU
+            "ready": 0,          # Compatible drivers
             "needs_install": 0,  # GPU present but no driver
-            "needs_upgrade": 0,  # Driver too old
+            "needs_upgrade": 0,  # Supported GPU, driver too old
             "no_gpu": 0,         # No GPU detected
+            "unsupported": 0,    # Pre-Volta GPU (compute_cap < 7.0)
             "error": 0           # Error during detection
         }
 
@@ -256,6 +257,8 @@ async def detect_drivers(request: GpuDetectionRequest) -> GpuDetectionResponse:
                 summary["no_gpu"] += 1
             elif result.driver_status == "compatible":
                 summary["ready"] += 1
+            elif result.driver_status == "unsupported_gpu":
+                summary["unsupported"] += 1
             elif result.driver_status == "missing":
                 summary["needs_install"] += 1
             elif result.driver_status == "old":

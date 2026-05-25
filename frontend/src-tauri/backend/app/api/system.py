@@ -1041,57 +1041,73 @@ async def verify_tailscale(request: Dict[str, Any]):
             return {"valid": False, "message": "Auth key format is invalid"}
         key_id = key_parts[2]
 
-        import aiohttp
+        import httpx
         headers = {"Authorization": f"Bearer {api_token}"}
-        timeout = aiohttp.ClientTimeout(total=60, connect=20)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            # 1. Validate the API access token against the default tailnet ("-").
-            # Retry once on transient network failure (Tailscale API
-            # occasionally times out on first connect).
+        ts_timeout = httpx.Timeout(60.0, connect=20.0)
+        max_retries = 4
+        retry_delay = 2
+
+        async with httpx.AsyncClient() as client:
+            # 1. Validate the API access token against the default tailnet.
             token_resp = None
-            for attempt in range(2):
+            for attempt in range(max_retries):
                 try:
-                    token_resp = await session.get(
+                    token_resp = await client.get(
                         "https://api.tailscale.com/api/v2/tailnet/-/devices",
                         headers=headers,
+                        timeout=ts_timeout,
                     )
-                    break
-                except (aiohttp.ClientError, asyncio.TimeoutError):
-                    if attempt == 1:
-                        return {"valid": False, "message": "Tailscale API unreachable after 2 attempts — check network connection"}
-                    import asyncio
-                    await asyncio.sleep(2)
-            async with token_resp:
-                if token_resp.status == 401:
-                    return {"valid": False, "message": "Invalid API access token"}
-                if token_resp.status == 403:
-                    return {"valid": False, "message": "API token lacks permission for this tailnet"}
-                if token_resp.status >= 400:
-                    return {"valid": False, "message": f"Tailscale API error: {token_resp.status}"}
+                    if token_resp.status_code < 500:
+                        break
+                except (httpx.TimeoutException, httpx.ConnectError):
+                    pass
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+            if token_resp is None:
+                return {"valid": False, "message": f"Tailscale API unreachable after {max_retries} attempts — check network connection"}
+
+            if token_resp.status_code == 401:
+                return {"valid": False, "message": "Invalid API access token"}
+            if token_resp.status_code == 403:
+                return {"valid": False, "message": "API token lacks permission for this tailnet"}
+            if token_resp.status_code >= 400:
+                return {"valid": False, "message": f"Tailscale API error: {token_resp.status_code}"}
 
             # 2. Look up the auth key by its ID to confirm it exists and is usable.
-            async with session.get(
-                f"https://api.tailscale.com/api/v2/tailnet/-/keys/{key_id}",
-                headers=headers,
-            ) as key_resp:
-                if key_resp.status == 404:
-                    return {"valid": False, "message": "Auth key not found in this tailnet"}
-                if key_resp.status == 403:
-                    # Token works but lacks keys:read scope — accept with a soft note.
-                    return {
-                        "valid": True,
-                        "message": "API token verified (auth key scope unavailable, format OK)",
-                    }
-                if key_resp.status >= 400:
-                    return {"valid": False, "message": f"Tailscale API error: {key_resp.status}"}
+            key_resp = None
+            for attempt in range(max_retries):
+                try:
+                    key_resp = await client.get(
+                        f"https://api.tailscale.com/api/v2/tailnet/-/keys/{key_id}",
+                        headers=headers,
+                        timeout=ts_timeout,
+                    )
+                    if key_resp.status_code < 500:
+                        break
+                except (httpx.TimeoutException, httpx.ConnectError):
+                    pass
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+            if key_resp is None:
+                return {"valid": False, "message": f"Tailscale API unreachable after {max_retries} attempts — check network connection"}
 
-                key_data = await key_resp.json()
-                if key_data.get("revoked"):
-                    return {"valid": False, "message": "Auth key has been revoked"}
-                if key_data.get("invalid"):
-                    return {"valid": False, "message": "Auth key is invalid or expired"}
+            if key_resp.status_code == 404:
+                return {"valid": False, "message": "Auth key not found in this tailnet"}
+            if key_resp.status_code == 403:
+                return {
+                    "valid": True,
+                    "message": "API token verified (auth key scope unavailable, format OK)",
+                }
+            if key_resp.status_code >= 400:
+                return {"valid": False, "message": f"Tailscale API error: {key_resp.status_code}"}
 
-                return {"valid": True, "message": "Tailscale credentials verified"}
+            key_data = key_resp.json()
+            if key_data.get("revoked"):
+                return {"valid": False, "message": "Auth key has been revoked"}
+            if key_data.get("invalid"):
+                return {"valid": False, "message": "Auth key is invalid or expired"}
+
+            return {"valid": True, "message": "Tailscale credentials verified"}
 
     except Exception as e:
         logger.error(f"Failed to verify Tailscale credentials: {e}")

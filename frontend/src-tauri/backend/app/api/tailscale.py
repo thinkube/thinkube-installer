@@ -18,10 +18,11 @@ Two endpoints used during configuration:
   scopes and tag to surface precise actionable errors when the client
   was created with the wrong setup.
 """
+import asyncio
 import json
 import logging
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 from fastapi import APIRouter
@@ -32,11 +33,39 @@ router = APIRouter(prefix="/api", tags=["tailscale"])
 
 TAILSCALE_API = "https://api.tailscale.com/api/v2"
 DEFAULT_TAILNET = "-"
+MAX_RETRIES = 4
+RETRY_DELAY = 2
 
 REQUIRED_TAG_OWNERS = {
     "tag:k8s-operator": ["autogroup:admin"],
     "tag:k8s": ["tag:k8s-operator"],
 }
+
+
+async def _ts_request(
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    **kwargs,
+) -> httpx.Response:
+    """Make an HTTP request to the Tailscale API with automatic retries."""
+    kwargs.setdefault("timeout", httpx.Timeout(60.0, connect=20.0))
+    last_exc: Optional[Exception] = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            resp = await client.request(method, url, **kwargs)
+            if resp.status_code < 500:
+                return resp
+            last_exc = httpx.HTTPStatusError(
+                f"Server error {resp.status_code}",
+                request=resp.request,
+                response=resp,
+            )
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            last_exc = exc
+        if attempt < MAX_RETRIES - 1:
+            await asyncio.sleep(RETRY_DELAY)
+    raise last_exc  # type: ignore[misc]
 
 
 def _strip_hujson_comments(raw: str) -> str:
@@ -92,7 +121,7 @@ async def ensure_acl_tags(request: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         async with httpx.AsyncClient() as client:
-            get_resp = await client.get(acl_url, headers=headers, timeout=10.0)
+            get_resp = await _ts_request(client, "GET", acl_url, headers=headers)
             if get_resp.status_code == 401:
                 return {"ok": False, "changed": False, "message": "Invalid API access token"}
             if get_resp.status_code == 403:
@@ -129,11 +158,12 @@ async def ensure_acl_tags(request: Dict[str, Any]) -> Dict[str, Any]:
             if etag:
                 post_headers["If-Match"] = etag
 
-            post_resp = await client.post(
+            post_resp = await _ts_request(
+                client,
+                "POST",
                 acl_url,
                 headers=post_headers,
                 content=json.dumps(policy),
-                timeout=10.0,
             )
             if post_resp.status_code == 412:
                 return {
@@ -154,8 +184,12 @@ async def ensure_acl_tags(request: Dict[str, Any]) -> Dict[str, Any]:
                 "message": "Added tag:k8s-operator and tag:k8s to your tailnet policy file",
             }
 
-    except httpx.TimeoutException:
-        return {"ok": False, "changed": False, "message": "Timed out talking to Tailscale API"}
+    except (httpx.TimeoutException, httpx.ConnectError):
+        return {
+            "ok": False,
+            "changed": False,
+            "message": f"Tailscale API unreachable after {MAX_RETRIES} attempts — check network connection",
+        }
     except Exception as exc:
         logger.exception("ensure-acl-tags failed")
         return {"ok": False, "changed": False, "message": f"Unexpected error: {exc}"}
@@ -186,15 +220,15 @@ async def verify_tailscale_oauth(request: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         async with httpx.AsyncClient() as client:
-            # 1. Exchange for an access token.
-            token_resp = await client.post(
+            token_resp = await _ts_request(
+                client,
+                "POST",
                 f"{TAILSCALE_API}/oauth/token",
                 data={
                     "client_id": client_id,
                     "client_secret": client_secret,
                     "grant_type": "client_credentials",
                 },
-                timeout=10.0,
             )
             if token_resp.status_code == 401:
                 return {
@@ -216,13 +250,11 @@ async def verify_tailscale_oauth(request: Dict[str, Any]) -> Dict[str, Any]:
 
             bearer = {"Authorization": f"Bearer {access_token}"}
 
-            # 2. Devices write check: try a metadata GET on /devices. The
-            # token must have devices:core (read+write) for the operator
-            # to create new tailnet devices for exposed Services.
-            devices_resp = await client.get(
+            devices_resp = await _ts_request(
+                client,
+                "GET",
                 f"{TAILSCALE_API}/tailnet/{DEFAULT_TAILNET}/devices",
                 headers=bearer,
-                timeout=10.0,
             )
             if devices_resp.status_code == 403:
                 return {
@@ -239,13 +271,11 @@ async def verify_tailscale_oauth(request: Dict[str, Any]) -> Dict[str, Any]:
                     "message": f"Tailscale API error during devices probe: {devices_resp.status_code}",
                 }
 
-            # 3. Auth-key write check: list existing tailnet keys. Same
-            # auth-keys:write scope the operator needs to mint per-device
-            # auth keys at runtime.
-            keys_resp = await client.get(
+            keys_resp = await _ts_request(
+                client,
+                "GET",
                 f"{TAILSCALE_API}/tailnet/{DEFAULT_TAILNET}/keys",
                 headers=bearer,
-                timeout=10.0,
             )
             if keys_resp.status_code == 403:
                 return {
@@ -267,8 +297,11 @@ async def verify_tailscale_oauth(request: Dict[str, Any]) -> Dict[str, Any]:
                 "message": "OAuth client verified — operator has the scopes it needs",
             }
 
-    except httpx.TimeoutException:
-        return {"valid": False, "message": "Timed out talking to Tailscale API"}
+    except (httpx.TimeoutException, httpx.ConnectError):
+        return {
+            "valid": False,
+            "message": f"Tailscale API unreachable after {MAX_RETRIES} attempts — check network connection",
+        }
     except Exception as exc:
         logger.exception("verify-tailscale-oauth failed")
         return {"valid": False, "message": f"Unexpected error: {exc}"}

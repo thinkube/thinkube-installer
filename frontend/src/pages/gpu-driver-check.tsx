@@ -27,9 +27,11 @@ interface Node {
   gpu_name?: string
   gpu_count?: number
   driver_version?: string
-  driver_status?: "compatible" | "old" | "missing"
+  driver_status?: "compatible" | "old" | "missing" | "unsupported_gpu"
   min_required_version?: string
-  action_required?: "install" | "upgrade" | "none"
+  action_required?: "install" | "upgrade" | "exclude" | "none"
+  compute_cap?: string
+  gpu_supported?: boolean
 }
 
 interface Summary {
@@ -37,6 +39,7 @@ interface Summary {
   needs_install: number
   needs_upgrade: number
   no_gpu: number
+  unsupported: number
   error?: number
 }
 
@@ -50,6 +53,7 @@ export default function GpuDriverCheck() {
     needs_install: 0,
     needs_upgrade: 0,
     no_gpu: 0,
+    unsupported: 0,
     error: 0
   })
   const [decisions, setDecisions] = useState<Record<string, string>>({})
@@ -109,6 +113,7 @@ export default function GpuDriverCheck() {
           needs_install: 0,
           needs_upgrade: 0,
           no_gpu: 0,
+          unsupported: 0,
           error: 0
         }
       )
@@ -136,6 +141,7 @@ export default function GpuDriverCheck() {
         needs_install: 0,
         needs_upgrade: 0,
         no_gpu: 0,
+        unsupported: 0,
         error: 0
       })
     }
@@ -145,7 +151,8 @@ export default function GpuDriverCheck() {
     if (!nodes || !Array.isArray(nodes)) return []
     return nodes.filter(
       (node) =>
-        node.action_required === "install" || node.action_required === "upgrade"
+        node.action_required === "install" ||
+        (node.action_required === "upgrade" && node.driver_status !== "unsupported_gpu")
     )
   }, [nodes])
 
@@ -175,8 +182,8 @@ export default function GpuDriverCheck() {
   }, [summary.ready, installCount])
 
   const cpuOnlyCount = useMemo(() => {
-    return summary.no_gpu + excludeCount
-  }, [summary.no_gpu, excludeCount])
+    return summary.no_gpu + summary.unsupported + excludeCount
+  }, [summary.no_gpu, summary.unsupported, excludeCount])
 
   const canContinue = useMemo(() => {
     return allDecisionsMade
@@ -216,12 +223,15 @@ export default function GpuDriverCheck() {
         if (!node.gpu_detected) {
           gpu_enabled = false
           reason = "No GPU detected"
+        } else if (node.driver_status === "unsupported_gpu") {
+          gpu_enabled = false
+          reason = `GPU architecture too old (compute capability ${node.compute_cap || "< 7.0"})`
         } else if (node.driver_status === "compatible") {
           gpu_enabled = true
           driver_preinstalled = true
         } else if (decisions[node.ip] === "install") {
           gpu_enabled = true
-          driver_preinstalled = false // Will be installed by playbook
+          driver_preinstalled = false
         } else if (decisions[node.ip] === "exclude") {
           gpu_enabled = false
           reason = "Excluded by user"
@@ -293,28 +303,40 @@ export default function GpuDriverCheck() {
         <TkCardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             <div className="bg-secondary rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">Ready</div>
+              <div className="text-sm text-muted-foreground">GPU Ready</div>
               <div className="text-3xl font-bold text-success">{summary.ready}</div>
               <div className="text-xs text-muted-foreground">Compatible drivers</div>
             </div>
-            <div className="bg-secondary rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">Need Install</div>
-              <div className="text-3xl font-bold text-warning">
-                {summary.needs_install}
+            {summary.needs_install > 0 && (
+              <div className="bg-secondary rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Need Install</div>
+                <div className="text-3xl font-bold text-warning">
+                  {summary.needs_install}
+                </div>
+                <div className="text-xs text-muted-foreground">Driver not found</div>
               </div>
-              <div className="text-xs text-muted-foreground">No drivers found</div>
-            </div>
-            <div className="bg-secondary rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">Need Upgrade</div>
-              <div className="text-3xl font-bold text-destructive">
-                {summary.needs_upgrade}
+            )}
+            {summary.needs_upgrade > 0 && (
+              <div className="bg-secondary rounded-lg p-4">
+                <div className="text-sm text-muted-foreground">Need Upgrade</div>
+                <div className="text-3xl font-bold text-warning">
+                  {summary.needs_upgrade}
+                </div>
+                <div className="text-xs text-muted-foreground">Driver too old</div>
               </div>
-              <div className="text-xs text-muted-foreground">Old drivers</div>
-            </div>
+            )}
             <div className="bg-secondary rounded-lg p-4">
-              <div className="text-sm text-muted-foreground">No GPU</div>
-              <div className="text-3xl font-bold">{summary.no_gpu}</div>
-              <div className="text-xs text-muted-foreground">CPU only</div>
+              <div className="text-sm text-muted-foreground">CPU Only</div>
+              <div className="text-3xl font-bold text-muted-foreground">
+                {summary.no_gpu + summary.unsupported}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {summary.unsupported > 0 && summary.no_gpu > 0
+                  ? "No GPU or older architecture"
+                  : summary.unsupported > 0
+                    ? "Older GPU architecture"
+                    : "No GPU detected"}
+              </div>
             </div>
           </div>
         </TkCardContent>
@@ -348,7 +370,11 @@ export default function GpuDriverCheck() {
                     <td className="py-2 px-4">
                       {node.gpu_detected ? (
                         <div className="flex items-center gap-2">
-                          <CheckCircle2 className="h-5 w-5 text-success" />
+                          {node.driver_status === "unsupported_gpu" ? (
+                            <AlertCircle className="h-5 w-5 text-muted-foreground" />
+                          ) : (
+                            <CheckCircle2 className="h-5 w-5 text-success" />
+                          )}
                           <div>
                             <div className="font-medium">{node.gpu_name}</div>
                             {node.gpu_count && node.gpu_count > 1 && (
@@ -376,10 +402,15 @@ export default function GpuDriverCheck() {
                           Compatible
                         </TkBadge>
                       )}
+                      {node.driver_status === "unsupported_gpu" && (
+                        <TkBadge status="pending" className="gap-2">
+                          Pre-Volta architecture
+                        </TkBadge>
+                      )}
                       {node.driver_status === "old" && (
-                        <TkBadge status="unhealthy" className="gap-2">
-                          <XCircle className="h-4 w-4" />
-                          Old ({node.min_required_version}+ required)
+                        <TkBadge status="warning" className="gap-2">
+                          <AlertCircle className="h-4 w-4" />
+                          Update available ({node.min_required_version}+)
                         </TkBadge>
                       )}
                       {node.driver_status === "missing" && (
@@ -388,30 +419,38 @@ export default function GpuDriverCheck() {
                           Missing
                         </TkBadge>
                       )}
-                      {!node.driver_status && (
-                        <TkBadge status="pending">{node.driver_status}</TkBadge>
+                      {!node.driver_status && !node.gpu_detected && (
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="py-2 px-4">
-                      {node.action_required === "install" && (
+                      {node.driver_status === "unsupported_gpu" && (
+                        <span className="text-muted-foreground">CPU-only node</span>
+                      )}
+                      {node.driver_status !== "unsupported_gpu" && node.action_required === "install" && (
                         <span className="text-warning">Install driver</span>
                       )}
-                      {node.action_required === "upgrade" && (
-                        <span className="text-destructive">Upgrade driver</span>
+                      {node.driver_status !== "unsupported_gpu" && node.action_required === "upgrade" && (
+                        <span className="text-warning">Upgrade driver</span>
                       )}
                       {node.action_required === "none" && (
                         <span className="text-success">None</span>
                       )}
-                      {!node.action_required && <span>-</span>}
+                      {!node.action_required && node.driver_status !== "unsupported_gpu" && <span>-</span>}
                     </td>
                     <td className="py-2 px-4">
                       {node.driver_status === "compatible" && (
                         <span className="text-success">Ready for GPU</span>
                       )}
+                      {node.driver_status === "unsupported_gpu" && (
+                        <span className="text-muted-foreground">
+                          Will run as CPU-only
+                        </span>
+                      )}
                       {!node.gpu_detected && (
                         <span className="text-muted-foreground">CPU-only node</span>
                       )}
-                      {node.action_required === "install" && (
+                      {node.driver_status !== "unsupported_gpu" && node.action_required === "install" && (
                         <TkSelect
                           value={decisions[node.ip] || ""}
                           onValueChange={(value: string) =>
@@ -431,7 +470,7 @@ export default function GpuDriverCheck() {
                           </TkSelectContent>
                         </TkSelect>
                       )}
-                      {node.action_required === "upgrade" && (
+                      {node.driver_status !== "unsupported_gpu" && node.action_required === "upgrade" && (
                         <TkSelect
                           value={decisions[node.ip] || ""}
                           onValueChange={(value: string) =>
@@ -451,9 +490,6 @@ export default function GpuDriverCheck() {
                           </TkSelectContent>
                         </TkSelect>
                       )}
-                      {!node.action_required &&
-                        node.driver_status !== "compatible" &&
-                        node.gpu_detected && <span className="text-muted-foreground">N/A</span>}
                     </td>
                   </tr>
                 ))}
@@ -463,47 +499,15 @@ export default function GpuDriverCheck() {
         </TkCardContent>
       </TkCard>
 
-      {/* Warning for nodes needing manual upgrade */}
-      {summary.needs_upgrade > 0 && (
-        <TkAlert className="bg-warning/10 text-warning border-warning/20 mb-6">
+      {summary.unsupported > 0 && (
+        <TkAlert className="bg-secondary text-muted-foreground border-border mb-6">
           <AlertCircle className="h-4 w-4" />
           <TkAlertDescription>
-            <div>
-              <h3 className="font-bold">Old NVIDIA Drivers Detected</h3>
-              <div className="text-sm mt-1">
-                Some nodes have NVIDIA drivers older than version 580.x. GPU
-                Operator v25.3.4 requires driver 580.0 or newer.
-                <br />
-                <br />
-                <strong>To upgrade manually:</strong>
-                <ol className="list-decimal list-inside mt-2 ml-4">
-                  <li>
-                    Download driver from:{" "}
-                    <a
-                      href="https://www.nvidia.com/download/index.aspx"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline"
-                    >
-                      nvidia.com/download
-                    </a>
-                  </li>
-                  <li>
-                    SSH to the node and run:{" "}
-                    <code className="bg-secondary px-2 py-1 rounded">
-                      sudo sh NVIDIA-Linux-x86_64-580.95.05.run --silent --dkms
-                    </code>
-                  </li>
-                  <li>
-                    Verify with:{" "}
-                    <code className="bg-secondary px-2 py-1 rounded">
-                      nvidia-smi
-                    </code>
-                  </li>
-                  <li>Re-run the installer</li>
-                </ol>
-              </div>
-            </div>
+            {summary.unsupported === 1
+              ? "One node has a pre-Volta NVIDIA GPU (compute capability below 7.0). "
+              : `${summary.unsupported} nodes have pre-Volta NVIDIA GPUs (compute capability below 7.0). `}
+            These GPUs are not supported by the NVIDIA GPU Operator and will run as CPU-only nodes.
+            GPU workloads require Volta (V100) or newer architecture.
           </TkAlertDescription>
         </TkAlert>
       )}
@@ -522,15 +526,14 @@ export default function GpuDriverCheck() {
             <strong>{cpuOnlyCount}</strong> node(s) will be CPU-only
           </p>
           {installCount > 0 && (
-            <p className="text-warning">
+            <p>
               <strong>{installCount}</strong> node(s) will have drivers installed
               automatically
             </p>
           )}
           {abortCount > 0 && (
-            <p className="text-destructive">
-              <strong>Deployment will abort</strong> - you have chosen to upgrade
-              drivers manually
+            <p className="text-warning">
+              Deployment paused — upgrade drivers on {abortCount} node(s) manually, then restart the installer
             </p>
           )}
         </TkCardContent>
