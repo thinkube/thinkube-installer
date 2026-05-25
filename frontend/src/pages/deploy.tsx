@@ -530,6 +530,17 @@ export default function Deploy() {
         logs
       })
 
+      // Persist completed step so deploy can resume on app restart
+      if (!isRollback) {
+        try {
+          const done = JSON.parse(sessionStorage.getItem('completedPlaybooks') || '[]') as string[]
+          if (!done.includes(currentPlaybook.id)) {
+            done.push(currentPlaybook.id)
+            sessionStorage.setItem('completedPlaybooks', JSON.stringify(done))
+          }
+        } catch { /* ignore */ }
+      }
+
       // For rollback success, restore pre-rollback state to show retry/rollback buttons
       if (isRollback) {
         setTimeout(() => {
@@ -629,6 +640,9 @@ export default function Deploy() {
       return
     }
 
+    // Clear resume breadcrumbs — after rollback the step needs to re-run
+    try { sessionStorage.removeItem('completedPlaybooks') } catch { /* ignore */ }
+
     // Execute single rollback playbook
     const rollbackQueue: Playbook[] = [{
       id: `rollback-${playbook.id}`,
@@ -671,14 +685,44 @@ export default function Deploy() {
     tkToast.success('Logs downloaded successfully!')
   }
 
-  // Initialize on mount
+  // Initialize on mount — resume from last completed step if restarting
   useEffect(() => {
     const init = async () => {
       const queue = await buildQueue()
       dispatch({ type: 'INIT_QUEUE', queue })
-      // Auto-start first playbook
+
+      // Check for completed steps from a previous run (persisted in sessionStorage)
+      let resumeIndex = 0
+      try {
+        const done = JSON.parse(sessionStorage.getItem('completedPlaybooks') || '[]') as string[]
+        if (done.length > 0) {
+          const firstIncomplete = queue.findIndex(p => !done.includes(p.id))
+          if (firstIncomplete === -1) {
+            // All steps already completed — go straight to complete
+            dispatch({ type: 'COMPLETE' })
+            return
+          }
+          if (firstIncomplete > 0) {
+            resumeIndex = firstIncomplete
+            console.log(
+              `Resuming deploy from step ${resumeIndex + 1}/${queue.length}` +
+              ` (${queue[resumeIndex].title}). ${resumeIndex} steps already completed.`
+            )
+          }
+        }
+      } catch { /* sessionStorage unavailable — start fresh */ }
+
+      // Mark previously-completed steps as success in the UI
+      for (let i = 0; i < resumeIndex; i++) {
+        dispatch({
+          type: 'PLAYBOOK_SUCCESS',
+          playbookId: queue[i].id,
+          logs: '(completed in previous run)'
+        })
+      }
+
       setTimeout(() => {
-        dispatch({ type: 'START_PLAYBOOK', index: 0 })
+        dispatch({ type: 'START_PLAYBOOK', index: resumeIndex })
       }, 500)
     }
     init()
