@@ -1043,12 +1043,25 @@ async def verify_tailscale(request: Dict[str, Any]):
 
         import aiohttp
         headers = {"Authorization": f"Bearer {api_token}"}
-        async with aiohttp.ClientSession() as session:
+        timeout = aiohttp.ClientTimeout(total=60, connect=20)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
             # 1. Validate the API access token against the default tailnet ("-").
-            async with session.get(
-                "https://api.tailscale.com/api/v2/tailnet/-/devices",
-                headers=headers,
-            ) as token_resp:
+            # Retry once on transient network failure (Tailscale API
+            # occasionally times out on first connect).
+            token_resp = None
+            for attempt in range(2):
+                try:
+                    token_resp = await session.get(
+                        "https://api.tailscale.com/api/v2/tailnet/-/devices",
+                        headers=headers,
+                    )
+                    break
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    if attempt == 1:
+                        return {"valid": False, "message": "Tailscale API unreachable after 2 attempts — check network connection"}
+                    import asyncio
+                    await asyncio.sleep(2)
+            async with token_resp:
                 if token_resp.status == 401:
                     return {"valid": False, "message": "Invalid API access token"}
                 if token_resp.status == 403:
