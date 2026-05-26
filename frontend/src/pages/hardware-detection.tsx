@@ -97,7 +97,9 @@ export default function HardwareDetection() {
   }, [servers])
 
   const gpuServers = useMemo(() => {
-    return servers.filter((server) => server.hardware?.gpu_detected)
+    return servers.filter(
+      (server) => server.hardware?.gpu_detected && server.hardware?.driver_status !== "unsupported_gpu"
+    )
   }, [servers])
 
   const compatibleDriverServers = useMemo(() => {
@@ -118,14 +120,7 @@ export default function HardwareDetection() {
     )
   }, [gpuServers])
 
-  // Pre-Volta / architecturally unsupported GPUs. Driver upgrade won't fix
-  // these — the card itself is below the project's compute_cap >= 7.0
-  // requirement.
-  const unsupportedGpuServers = useMemo(() => {
-    return gpuServers.filter(
-      (server) => server.hardware?.driver_status === "unsupported_gpu"
-    )
-  }, [gpuServers])
+  const unsupportedGpuServers: typeof servers = []
 
   useEffect(() => {
     const loadServers = async () => {
@@ -312,7 +307,7 @@ export default function HardwareDetection() {
                       variant="primary"
                     />
 
-                    {server.hardware.gpu_detected && (
+                    {server.hardware.gpu_detected && server.hardware.driver_status !== "unsupported_gpu" && (
                       <TkStatCard
                         title="GPU"
                         value={server.hardware.gpu_count || 0}
@@ -542,19 +537,17 @@ export default function HardwareDetection() {
             </TkAlert>
           )}
 
-          {/* Warning for unsupported GPU architecture */}
+          {/* Info for unsupported GPU architecture */}
           {unsupportedGpuServers.length > 0 && (
-            <TkAlert className="bg-destructive/10 text-destructive border-destructive/20">
-              <XCircle className="h-6 w-6" />
+            <TkAlert className="bg-secondary text-muted-foreground border-border">
+              <AlertTriangle className="h-6 w-6" />
               <TkAlertDescription>
                 <div>
-                  <h3 className="font-bold">Action Required: Unsupported GPU</h3>
+                  <h3 className="font-bold">Pre-Volta GPUs detected</h3>
                   <div className="text-sm">
-                    Pre-Volta GPUs (compute capability &lt; 7.0) cannot be used
-                    for GPU workloads in Thinkube. Driver upgrades will not
-                    change this — the architecture itself is unsupported.
-                    Continuing will include the affected servers in the
-                    Kubernetes cluster but exclude them from GPU workloads.
+                    {unsupportedGpuServers.length === 1 ? "One server has a" : `${unsupportedGpuServers.length} servers have`} GPU
+                    with compute capability below 7.0. These will run as
+                    CPU-only nodes. GPU workloads require Volta or newer.
                   </div>
                 </div>
               </TkAlertDescription>

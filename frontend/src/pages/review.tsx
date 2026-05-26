@@ -105,7 +105,7 @@ export default function Review() {
             cpu: node.cpu || hwInfo?.hardware?.cpu_cores || 0,
             memory: node.memory || hwInfo?.hardware?.memory_gb || 0,
             disk: node.disk || hwInfo?.hardware?.disk_gb || 0,
-            hasGPU: hwInfo?.hardware?.gpu_detected || false,
+            hasGPU: (hwInfo?.hardware?.gpu_detected && hwInfo?.hardware?.driver_status !== "unsupported_gpu") || false,
             // Don't fall back to the LAN IP — overlay and local are
             // distinct things. In Tailscale mode this is genuinely
             // unknown until deploy; the renderer below handles that.
@@ -113,7 +113,7 @@ export default function Review() {
             localIP: networkInfo?.localIP || hwInfo?.network?.ip_address || ""
           }
 
-          if (hwInfo?.hardware?.gpu_detected) {
+          if (hwInfo?.hardware?.gpu_detected && hwInfo?.hardware?.driver_status !== "unsupported_gpu") {
             result.gpuInfo = {
               gpu_count: hwInfo.hardware.gpu_count || 0,
               gpu_model: hwInfo.hardware.gpu_model || "",
