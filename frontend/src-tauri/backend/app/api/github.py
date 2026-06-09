@@ -36,22 +36,32 @@ async def verify_github_token(data: Dict[str, str]):
                 user_data = response.json()
                 username = user_data.get("login", "Unknown")
                 
-                # Check token scopes from response headers
-                scopes = response.headers.get("X-OAuth-Scopes", "").split(", ")
-                required_scopes = {"repo", "workflow", "write:packages", "read:org", "write:discussion"}
-                has_required_scopes = all(
-                    any(scope.startswith(req.split(":")[0]) for scope in scopes)
-                    for req in required_scopes
-                )
-                
-                if has_required_scopes:
+                # Check token scopes from response headers.
+                # GitHub's scope hierarchy: admin:X implies write:X implies read:X.
+                # `repo` implies all repo:* sub-scopes. `workflow` and
+                # `write:discussion` have no implied parents.
+                scopes = set(s.strip() for s in response.headers.get("X-OAuth-Scopes", "").split(",") if s.strip())
+                implied_by = {
+                    "read:org": {"read:org", "write:org", "admin:org"},
+                    "write:packages": {"write:packages", "admin:packages"},
+                    "read:packages": {"read:packages", "write:packages", "admin:packages"},
+                    "repo": {"repo"},
+                    "workflow": {"workflow"},
+                    "write:discussion": {"write:discussion"},
+                }
+                required_scopes = ["repo", "workflow", "write:packages", "read:org", "write:discussion"]
+                missing_scopes = [
+                    req for req in required_scopes
+                    if not (implied_by.get(req, {req}) & scopes)
+                ]
+
+                if not missing_scopes:
                     return {
                         "valid": True,
                         "username": username,
                         "message": f"Token verified for user: {username}"
                     }
                 else:
-                    missing_scopes = required_scopes - set(scopes)
                     return {
                         "valid": False,
                         "message": f"Token missing required scopes: {', '.join(missing_scopes)}"
