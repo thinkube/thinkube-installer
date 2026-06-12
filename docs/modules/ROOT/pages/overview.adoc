@@ -1,5 +1,6 @@
 = Install Thinkube
 :page-type: tutorial
+:page-docref: 97wp
 
 == Before You Begin
 

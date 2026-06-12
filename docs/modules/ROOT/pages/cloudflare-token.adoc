@@ -1,5 +1,6 @@
 = Set Up Your Domain
 :page-type: how-to
+:page-docref: gp18
 
 Thinkube requires a Cloudflare API token to automatically generate valid SSL certificates for all your services using Let's Encrypt.
 

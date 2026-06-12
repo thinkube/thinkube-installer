@@ -1,5 +1,6 @@
 = Prepare Your Machines
 :page-type: how-to
+:page-docref: wjse
 
 Before running the Thinkube installer, ensure each machine meets these prerequisites. The installer handles all overlay network setup, SSH configuration, and system preparation automatically — no manual bootstrap script is needed.
 

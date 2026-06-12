@@ -1,5 +1,6 @@
 = Connect from Anywhere
 :page-type: how-to
+:page-docref: 1sd7
 
 Thinkube requires an overlay network for secure inter-node communication and remote access. You choose one of two supported providers during installation:
 

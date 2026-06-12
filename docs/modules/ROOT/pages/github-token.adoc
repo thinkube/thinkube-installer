@@ -1,5 +1,6 @@
 = Connect to GitHub
 :page-type: how-to
+:page-docref: t0e9
 
 Thinkube requires a GitHub Personal Access Token to access templates and use GitHub's container registry. While Gitea is the core of Thinkube's GitOps workflow, GitHub provides essential external services.
 

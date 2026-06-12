@@ -1,5 +1,6 @@
 = Unlock AI Models
 :page-type: how-to
+:page-docref: tssj
 
 Thinkube uses Hugging Face to download AI models for local inference, including LLMs, embedding models, and other ML components.
 

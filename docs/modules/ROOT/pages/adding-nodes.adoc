@@ -1,5 +1,6 @@
 = Adding Nodes
 :page-type: how-to
+:page-docref: x7av
 
 After the initial installation you can add worker nodes to your Thinkube cluster — including nodes of a different CPU architecture. The process uses the Thinkube Control UI for cluster operations and a terminal command for container image builds.
 
