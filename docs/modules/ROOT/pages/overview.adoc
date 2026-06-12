@@ -1,0 +1,317 @@
+= Install Thinkube
+:page-type: tutorial
+
+== Before You Begin
+
+Complete these steps *before* running the installer:
+
+[arabic]
+. *Set up tokens* - Create accounts and tokens for:
+* xref:overlay-network.adoc[Overlay network] - ZeroTier or Tailscale (your choice)
+* xref:cloudflare-token.adoc[Cloudflare] - SSL certificates
+* xref:github-token.adoc[GitHub] - GitOps and container registry
+* xref:huggingface-token.adoc[Hugging Face] - AI model downloads
+. *Prepare your nodes* - Ensure each machine meets the xref:node-setup.adoc[prerequisites] (Ubuntu 24.04, SSH, internet access). No manual bootstrap script is needed — the installer handles overlay network setup automatically.
+. *Run the installer* - Download and run the Thinkube installer desktop application (this page).
+
+== Installation Walkthrough
+
+=== Step 1: Welcome Screen
+
+image::01-welcome.png[Welcome Screen]
+
+The installer welcomes you to Thinkube, your AI-focused Kubernetes homelab platform. It outlines three main phases:
+
+* System requirements check
+* Cluster configuration
+* Automated deployment
+
+Click *Get Started* to begin.
+
+=== Step 2: System Requirements Check
+
+image::02-system-requirements.png[System Requirements]
+
+The installer automatically checks your control node for:
+
+*Required (Must Pass):*
+
+* Ubuntu 24.04.x LTS (Noble Numbat)
+* Non-root user with sudo access
+* OpenSSH Server installed and running
+* Internet connectivity
+* Sufficient disk space in home directory
+
+*Tools (Will Install if Missing):*
+
+* Git
+* OpenSSH Client
+* Python Virtual Environment
+* Ansible (in user's venv)
+
+Green checkmarks indicate passed requirements. The installer will offer to install any missing tools.
+
+=== Step 3: Administrator Access
+
+image::03-admin-access.png[Administrator Access]
+
+Enter your sudo password for the current user. This allows the installer to:
+
+* Configure SSH access between servers
+* Install missing tools
+* Set up your environment
+* Configure system services
+
+The installer will NOT store your password.
+
+=== Step 4: Overlay Provider Selection
+
+image::04-server-discovery.png[Server Discovery]
+
+Choose your overlay network provider:
+
+* *ZeroTier* — Software-defined networking with a virtual L2 Ethernet overlay. Uses static IPs from the network's CIDR. Free for up to 25 nodes.
+* *Tailscale* — WireGuard-based mesh VPN. Auto-assigns IPs from the `+100.x.x.x+` range. Free for up to 100 devices.
+
+Both providers create a secure encrypted network that makes your homelab accessible from anywhere without port forwarding.
+
+=== Why an Overlay Network
+
+An overlay network makes your cluster location-independent:
+
+* *Work from Anywhere*: Access your development environment from a coffee shop, office, or while traveling
+* *No Port Forwarding*: No need to expose your home router to the internet
+* *Encrypted*: All inter-node traffic is encrypted end-to-end
+* *Simple Setup*: No complex VPN configurations or firewall rules
+* *Persistent Access*: Your laptop stays connected to your homelab wherever you go
+
+=== Step 4b: Overlay Setup
+
+After selecting your provider, the installer automatically:
+
+[arabic]
+. Installs the overlay provider on all nodes
+. Joins each node to your network
+. Assigns or discovers overlay IPs
+. Verifies connectivity between all nodes
+
+No manual node bootstrapping is required. Enter the required credentials for your chosen provider (Network ID and API token for ZeroTier, or auth key for Tailscale).
+
+=== Step 5: Server Discovery - Results
+
+image::05-discovered-servers.png[Discovered Servers]
+
+The installer shows discovered servers with:
+
+* IP address
+* Hostname (if available)
+* Operating system details
+* SSH status
+
+Click *Select* to choose servers for your cluster. You can select multiple servers.
+
+image::06-selected-servers.png[Selected Servers]
+
+Selected servers show green "Selected" badges. Click *Continue with X Servers* when ready.
+
+=== Step 6: SSH Connectivity Check
+
+*IMPORTANT*: Before proceeding, you must test SSH connectivity. This is a mandatory step to verify all systems are accessible before starting the Kubernetes configuration. The installer will prompt you to test connectivity to each node.
+
+=== Step 7: SSH Setup
+
+image::07-ssh-setup.png[SSH Setup Running]
+
+The installer configures passwordless SSH between all selected servers. A popup shows the Ansible playbook execution in real-time. This process:
+
+* Generates SSH keys if needed
+* Distributes keys between nodes
+* Verifies connectivity
+
+image::08-ssh-complete.png[SSH Setup Complete]
+
+Once complete, all servers show "connected" status. The installer confirms "SSH Setup Complete!" with passwordless access configured.
+
+image::09-ssh-test-results.png[SSH Test Results]
+
+A test summary shows the number of tasks completed and execution time. Click *Continue* to proceed.
+
+=== Step 8: Hardware Detection
+
+image::10-hardware-detection.png[Hardware Detection]
+
+The installer detects hardware on each node, displaying:
+
+* *CPU*: Number of cores
+* *RAM*: Total memory in GB
+* *Disk*: Available storage in GB
+* *GPU*: Graphics cards detected (if any)
+
+The *Cluster Capacity Summary* shows total resources across all nodes.
+
+=== Step 9: Kubernetes Role Assignment
+
+image::11-role-assignment.png[Role Assignment]
+
+Assign roles to your servers:
+
+*Control Plane Node:*
+
+* Manages Kubernetes API and cluster state
+* Requires minimum 4 CPU cores and 8GB RAM
+* Can also run workloads in single-node setups
+* Must be baremetal (no VM support)
+
+*Worker Nodes:*
+
+* Optional additional nodes for running workloads
+* GPU-equipped nodes ideal for AI/ML tasks
+
+The installer shows hardware specs and GPU availability for each node to help you decide.
+
+=== Step 10: Cluster Configuration
+
+image::12-cluster-config.png[Cluster Configuration]
+
+Configure your cluster settings:
+
+*Basic Settings:*
+
+* *Cluster Name*: A name for your Thinkube cluster
+* *Domain Name*: Your domain (e.g., example.com)
+* *Cloudflare API Token (REQUIRED)*: For valid SSL certificates
+** Why required: All Thinkube services need valid SSL certificates to function
+** Self-signed certificates break SSO, webhooks, and cause browser security issues
+** Uses acme.sh with DNS challenge to generate Let's Encrypt certificates
+** Certificates generated immediately during installation
+** xref:cloudflare-token.adoc[See Cloudflare Token Setup Guide]
+
+*Overlay Network Configuration:*
+
+* For *ZeroTier*: Network ID (16-character) and API Token for automatic node authorization
+* For *Tailscale*: Auth key for automatic node registration
+
+*GitHub Integration (Required):*
+
+* *Personal Access Token*: Powers Thinkube's GitOps workflow
+** Why required: Core to how Thinkube operates
+** Creates repositories for your application deployments
+** Manages CI/CD workflows and build pipelines
+** Provides container registry access for storing images
+** Required permissions: `+repo+`, `+workflow+`, `+packages:write+`
+** xref:github-token.adoc[See GitHub Token Setup Guide]
+* *Organization/Username*: Where deployment repositories will be created
+
+image::13-config-validated.png[Configuration Validated]
+
+The installer validates tokens in real-time, showing green checkmarks and access confirmations.
+
+=== Step 11: Network Configuration
+
+image::14-network-config.png[Network Configuration]
+
+Configure advanced network settings:
+
+*Gateway IP Configuration:*
+
+* *Primary Gateway IP*: For main services (Control Panel, Gitea, etc.)
+* *Secondary Gateway IP*: For Knative/serverless workloads
+
+*DNS Configuration:*
+
+* *CoreDNS External IP*: For cluster DNS resolution
+
+*MetalLB IP Range:*
+
+* Define a range of IPs for load balancer services
+
+The configuration shows:
+
+* Overlay network and Kubernetes cluster CIDRs
+* IP ranges for MetalLB
+* Server assignments with their IPs and roles
+
+=== Step 12: Review Configuration
+
+image::15-review-config.png[Review Configuration]
+
+Review your complete configuration:
+
+*Cluster Settings:*
+
+* Cluster name and domain
+* Admin username
+* Network mode
+
+*Node Assignments:*
+
+* Each server with hardware specs
+* Network addresses (overlay and local)
+* Assigned roles
+* GPU availability
+
+*Generated Ansible Inventory:*
+Options to copy, download, or view the generated inventory file for manual execution if needed.
+
+Click *Start Deployment* to begin installation.
+
+=== Step 13: Deployment Progress
+
+image::16-deployment-progress.png[Deployment Running]
+
+The deployment runs in phases:
+
+[arabic]
+. *Initial Setup* - Environment and network configuration
+. *Kubernetes* - k8s-snap installation and cluster setup
+
+A popup shows real-time Ansible playbook output. You can expand it to see detailed task execution.
+
+=== Step 14: Deployment Complete
+
+image::17-deployment-complete.png[Deployment Complete]
+
+When deployment completes successfully:
+
+* Both phases show green checkmarks
+* Progress bar shows 100% complete
+* Success message with celebration emoji
+
+Click *View Cluster Details* to see your deployed services.
+
+== What's Next?
+
+Your Thinkube platform is now installed! You can:
+
+[arabic]
+. Access the Control Panel at `+https://control.<your-domain>+`
+. Deploy your first application from templates
+. Access code-server at `+https://code.<your-domain>+` for development
+. Explore optional services installation
+
+== Hardware Requirements
+
+Based on the installer's hardware detection:
+
+* *Minimum*: 4 CPU cores, 8GB RAM for control plane
+* *Recommended*: 16+ cores, 64GB+ RAM for comfortable operation
+* *AI Workloads*: 32+ cores, 128GB+ RAM, NVIDIA GPU with 24GB+ VRAM
+
+== Troubleshooting
+
+If issues occur:
+
+[arabic]
+. Check the live output in installer popups for specific errors
+. Verify all requirements passed in Step 2
+. Ensure network connectivity between nodes
+. Validate GitHub and overlay network tokens
+. Check firewall rules aren't blocking required ports
+
+== Next Steps
+
+[arabic]
+. Access your Control Panel at `+https://control.<your-domain>+`
+. Deploy your first application from templates
+. Access code-server at `+https://code.<your-domain>+` for development
+. Explore optional services installation

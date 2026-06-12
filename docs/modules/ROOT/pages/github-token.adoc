@@ -1,0 +1,295 @@
+= Connect to GitHub
+:page-type: how-to
+
+Thinkube requires a GitHub Personal Access Token to access templates and use GitHub's container registry. While Gitea is the core of Thinkube's GitOps workflow, GitHub provides essential external services.
+
+== Why GitHub Token is Required
+
+GitHub serves specific purposes in Thinkube's architecture:
+
+* *Template Repository Access*: Thinkube templates are stored on GitHub
+* *Container Registry*: GitHub Packages provides free container image storage
+* *Template Updates*: Pull the latest template versions from GitHub
+* *Public Template Sharing*: Access community templates from GitHub
+* *Backup Registry*: Alternative to self-hosted registry if needed
+
+____
+*Note*: The actual GitOps workflow runs through Gitea (self-hosted), not GitHub. GitHub provides external resources and services.
+____
+
+== How Thinkube Uses Both Git Services
+
+* *Gitea* (Self-hosted):
+** Core GitOps engine
+** Stores your actual application code
+** Triggers CI/CD pipelines
+** Manages deployments via ArgoCD
+** Complete control and privacy
+* *GitHub* (External service):
+** Hosts Thinkube templates
+** Provides container registry (GitHub Packages)
+** Template marketplace for sharing
+** External backup and distribution
+
+== Prerequisites
+
+[arabic]
+. *GitHub Account*: Free account at https://github.com[github.com]
+. *Organization (Optional)*: You can use your personal account or create an organization
+
+== Step 1: Navigate to Token Settings
+
+[arabic]
+. Log in to https://github.com[GitHub]
+. Click your profile photo (top right corner)
+. Click *Settings*
+. Scroll down and click *Developer settings* (bottom of left sidebar)
+. Click *Personal access tokens*
+. Click *Tokens (classic)*
+
+____
+*Note*: We use classic tokens as they're simpler to configure for Thinkube's needs
+____
+
+== Step 2: Generate New Token
+
+[arabic]
+. Click *Generate new token*
+. Click *Generate new token (classic)*
+. You may need to enter your GitHub password
+
+== Step 3: Configure Token
+
+=== Token Name
+
+Give your token a descriptive name:
+
+* *Note*: `+Thinkube Templates and Registry+`
+
+=== Expiration
+
+Choose an expiration period:
+
+* *90 days*: For testing
+* *1 year*: Recommended for homelab use
+* *No expiration*: Most convenient but less secure
+
+____
+*Tip*: Set a calendar reminder to rotate your token before expiration
+____
+
+=== Select Scopes
+
+Check the following permissions:
+
+==== Essential Scopes (Required)
+
+✅ *repo* (Full control of private repositories)
+
+* Access to template repositories
+* Clone templates for deployment
+* Access private templates you create
+
+✅ *workflow* (Update GitHub Action workflows)
+
+* Some templates may include GitHub Actions
+* Allows template workflow updates
+
+✅ *write:packages* (Write packages to GitHub Package Registry)
+
+* Push container images to GitHub Packages
+* Free storage for your container images
+* Automatically includes `+read:packages+`
+
+==== Optional Scopes
+
+✅ *delete:packages* (Delete packages from GitHub Package Registry)
+
+* Useful for cleanup of old container images
+* Manage storage space
+
+=== Minimal Permission Set
+
+At minimum, you need:
+
+* `+repo+`
+* `+workflow+`
+* `+write:packages+`
+
+== Step 4: Create Token
+
+[arabic]
+. Scroll to the bottom
+. Click *Generate token*
+. *CRITICAL*: Copy the token immediately!
+* GitHub will never show this token again
+* If you lose it, you'll need to create a new one
+
+== Step 5: Test Your Token
+
+Verify your token works:
+
+[source,bash]
+----
+curl -H "Authorization: token YOUR_TOKEN_HERE" \
+     https://api.github.com/user
+----
+
+You should see your GitHub user information in JSON format.
+
+== Step 6: Use in Thinkube Installer
+
+When the installer asks for your GitHub Personal Access Token:
+
+[arabic]
+. *Paste your token* in the field
+. *Enter your GitHub username* or organization name
+. The installer will:
+* Verify token permissions
+* Test access to template repositories
+* Confirm package registry access
+* Store the token in `+~/.env+` file
+. You'll see green checkmarks for each validated permission
+
+== How Tokens are Stored
+
+The installer saves your tokens in the `+~/.env+` file on your control node:
+
+[source,bash]
+----
+# Location after installation
+~/.env
+
+# Contents include
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+GITHUB_USERNAME=yourusername
+CLOUDFLARE_TOKEN=xxxxxxxxxxxxxxxxxxxx
+----
+
+This file is:
+
+* Created with restricted permissions (600)
+* Sourced by Thinkube services
+* Used by Ansible playbooks
+* Not committed to any repository
+
+____
+*Note*: Token storage in `+.env+` may be improved in future versions for enhanced security
+____
+
+== Understanding Token Usage
+
+=== What Thinkube Does With Your Token
+
+[arabic]
+. *Accesses Template Repositories*
+* Clones templates from GitHub (e.g., `+thinkube/tkt-webapp-vue-fastapi+`)
+* Checks for template updates
+* Accesses private templates if you have any
+. *Uses GitHub Container Registry*
+* Pushes built container images to GitHub Packages
+* Pulls base images when needed
+* Manages image versions and tags
+. *Template Instantiation*
+* When you deploy a template, it's cloned from GitHub
+* Processed locally with your parameters
+* Pushed to your Gitea instance (not back to GitHub)
+
+=== What Happens in Your GitOps Flow
+
+[arabic]
+. *Select Template* (from GitHub) →
+. *Process Template* (locally) →
+. *Push to Gitea* (your instance) →
+. *Trigger CI/CD* (via Gitea webhooks) →
+. *Build Container* (in your cluster) →
+. *Push to Registry* (GitHub Packages) →
+. *Deploy via ArgoCD* (from Gitea manifests)
+
+Your actual code and deployments stay in Gitea. GitHub provides templates and container storage.
+
+== Troubleshooting
+
+=== Token Validation Failed
+
+*Insufficient Permissions*
+
+* Ensure you selected `+repo+`, `+workflow+`, and `+write:packages+`
+* Classic tokens work better than fine-grained tokens
+
+*Token Expired*
+
+* Check token expiration date in GitHub settings
+* Generate a new token if expired
+
+*Wrong Token Format*
+
+* Classic tokens start with `+ghp_+`
+* Ensure you're using a classic token
+
+=== Template Access Issues
+
+*Can't Access Templates*
+
+* Verify `+repo+` scope is enabled
+* Check if template repository is public or private
+* For private templates, ensure token has access
+
+=== Package Registry Issues
+
+*Can't Push Images*
+
+* Verify `+write:packages+` scope is enabled
+* Check GitHub Packages storage limits
+* Ensure organization allows package uploads
+
+== Security Best Practices
+
+[arabic]
+. *Use Minimal Scopes*: Only grant permissions Thinkube needs
+. *Set Expiration*: Use 1-year expiration and rotate annually
+. *Monitor Usage*: Check GitHub security log for token usage
+. *Protect .env File*: Ensure `+~/.env+` has proper permissions (600)
+. *Separate Concerns*: Your code stays in Gitea, only templates/images use GitHub
+
+== Token Rotation
+
+When your token expires or needs rotation:
+
+[arabic]
+. Generate a new token with same permissions in GitHub
+. Update the `+.env+` file:
++
+[source,bash]
+----
+# Edit the file
+nano ~/.env
+# Update the GITHUB_TOKEN line
+GITHUB_TOKEN=ghp_your_new_token_here
+----
+. Save and ensure permissions are still restrictive:
++
+[source,bash]
+----
+chmod 600 ~/.env
+----
+. Restart services if needed
+. Revoke the old token in GitHub settings
+
+== Next Steps
+
+With both Cloudflare and GitHub tokens configured:
+
+[arabic]
+. Continue with the Thinkube installation
+. Your tokens will be stored in `+~/.env+`
+. Services will have valid SSL certificates (via Cloudflare)
+. You can deploy templates from GitHub
+. Container images will be stored in GitHub Packages
+. Your applications will be managed through Gitea
+
+== Additional Resources
+
+* https://docs.github.com/en/authentication/keeping-your-account-and-data-secure[GitHub Token Security]
+* https://docs.github.com/en/packages[GitHub Packages Documentation]
+* link:/learn/devops/[Understanding Thinkube's GitOps Flow]

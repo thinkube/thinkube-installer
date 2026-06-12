@@ -1,0 +1,6 @@
+name: install
+title: Get Started
+version: ~
+start_page: overview.adoc
+nav:
+  - modules/ROOT/nav.adoc

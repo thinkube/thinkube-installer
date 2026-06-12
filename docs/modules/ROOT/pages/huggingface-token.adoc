@@ -1,0 +1,60 @@
+= Unlock AI Models
+:page-type: how-to
+
+Thinkube uses Hugging Face to download AI models for local inference, including LLMs, embedding models, and other ML components.
+
+== Why Hugging Face Token is Required
+
+* *Model Access*: Download models like Llama, Mistral, and embedding models
+* *Gated Models*: Access models that require agreement to terms of use
+* *Rate Limits*: Authenticated requests have higher rate limits
+* *Private Models*: Access your private or organization models
+
+== Step 1: Create Account
+
+[arabic]
+. Go to https://huggingface.co[huggingface.co]
+. Click *Sign Up* and create a free account
+
+== Step 2: Create Access Token
+
+[arabic]
+. Go to https://huggingface.co/settings/tokens[huggingface.co/settings/tokens]
+. Click *New token*
+. Name it `+Thinkube+`
+. Select *Read* access (sufficient for downloading models)
+. Click *Generate token*
+. *Copy the token immediately*
+
+== Step 3: Accept Model Licenses
+
+Some models require accepting their license before downloading:
+
+[arabic]
+. Visit the model page (e.g., https://huggingface.co/meta-llama/Llama-3.2-3B[meta-llama/Llama-3.2-3B])
+. Click *Agree and access repository*
+. Repeat for any gated models you plan to use
+
+== What You Need for Installation
+
+[cols=",,",options="header",]
+|===
+|Item |Example |Where to Find
+|Access Token |`+hf_xxxxxxxxxxxx+` |Settings → Access Tokens
+|===
+
+== How It's Used
+
+Thinkube stores your token and uses it to:
+
+* Download LLM models for local inference (Ollama, vLLM)
+* Pull embedding models for RAG pipelines
+* Access model weights during container builds
+
+== Next Steps
+
+Once you have your Hugging Face token:
+
+[arabic]
+. Continue with the xref:overview.adoc[Thinkube installation]
+. The installer will prompt for your token during setup

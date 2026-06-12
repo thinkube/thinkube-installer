@@ -1,0 +1,9 @@
+.Get Started
+* Prerequisites
+** xref:node-setup.adoc[Prepare your machines]
+** xref:overlay-network.adoc[Connect from anywhere]
+** xref:cloudflare-token.adoc[Set up your domain]
+** xref:github-token.adoc[Connect to GitHub]
+** xref:huggingface-token.adoc[Unlock AI models]
+* xref:overview.adoc[Install Thinkube]
+* xref:adding-nodes.adoc[Add more nodes]

@@ -1,0 +1,64 @@
+= Prepare Your Machines
+:page-type: how-to
+
+Before running the Thinkube installer, ensure each machine meets these prerequisites. The installer handles all overlay network setup, SSH configuration, and system preparation automatically — no manual bootstrap script is needed.
+
+== Prerequisites
+
+Each node must have:
+
+* *Ubuntu 24.04 LTS* (Noble Numbat) installed
+* *A non-root user* with sudo access
+* *OpenSSH Server* installed and running
+* *Internet connectivity*
+
+=== Expand Disk Storage
+
+Ubuntu Server's installer creates a logical volume (LV) that uses only ~100 GB of the disk by default, regardless of actual disk size. Before proceeding, expand it to use all available space:
+
+[source,bash]
+----
+sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
+sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
+----
+
+Verify with `+df -h /+` — it should now show the full disk size.
+
+== What the Installer Handles
+
+During installation, the Thinkube installer automatically configures each node:
+
+=== Overlay Network
+
+* Installs your chosen overlay provider (ZeroTier or Tailscale)
+* Joins each node to your overlay network
+* Assigns or discovers overlay IPs
+* Verifies connectivity between all nodes
+
+=== System
+
+* Installs required tools (Git, Python, Ansible)
+* Configures SSH key-based authentication between nodes
+* Sets up required kernel modules for Kubernetes
+
+== Verification
+
+After installation, you can verify overlay connectivity:
+
+[source,bash]
+----
+# For ZeroTier
+sudo zerotier-cli status
+sudo zerotier-cli listnetworks
+
+# For Tailscale
+tailscale status
+----
+
+== Next Steps
+
+Once all machines meet the prerequisites:
+
+[arabic]
+. Set up your xref:overlay-network.adoc[overlay network token] (ZeroTier or Tailscale)
+. Run the xref:overview.adoc[Thinkube Installer]

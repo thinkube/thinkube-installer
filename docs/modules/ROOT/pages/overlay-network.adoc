@@ -1,0 +1,138 @@
+= Connect from Anywhere
+:page-type: how-to
+
+Thinkube requires an overlay network for secure inter-node communication and remote access. You choose one of two supported providers during installation:
+
+[cols=",,,",options="header",]
+|===
+|Provider |Type |IP Assignment |Free Tier
+|*ZeroTier* |Software-defined L2 network |Static IPs from your network's CIDR |Up to 25 nodes
+|*Tailscale* |WireGuard-based mesh VPN |Auto-assigned from `+100.x.x.x+` |Up to 100 devices
+|===
+
+The installer handles installation and configuration of your chosen provider on all nodes automatically. You only need to create an account and generate credentials.
+
+'''''
+
+== Option A: ZeroTier
+
+ZeroTier creates a virtual L2 Ethernet network with end-to-end AES-256-GCM encryption.
+
+== Step 1: Create Account
+
+[arabic]
+. Go to https://my.zerotier.com[my.zerotier.com]
+. Sign up for a free account
+
+== Step 2: Create Network
+
+[arabic]
+. Click *Create A Network*
+. A new network is created with a random 16-character Network ID
+. Note this *Network ID* - you'll need it for the installer
+
+== Step 3: Configure Network
+
+[arabic]
+. Click on your network to open settings
+. Under *Settings*:
+* Give it a name (e.g., "Thinkube")
+* Set *Access Control* to "Private" (recommended)
+. Under *Advanced* → *IPv4 Auto-Assign*:
+* Choose an IP range (e.g., `+10.147.17.0/24+`)
+* Note this range - it's your ZeroTier CIDR
+
+== Step 4: Create API Token
+
+The installer uses an API token to automatically authorize nodes:
+
+[arabic]
+. Go to https://my.zerotier.com/account[my.zerotier.com/account]
+. Scroll to *API Access Tokens*
+. Click *New Token*
+. Name it `+Thinkube+` and click *Generate*
+. *Copy the token immediately* - it won't be shown again
+
+== What You Need for Installation
+
+Have these ready for the Thinkube installer:
+
+[cols=",,",options="header",]
+|===
+|Item |Example |Where to Find
+|Network ID |`+a1b2c3d4e5f6g7h8+` |Network list on my.zerotier.com
+|API Token |`+zt_xxxxxxxxxxxx+` |Account → API Access Tokens
+|Network CIDR |`+10.147.17.0/24+` |Network → IPv4 Auto-Assign
+|===
+
+== How It's Used
+
+The Thinkube installer will automatically:
+
+[arabic]
+. Install ZeroTier on each node
+. Join your network using the Network ID
+. Authorize the node via the API token
+. Assign overlay IP addresses
+. Verify connectivity between all nodes
+
+'''''
+
+== Option B: Tailscale
+
+Tailscale uses WireGuard tunnels with automatic key management. IPs are auto-assigned from the `+100.x.x.x+` CGNAT range.
+
+=== Step 1: Create Account
+
+[arabic]
+. Go to https://login.tailscale.com[login.tailscale.com]
+. Sign up for a free account
+
+=== Step 2: Create Auth Key
+
+[arabic]
+. Go to *Settings* → *Keys* → *Auth keys*
+. Click *Generate auth key*
+. Enable *Reusable* (so the same key works for multiple nodes)
+. Set an expiration (90 days recommended)
+. Click *Generate key*
+. *Copy the key immediately* — it won't be shown again
+
+=== Step 3: Create API Token
+
+The installer uses an API token to approve advertised routes (needed for MetalLB VIP routing):
+
+[arabic]
+. Go to *Settings* → *Keys* → *API access tokens*
+. Click *Generate access token*
+. Name it `+Thinkube+` and set an expiration
+. *Copy the token immediately* — it won't be shown again
+
+=== What You Need for Installation (Tailscale)
+
+[cols=",,",options="header",]
+|===
+|Item |Example |Where to Find
+|Auth Key |`+tskey-auth-xxxxxxxxxxxx+` |Settings → Keys → Auth keys
+|API Token |`+tskey-api-xxxxxxxxxxxx+` |Settings → Keys → API access tokens
+|===
+
+=== How It's Used
+
+The Thinkube installer will automatically:
+
+[arabic]
+. Install Tailscale on each node
+. Authenticate using your auth key
+. Discover the auto-assigned `+100.x.x.x+` IPs
+. Verify connectivity between all nodes
+
+'''''
+
+== Next Steps
+
+Once you have your overlay network credentials:
+
+[arabic]
+. Ensure your nodes meet the xref:node-setup.adoc[prerequisites]
+. Continue with the xref:overview.adoc[Thinkube installation]
