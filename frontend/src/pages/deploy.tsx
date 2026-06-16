@@ -190,6 +190,17 @@ export default function Deploy() {
       name: 'ansible/00_initial_setup/15_expand_lvm.yaml'
     })
 
+    // Bound system-log growth so a kernel/message flood can't fill a node's
+    // disk (rsyslog dedup + journald rate-limit + logrotate size cap). All
+    // nodes, unconditional — defense-in-depth after the JuiceFS OOM-flood that
+    // filled a node disk to 100% (TEP-tgmtd3 / SP-tgqg1j_SL-2).
+    queue.push({
+      id: 'harden-node-logging',
+      phase: 'initial',
+      title: 'Hardening node logging against floods',
+      name: 'ansible/00_initial_setup/14_harden_node_logging.yaml'
+    })
+
     // DGX Spark host tuning — only enqueued when at least one discovered
     // server is a GB10 / DGX Spark. The playbook itself re-checks per-host
     // (DMI + nvidia-smi) and ends_host on non-Spark nodes, so it is a
