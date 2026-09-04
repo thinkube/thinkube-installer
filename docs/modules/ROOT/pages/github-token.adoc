@@ -72,7 +72,7 @@ Give your token a descriptive name:
 Choose an expiration period:
 
 * *90 days*: For testing
-* *1 year*: Recommended for homelab use
+* *1 year*: Recommended for personal use
 * *No expiration*: Most convenient but less secure
 
 ____

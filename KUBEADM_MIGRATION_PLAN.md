@@ -15,7 +15,7 @@ written.
 
 Replace k8s-snap with kubeadm as the cluster bootstrap mechanism, so
 that Thinkube becomes an opinionated Kubernetes distribution for the
-AI/ML homelab + workstation niche, owning its full vertical stack
+single-user AI + workstation niche, owning its full vertical stack
 (containerd, Kubernetes, CNI, CSI, ingress, addons), with predictable
 version pinning and no per-architecture surprises.
 
@@ -1047,7 +1047,7 @@ is the correct boundary — the installer represents the user's flow.
 ### 9.3 Local testing flow
 
 For an end-to-end test from this development machine, with a target
-homelab machine available:
+single-user machine available:
 
 ```bash
 # 1. Push your work-in-progress to the feature branch
@@ -1165,7 +1165,7 @@ here so the plan stays a true record.
 
 7. **Pod CIDR 10.244.0.0/16, Service CIDR 10.96.0.0/12**. Standard
    K8s defaults. /16 pod range with Cilium's /24-per-node cluster-
-   pool IPAM gives ~256 nodes × ~250 pods, far above homelab scale.
+   pool IPAM gives ~256 nodes × ~250 pods, far above single-user scale.
    No conflict with typical ZeroTier (10.x.x.x/24) or Tailscale
    (100.64.0.0/10) overlays.
 
@@ -1230,7 +1230,7 @@ resolved as follows:
     `clusterPoolIPv4MaskSize: 24` gives 254 usable IPs per node →
     silent failure when scheduling past 254. `/23` gives 510 IPs,
     covering `maxPods=500` with headroom. With the `/16` pod subnet
-    this still supports ~128 nodes (far above homelab scale).
+    this still supports ~128 nodes (far above single-user scale).
 
 16. **`kubeadm init --skip-phases=addon/kube-proxy`** is mandatory
     (already in the implementation; documented here for the plan

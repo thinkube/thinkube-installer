@@ -1,7 +1,7 @@
 {
   "name": "thinkube-installer",
   "version": "0.1.0",
-  "description": "Professional installer for thinkube Kubernetes homelab platform",
+  "description": "Installer for Thinkube, a single-user self-hosted AI platform on Kubernetes",
   "type": "module",
   "scripts": {
     "dev": "cd frontend && npm run tauri:dev",
@@ -10,7 +10,8 @@
   },
   "keywords": [
     "kubernetes",
-    "homelab",
+    "ai",
+    "self-hosted",
     "installer",
     "thinkube"
   ],

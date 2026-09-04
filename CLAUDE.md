@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Thinkube Installer is a desktop application for deploying Thinkube (Kubernetes homelab platform) to remote Ubuntu servers. It is a hybrid Tauri v2 application with:
+Thinkube Installer is a desktop application for deploying Thinkube (single-user, self-hosted AI platform on Kubernetes) to remote Ubuntu servers. It is a hybrid Tauri v2 application with:
 - **Frontend**: React 19 + TypeScript + Tailwind CSS 4 + Radix UI (in `frontend/src/`)
 - **Backend**: FastAPI (Python) at `frontend/src-tauri/backend/`
 - **Desktop Framework**: Tauri v2 (Rust in `frontend/src-tauri/src/`)

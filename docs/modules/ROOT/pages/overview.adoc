@@ -21,7 +21,7 @@ Complete these steps *before* running the installer:
 
 image::01-welcome.png[Welcome Screen]
 
-The installer welcomes you to Thinkube, your AI-focused Kubernetes homelab platform. It outlines three main phases:
+The installer welcomes you to Thinkube, your single-user, self-hosted AI platform on Kubernetes. It outlines three main phases:
 
 * System requirements check
 * Cluster configuration
@@ -74,7 +74,7 @@ Choose your overlay network provider:
 * *ZeroTier* — Software-defined networking with a virtual L2 Ethernet overlay. Uses static IPs from the network's CIDR. Free for up to 25 nodes.
 * *Tailscale* — WireGuard-based mesh VPN. Auto-assigns IPs from the `+100.x.x.x+` range. Free for up to 100 devices.
 
-Both providers create a secure encrypted network that makes your homelab accessible from anywhere without port forwarding.
+Both providers create a secure encrypted network that makes your cluster accessible from anywhere without port forwarding.
 
 === Why an Overlay Network
 
@@ -84,7 +84,7 @@ An overlay network makes your cluster location-independent:
 * *No Port Forwarding*: No need to expose your home router to the internet
 * *Encrypted*: All inter-node traffic is encrypted end-to-end
 * *Simple Setup*: No complex VPN configurations or firewall rules
-* *Persistent Access*: Your laptop stays connected to your homelab wherever you go
+* *Persistent Access*: Your laptop stays connected to your cluster wherever you go
 
 === Step 4b: Overlay Setup
 
@@ -166,7 +166,7 @@ Assign roles to your servers:
 *Worker Nodes:*
 
 * Optional additional nodes for running workloads
-* GPU-equipped nodes ideal for AI/ML tasks
+* GPU-equipped nodes ideal for AI workloads
 
 The installer shows hardware specs and GPU availability for each node to help you decide.
 

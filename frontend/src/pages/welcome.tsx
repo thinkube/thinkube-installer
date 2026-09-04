@@ -28,7 +28,7 @@ export default function Welcome() {
             <h1 className="text-4xl font-heading font-bold mb-2">Welcome</h1>
 
             <p className="text-lg text-muted-foreground mb-8">
-              Let's set up your AI-focused Kubernetes homelab platform
+              Let's set up your own AI platform — from fine-tuning to serving
             </p>
           </TkCardHeader>
 

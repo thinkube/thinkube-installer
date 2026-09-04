@@ -132,7 +132,7 @@ designed specifically for AI applications and agents.
 
 Features:
 - Kubernetes-based infrastructure
-- AI/ML workload support with GPU
+- AI workload support with GPU
 - GitOps deployment workflow
 - Professional installer with GUI
 - Multi-architecture support (AMD64/ARM64)
