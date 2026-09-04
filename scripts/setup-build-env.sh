@@ -29,6 +29,29 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
+# Elevation helper for the package installs below.
+#
+# sudo can only prompt for a password when it has a terminal. Under CI or a
+# non-interactive ssh session there is none, so a bare `sudo` fails with
+# "a terminal is required to read the password" partway through the run.
+# Prefer passwordless sudo, then an askpass helper, and fall back to a
+# normal prompt only when a terminal is actually attached.
+run_sudo() {
+    if sudo -n true 2>/dev/null; then
+        sudo -n "$@"
+    elif [ -n "$SUDO_ASKPASS" ]; then
+        sudo -A "$@"
+    elif [ -t 0 ]; then
+        sudo "$@"
+    else
+        echo "❌ Root privileges required for: $*" >&2
+        echo "   No terminal is attached, so sudo cannot ask for a password." >&2
+        echo "   Point SUDO_ASKPASS at a helper that prints it and re-run:" >&2
+        echo "     SUDO_ASKPASS=/path/to/askpass $0" >&2
+        exit 1
+    fi
+}
+
 # 1. Install Node.js (if not present)
 echo "1️⃣  Checking Node.js..."
 if command -v node >/dev/null 2>&1; then
@@ -87,8 +110,8 @@ else
     echo "❌ Python3 not found"
     if [ "$PLATFORM" = "Linux" ]; then
         echo "   Installing Python3..."
-        sudo apt update
-        sudo apt install -y python3 python3-pip python3-venv
+        run_sudo apt update
+        run_sudo apt install -y python3 python3-pip python3-venv
         echo "✅ Python3 installed: $(python3 --version)"
     elif [ "$PLATFORM" = "macOS" ]; then
         echo "   Python3 should come with macOS"
@@ -109,8 +132,8 @@ if [ "$PLATFORM" = "Linux" ]; then
     echo "   $PACKAGES"
     echo ""
 
-    sudo apt update
-    sudo apt install -y $PACKAGES
+    run_sudo apt update
+    run_sudo apt install -y $PACKAGES
 
     echo "✅ Linux build dependencies installed"
 
