@@ -18,6 +18,28 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 INSTALLERS_DIR="$PROJECT_DIR/installers"
 
+# Elevation helper for the dpkg steps below.
+#
+# sudo can only prompt for a password when it has a terminal. Under CI or a
+# non-interactive ssh session there is none, so a bare `sudo` fails after the
+# build has already run. Prefer passwordless sudo, then an askpass helper, and
+# fall back to a normal prompt only when a terminal is actually attached.
+run_sudo() {
+    if sudo -n true 2>/dev/null; then
+        sudo -n "$@"
+    elif [ -n "$SUDO_ASKPASS" ]; then
+        sudo -A "$@"
+    elif [ -t 0 ]; then
+        sudo "$@"
+    else
+        echo "❌ Root privileges required for: $*" >&2
+        echo "   No terminal is attached, so sudo cannot ask for a password." >&2
+        echo "   Point SUDO_ASKPASS at a helper that prints it and re-run:" >&2
+        echo "     SUDO_ASKPASS=/path/to/askpass $0" >&2
+        exit 1
+    fi
+}
+
 echo "🚀 Deploying thinkube installer..."
 echo ""
 
@@ -49,7 +71,7 @@ echo ""
 # Remove old package if installed
 if dpkg -l | grep -q "^ii  thinkube-installer"; then
     echo "🗑️  Removing old thinkube-installer package..."
-    sudo apt remove -y thinkube-installer
+    run_sudo apt remove -y thinkube-installer
     echo "✅ Old package removed"
     echo ""
 else
@@ -59,7 +81,7 @@ fi
 
 # Install new package
 echo "📦 Installing new package..."
-sudo dpkg -i "$DEB_FILE"
+run_sudo dpkg -i "$DEB_FILE"
 
 echo ""
 echo "✅ Deployment complete!"
