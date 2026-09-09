@@ -1,6 +1,3 @@
-name: install
-title: Get Started
+name: thinkube-docs
+title: Thinkube
 version: ~
-start_page: overview.adoc
-nav:
-  - modules/ROOT/nav.adoc
