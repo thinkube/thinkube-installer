@@ -1,138 +1,83 @@
-= Connect from Anywhere
+= Connect from anywhere
 :page-type: how-to
 
-Thinkube requires an overlay network for secure inter-node communication and remote access. You choose one of two supported providers during installation:
+_Create the Tailscale keys the installer asks for, so every node joins your private network and the cluster is reachable from any device on it._
 
-[cols=",,,",options="header",]
+Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. Your laptop joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
+
+The alpha supports Tailscale only. The installer shows no other choice.
+
+== What you create
+
+Three things, all in the Tailscale admin console:
+
+[cols="1,2,2",options="header"]
 |===
-|Provider |Type |IP Assignment |Free Tier
-|*ZeroTier* |Software-defined L2 network |Static IPs from your network's CIDR |Up to 25 nodes
-|*Tailscale* |WireGuard-based mesh VPN |Auto-assigned from `+100.x.x.x+` |Up to 100 devices
-|===
+| Item | What the installer does with it | Looks like
 
-The installer handles installation and configuration of your chosen provider on all nodes automatically. You only need to create an account and generate credentials.
+| Auth key
+| Each node runs `tailscale up` with it once, to join the tailnet
+| `tskey-auth-…`
 
-'''''
+| API access token
+| The installer talks to your tailnet's admin API: it verifies the credentials and adds the `tag:k8s-operator` definition to your tailnet's policy file
+| `tskey-api-…`
 
-== Option A: ZeroTier
-
-ZeroTier creates a virtual L2 Ethernet network with end-to-end AES-256-GCM encryption.
-
-== Step 1: Create Account
-
-[arabic]
-. Go to https://my.zerotier.com[my.zerotier.com]
-. Sign up for a free account
-
-== Step 2: Create Network
-
-[arabic]
-. Click *Create A Network*
-. A new network is created with a random 16-character Network ID
-. Note this *Network ID* - you'll need it for the installer
-
-== Step 3: Configure Network
-
-[arabic]
-. Click on your network to open settings
-. Under *Settings*:
-* Give it a name (e.g., "Thinkube")
-* Set *Access Control* to "Private" (recommended)
-. Under *Advanced* → *IPv4 Auto-Assign*:
-* Choose an IP range (e.g., `+10.147.17.0/24+`)
-* Note this range - it's your ZeroTier CIDR
-
-== Step 4: Create API Token
-
-The installer uses an API token to automatically authorize nodes:
-
-[arabic]
-. Go to https://my.zerotier.com/account[my.zerotier.com/account]
-. Scroll to *API Access Tokens*
-. Click *New Token*
-. Name it `+Thinkube+` and click *Generate*
-. *Copy the token immediately* - it won't be shown again
-
-== What You Need for Installation
-
-Have these ready for the Thinkube installer:
-
-[cols=",,",options="header",]
-|===
-|Item |Example |Where to Find
-|Network ID |`+a1b2c3d4e5f6g7h8+` |Network list on my.zerotier.com
-|API Token |`+zt_xxxxxxxxxxxx+` |Account → API Access Tokens
-|Network CIDR |`+10.147.17.0/24+` |Network → IPv4 Auto-Assign
+| OAuth client for the Kubernetes operator
+| The Tailscale Kubernetes operator running in the cluster uses it to mint per-device auth keys at runtime; that is how the cluster gateway becomes a tailnet device
+| client ID `k…`, secret `tskey-client-…`
 |===
 
-== How It's Used
+== 1. Create an account
 
-The Thinkube installer will automatically:
+Sign in at https://login.tailscale.com[login.tailscale.com]. Install Tailscale on the laptop you will use to reach the cluster and log it in to the same account.
 
-[arabic]
-. Install ZeroTier on each node
-. Join your network using the Network ID
-. Authorize the node via the API token
-. Assign overlay IP addresses
-. Verify connectivity between all nodes
+== 2. Create an auth key
 
-'''''
+. Go to *Settings → Keys → Auth keys*.
+. Choose *Generate auth key*.
+. Turn *Reusable* on, so one key can join every node.
+. Set an expiry. The key is only used during the install and when a node is added later.
+. Copy the key now. Tailscale does not show it again.
 
-== Option B: Tailscale
+== 3. Create an API access token
 
-Tailscale uses WireGuard tunnels with automatic key management. IPs are auto-assigned from the `+100.x.x.x+` CGNAT range.
+. Go to *Settings → Keys → API access tokens*.
+. Choose *Generate access token*, name it, set an expiry.
+. Copy it now.
 
-=== Step 1: Create Account
+== 4. Create the operator's OAuth client
 
-[arabic]
-. Go to https://login.tailscale.com[login.tailscale.com]
-. Sign up for a free account
+The installer cannot create this one, because Tailscale does not allow it through the API. The installer's *Tailscale Operator Setup* screen repeats these steps. Do them when you reach that screen: the installer first adds the `tag:k8s-operator` definition to your policy file, and the OAuth dialog needs it to exist.
 
-=== Step 2: Create Auth Key
+. Go to *Settings → Trust Credentials* (https://login.tailscale.com/admin/settings/oauth[direct link]).
+. Choose *+ Credential*, then *OAuth*, then *Continue*.
+. Leave the scopes dropdown on *Custom* and tick *Devices → Core*, read and write, and *Keys → Auth Keys*, read and write. Leave everything else unticked.
+. Tag: `tag:k8s-operator`.
+. Choose *Generate*. Tailscale shows the client ID and secret once; paste them into the installer before closing the dialog.
 
-[arabic]
-. Go to *Settings* → *Keys* → *Auth keys*
-. Click *Generate auth key*
-. Enable *Reusable* (so the same key works for multiple nodes)
-. Set an expiration (90 days recommended)
-. Click *Generate key*
-. *Copy the key immediately* — it won't be shown again
+The same screen asks for the hostname the gateway will have on your tailnet. Leave it blank for `<cluster name>-gw`.
 
-=== Step 3: Create API Token
+== What the installer does
 
-The installer uses an API token to approve advertised routes (needed for MetalLB VIP routing):
+. Installs Tailscale on each node and joins it with the auth key.
+. Shows each node's tailnet address on the *Overlay Setup* screen.
+. Installs the Tailscale Kubernetes operator in the cluster. The operator exposes the cluster's gateway and its DNS server as tailnet devices, using the OAuth client.
+. Points the cluster's DNS records for `*.<your domain>` at the gateway's tailnet address.
 
-[arabic]
-. Go to *Settings* → *Keys* → *API access tokens*
-. Click *Generate access token*
-. Name it `+Thinkube+` and set an expiration
-. *Copy the token immediately* — it won't be shown again
+== Reach the cluster afterwards
 
-=== What You Need for Installation (Tailscale)
+From any device logged in to the tailnet:
 
-[cols=",,",options="header",]
-|===
-|Item |Example |Where to Find
-|Auth Key |`+tskey-auth-xxxxxxxxxxxx+` |Settings → Keys → Auth keys
-|API Token |`+tskey-api-xxxxxxxxxxxx+` |Settings → Keys → API access tokens
-|===
+[source,bash]
+----
+tailscale ip <cluster name>-gw        # the gateway's address
+dig +short control.<your domain>      # should print the same address
+----
 
-=== How It's Used
+Each node is a separate tailnet device too, so `ssh <user>@<node>` works from the same laptop.
 
-The Thinkube installer will automatically:
+== Next
 
-[arabic]
-. Install Tailscale on each node
-. Authenticate using your auth key
-. Discover the auto-assigned `+100.x.x.x+` IPs
-. Verify connectivity between all nodes
-
-'''''
-
-== Next Steps
-
-Once you have your overlay network credentials:
-
-[arabic]
-. Ensure your nodes meet the xref:node-setup.adoc[prerequisites]
-. Continue with the xref:overview.adoc[Thinkube installation]
+* xref:cloudflare-token.adoc[Set up your domain] — the certificates every service uses.
+* xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.

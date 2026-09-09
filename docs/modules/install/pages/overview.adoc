@@ -1,317 +1,149 @@
 = Install Thinkube
 :page-type: tutorial
 
-== Before You Begin
+_Run the desktop installer against one or more Ubuntu machines, screen by screen, and know what each screen does to them._
 
-Complete these steps *before* running the installer:
+You will install Thinkube from your laptop onto machines you own. The installer is a desktop application for Linux and macOS. It asks for accounts and tokens, prepares each machine over SSH, installs Kubernetes with kubeadm, and deploys the platform. At the end it shows the addresses and the login it created.
 
-[arabic]
-. *Set up tokens* - Create accounts and tokens for:
-* xref:overlay-network.adoc[Overlay network] - ZeroTier or Tailscale (your choice)
-* xref:cloudflare-token.adoc[Cloudflare] - SSL certificates
-* xref:github-token.adoc[GitHub] - GitOps and container registry
-* xref:huggingface-token.adoc[Hugging Face] - AI model downloads
-. *Prepare your nodes* - Ensure each machine meets the xref:node-setup.adoc[prerequisites] (Ubuntu 24.04, SSH, internet access). No manual bootstrap script is needed — the installer handles overlay network setup automatically.
-. *Run the installer* - Download and run the Thinkube installer desktop application (this page).
+This page follows the wizard in the order its screens appear. The screens are described from the installer's source; new captures of each screen are pending.
 
-== Installation Walkthrough
+== Before you start
 
-=== Step 1: Welcome Screen
+Have these ready. Each has its own page.
 
-image::01-welcome.png[Welcome Screen]
+* One or more machines with Ubuntu Server 24.04, a user with sudo, OpenSSH server running, and internet access — xref:node-setup.adoc[Prepare your machines].
+* A Tailscale account with an auth key, an API access token, and an OAuth client for the Tailscale Kubernetes operator — xref:overlay-network.adoc[Connect from anywhere].
+* A domain whose DNS zone is at Cloudflare, and a Cloudflare API token that can edit that zone's DNS — xref:cloudflare-token.adoc[Set up your domain].
+* A GitHub personal access token — xref:github-token.adoc[Connect to GitHub].
+* A Hugging Face access token — xref:huggingface-token.adoc[Unlock AI models].
 
-The installer welcomes you to Thinkube, your single-user, self-hosted AI platform on Kubernetes. It outlines three main phases:
+The laptop is the client, not a node. When the install finishes, the tokens have been copied to the control-plane machine and the laptop can be put away.
 
-* System requirements check
-* Cluster configuration
-* Automated deployment
+== Alpha
 
-Click *Get Started* to begin.
+Two hardware configurations have run this installer: a DGX Spark (GB10, arm64) and an x86-64 workstation with RTX 3090s, both on Ubuntu 24.04. A future version may require reinstalling from scratch; there is no promised migration path. If a step fails, the installer does not resume: you start again from the configuration screens.
 
-=== Step 2: System Requirements Check
+== 1. Welcome
 
-image::02-system-requirements.png[System Requirements]
+The first screen names the three phases: a system requirements check, cluster configuration, and automated deployment. Press *Get Started*.
 
-The installer automatically checks your control node for:
+== 2. System requirements
 
-*Required (Must Pass):*
+The installer checks the machine it is running on. Required: Ubuntu 24.04.x LTS, a non-root user with sudo, OpenSSH server, network connectivity, and free disk space in your home directory. Tools it can install if missing: Git, the OpenSSH client, a Python virtual environment, and Ansible inside that environment.
 
-* Ubuntu 24.04.x LTS (Noble Numbat)
-* Non-root user with sudo access
-* OpenSSH Server installed and running
-* Internet connectivity
-* Sufficient disk space in home directory
+Every required item must pass before you can continue.
 
-*Tools (Will Install if Missing):*
+== 3. Sudo password
 
-* Git
-* OpenSSH Client
-* Python Virtual Environment
-* Ansible (in user's venv)
+Enter the sudo password of your user. The installer uses it to configure SSH between the servers, install missing tools, set up its environment, and configure system services. The password is not written to disk.
 
-Green checkmarks indicate passed requirements. The installer will offer to install any missing tools.
+The same password must work on every server you select later; the SSH screen says so and checks it.
 
-=== Step 3: Administrator Access
+== 4. Server discovery
 
-image::03-admin-access.png[Administrator Access]
+Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. Select the servers that will form the cluster and continue.
 
-Enter your sudo password for the current user. This allows the installer to:
+== 5. SSH setup
 
-* Configure SSH access between servers
-* Install missing tools
-* Set up your environment
-* Configure system services
+The installer verifies that it can reach every selected server, then configures passwordless SSH between them: it generates keys where needed and distributes them. If a server cannot be reached, it says which one; check that SSH is running there and that the sudo password is the same on all servers.
 
-The installer will NOT store your password.
+== 6. Hardware detection
 
-=== Step 4: Overlay Provider Selection
+For each server the installer reads CPU cores, memory, disk and GPUs, and sums them in a capacity summary. It also reads the NVIDIA driver on each GPU node. The driver must be version 580.0 or newer. An older driver is reported as outdated and the installer offers to install a compatible one. A GPU older than the Volta generation is reported as unsupported. If a node has no usable GPU you can continue without GPU nodes, or stop.
 
-image::04-server-discovery.png[Server Discovery]
+== 7. Role assignment
 
-Choose your overlay network provider:
+Choose one control plane. It must be a physical machine, not a virtual one, with at least 4 CPU cores and 8 GB of memory. In a single-node cluster it also runs your workloads. Every other selected server becomes a worker. Workers are optional; GPU nodes are the ones that serve and train models.
 
-* *ZeroTier* — Software-defined networking with a virtual L2 Ethernet overlay. Uses static IPs from the network's CIDR. Free for up to 25 nodes.
-* *Tailscale* — WireGuard-based mesh VPN. Auto-assigns IPs from the `+100.x.x.x+` range. Free for up to 100 devices.
+== 8. Configuration
 
-Both providers create a secure encrypted network that makes your cluster accessible from anywhere without port forwarding.
+Enter the cluster name, your domain, and the tokens:
 
-=== Why an Overlay Network
+* the Cloudflare API token, used to obtain certificates;
+* the GitHub personal access token and the organisation or username to deploy under;
+* the Hugging Face access token.
 
-An overlay network makes your cluster location-independent:
+Each token is verified while you type: the installer calls the service and shows a green mark when the token works and has the access it needs.
 
-* *Work from Anywhere*: Access your development environment from a coffee shop, office, or while traveling
-* *No Port Forwarding*: No need to expose your home router to the internet
-* *Encrypted*: All inter-node traffic is encrypted end-to-end
-* *Simple Setup*: No complex VPN configurations or firewall rules
-* *Persistent Access*: Your laptop stays connected to your cluster wherever you go
+== 9. Overlay network
 
-=== Step 4b: Overlay Setup
+The alpha supports Tailscale only. Enter the Tailscale auth key, which each node consumes once when it joins the tailnet, and the API access token, which the installer uses to talk to your tailnet's admin API. Press *Verify*. When you continue, the installer adds the `tag:k8s-operator` definition to your tailnet's policy file; the next screen needs it.
 
-After selecting your provider, the installer automatically:
+== 10. Tailscale operator
 
-[arabic]
-. Installs the overlay provider on all nodes
-. Joins each node to your network
-. Assigns or discovers overlay IPs
-. Verifies connectivity between all nodes
+The cluster runs the Tailscale Kubernetes operator, which needs an OAuth client that it uses to mint per-device auth keys at runtime. Tailscale does not let the installer create that client, so this is the one step done in Tailscale's own console. The screen lists it: open *Settings → Trust Credentials*, add an OAuth credential with the *Devices → Core* and *Keys → Auth Keys* scopes, read and write, tagged `tag:k8s-operator`, and paste the client ID and secret. Press *Verify*.
 
-No manual node bootstrapping is required. Enter the required credentials for your chosen provider (Network ID and API token for ZeroTier, or auth key for Tailscale).
+The same screen asks for the gateway hostname the operator will claim on your tailnet. Leave it blank to use `<cluster name>-gw`. It becomes reachable as `<name>.<your tailnet>.ts.net`.
 
-=== Step 5: Server Discovery - Results
+== 11. Overlay setup
 
-image::05-discovered-servers.png[Discovered Servers]
+The installer installs Tailscale on every selected server and joins each one to your tailnet, then shows the overlay address of each node. Tailscale assigns the addresses; nothing is entered here.
 
-The installer shows discovered servers with:
+== 12. Network configuration
 
-* IP address
-* Hostname (if available)
-* Operating system details
-* SSH status
+In Tailscale mode there is nothing to configure on this screen. It shows the network overview: the overlay range Tailscale uses, the container build architectures detected from the nodes, and each server with its addresses and role. The cluster's gateway is exposed by the Tailscale operator as one tailnet device, so no load-balancer range is entered.
 
-Click *Select* to choose servers for your cluster. You can select multiple servers.
+== 13. Review
 
-image::06-selected-servers.png[Selected Servers]
+The last look before anything is installed: cluster name and domain, the nodes with their hardware and roles, and the generated Ansible inventory, which you can copy or download. Press *Start Deployment*.
 
-Selected servers show green "Selected" badges. Click *Continue with X Servers* when ready.
+== 14. Deployment
 
-=== Step 6: SSH Connectivity Check
+The installer runs the platform's playbooks in order and streams their output. The phases, in the order they run:
 
-*IMPORTANT*: Before proceeding, you must test SSH connectivity. This is a mandatory step to verify all systems are accessible before starting the Kubernetes configuration. The installer will prompt you to test connectivity to each node.
+[cols="1,3",options="header"]
+|===
+| Group | Phases
 
-=== Step 7: SSH Setup
+| Machines
+| Setting up environment · Persisting user secrets to the control plane · Expanding the LVM root volume to use the full disk · Applying DGX Spark unified-memory tuning · Setting up Python virtual environments · Setting up the GitHub CLI
 
-image::07-ssh-setup.png[SSH Setup Running]
+| Network
+| Configuring Tailscale overlay routing · Setting up Python Kubernetes libraries
 
-The installer configures passwordless SSH between all selected servers. A popup shows the Ansible playbook execution in real-time. This process:
+| Kubernetes
+| Installing Kubernetes (kubeadm) · Joining worker nodes · Installing the NVIDIA GPU Operator · Configuring resource policies · Installing the Tailscale Kubernetes operator
 
-* Generates SSH keys if needed
-* Distributes keys between nodes
-* Verifies connectivity
+| Certificates and DNS
+| Setting up SSL certificates · Configuring the certificate renewal hook · Deploying Gateway API · Deploying the DNS server (BIND9) · Deploying CoreDNS · Configuring node DNS
 
-image::08-ssh-complete.png[SSH Setup Complete]
+| Platform
+| Installing PostgreSQL · Installing Keycloak · Installing Harbor · Mirroring public images · Building base images · Building Jupyter images · Building the code-server image · Installing SeaweedFS · Installing JuiceFS · Installing Argo Workflows · Installing ArgoCD · Installing DevPi · Installing Gitea · Installing code-server · Installing MLflow · Installing JupyterHub · Deploying thinkube-control
+|===
 
-Once complete, all servers show "connected" status. The installer confirms "SSH Setup Complete!" with passwordless access configured.
+Most of the time goes to downloading container images and building the ones this cluster's architectures need. If the output stops moving, it is pulling or building an image. A failed phase stops the deployment; the output names the task that failed.
 
-image::09-ssh-test-results.png[SSH Test Results]
+== 15. Complete
 
-A test summary shows the number of tasks completed and execution time. Click *Continue* to proceed.
+The final screen shows:
 
-=== Step 8: Hardware Detection
+* the control panel at `https://control.<your domain>`;
+* Thinkube IDE, VS Code in the browser (code-server), at `https://ide.<your domain>` (the screen labels it Code Server);
+* SSH access to the control plane as your user;
+* the single sign-on username and password. They are shown once. Save them; they open every service.
+* how to reach the cluster over Tailscale: the gateway is a tailnet device named as you chose in step 10, `tailscale ip <gateway>` prints its address, and `dig +short control.<your domain>` should print the same address from any device on your tailnet. Each node is also a tailnet device, so you can SSH to it directly.
 
-image::10-hardware-detection.png[Hardware Detection]
+== What it changed on your machines
 
-The installer detects hardware on each node, displaying:
+The uninstall script keeps a list of everything the installer creates, so that list is the honest inventory. On each node:
 
-* *CPU*: Number of cores
-* *RAM*: Total memory in GB
-* *Disk*: Available storage in GB
-* *GPU*: Graphics cards detected (if any)
+* Kubernetes: kubeadm, kubelet, kubectl and containerd packages, `/etc/kubernetes`, `/var/lib/kubelet`, `/var/lib/etcd`, and the CNI configuration.
+* Container tools: podman, buildah, skopeo, podman-compose, podman-toolbox, qemu-user-static and binfmt-support.
+* Tailscale, joined to your tailnet.
+* Storage: SeaweedFS, JuiceFS and OpenEBS rawfile volumes, with their data.
+* System: `thinkube-*` systemd units, the `k8s0` dummy network interface that carries the cluster's stable virtual IP, drop-ins for kernel modules, sysctl and systemd-resolved, and the Kubernetes and Tailscale apt repositories.
+* On a DGX Spark: swap off, `vm.swappiness=1` and `vm.dirty_bytes=256MB`.
+* Your home directory: `~/.env` with the tokens, and `shared-code`, the workspace the IDE, the notebooks and the control panel share.
 
-The *Cluster Capacity Summary* shows total resources across all nodes.
+Ubuntu itself, its packages, the kernel, netplan, your account and its sudo rights, sshd, and the NVIDIA driver are not the installer's and are left alone.
 
-=== Step 9: Kubernetes Role Assignment
+== Getting out
 
-image::11-role-assignment.png[Role Assignment]
+The script `scripts/thinkube-wipe.sh` in the `thinkube` repository returns a machine to as close to a fresh Ubuntu Server as it can, following one rule: if the installer created it, the script destroys it. It keeps Ubuntu, the kernel, your account, sudo, sshd and the NVIDIA driver. It empties your home directory and refills it from `/etc/skel`, after copying `~/.ssh` and `~/.env` to `/root/thinkube-wipe-keep/`. Run it on the machine being wiped. Back up first.
 
-Assign roles to your servers:
+Every platform component also has a rollback playbook, so a component can be removed and reinstalled over SSH without wiping the machine.
 
-*Control Plane Node:*
+== Next
 
-* Manages Kubernetes API and cluster state
-* Requires minimum 4 CPU cores and 8GB RAM
-* Can also run workloads in single-node setups
-* Must be baremetal (no VM support)
-
-*Worker Nodes:*
-
-* Optional additional nodes for running workloads
-* GPU-equipped nodes ideal for AI workloads
-
-The installer shows hardware specs and GPU availability for each node to help you decide.
-
-=== Step 10: Cluster Configuration
-
-image::12-cluster-config.png[Cluster Configuration]
-
-Configure your cluster settings:
-
-*Basic Settings:*
-
-* *Cluster Name*: A name for your Thinkube cluster
-* *Domain Name*: Your domain (e.g., example.com)
-* *Cloudflare API Token (REQUIRED)*: For valid SSL certificates
-** Why required: All Thinkube services need valid SSL certificates to function
-** Self-signed certificates break SSO, webhooks, and cause browser security issues
-** Uses acme.sh with DNS challenge to generate Let's Encrypt certificates
-** Certificates generated immediately during installation
-** xref:cloudflare-token.adoc[See Cloudflare Token Setup Guide]
-
-*Overlay Network Configuration:*
-
-* For *ZeroTier*: Network ID (16-character) and API Token for automatic node authorization
-* For *Tailscale*: Auth key for automatic node registration
-
-*GitHub Integration (Required):*
-
-* *Personal Access Token*: Powers Thinkube's GitOps workflow
-** Why required: Core to how Thinkube operates
-** Creates repositories for your application deployments
-** Manages CI/CD workflows and build pipelines
-** Provides container registry access for storing images
-** Required permissions: `+repo+`, `+workflow+`, `+packages:write+`
-** xref:github-token.adoc[See GitHub Token Setup Guide]
-* *Organization/Username*: Where deployment repositories will be created
-
-image::13-config-validated.png[Configuration Validated]
-
-The installer validates tokens in real-time, showing green checkmarks and access confirmations.
-
-=== Step 11: Network Configuration
-
-image::14-network-config.png[Network Configuration]
-
-Configure advanced network settings:
-
-*Gateway IP Configuration:*
-
-* *Primary Gateway IP*: For main services (Control Panel, Gitea, etc.)
-* *Secondary Gateway IP*: For Knative/serverless workloads
-
-*DNS Configuration:*
-
-* *CoreDNS External IP*: For cluster DNS resolution
-
-*MetalLB IP Range:*
-
-* Define a range of IPs for load balancer services
-
-The configuration shows:
-
-* Overlay network and Kubernetes cluster CIDRs
-* IP ranges for MetalLB
-* Server assignments with their IPs and roles
-
-=== Step 12: Review Configuration
-
-image::15-review-config.png[Review Configuration]
-
-Review your complete configuration:
-
-*Cluster Settings:*
-
-* Cluster name and domain
-* Admin username
-* Network mode
-
-*Node Assignments:*
-
-* Each server with hardware specs
-* Network addresses (overlay and local)
-* Assigned roles
-* GPU availability
-
-*Generated Ansible Inventory:*
-Options to copy, download, or view the generated inventory file for manual execution if needed.
-
-Click *Start Deployment* to begin installation.
-
-=== Step 13: Deployment Progress
-
-image::16-deployment-progress.png[Deployment Running]
-
-The deployment runs in phases:
-
-[arabic]
-. *Initial Setup* - Environment and network configuration
-. *Kubernetes* - k8s-snap installation and cluster setup
-
-A popup shows real-time Ansible playbook output. You can expand it to see detailed task execution.
-
-=== Step 14: Deployment Complete
-
-image::17-deployment-complete.png[Deployment Complete]
-
-When deployment completes successfully:
-
-* Both phases show green checkmarks
-* Progress bar shows 100% complete
-* Success message with celebration emoji
-
-Click *View Cluster Details* to see your deployed services.
-
-== What's Next?
-
-Your Thinkube platform is now installed! You can:
-
-[arabic]
-. Access the Control Panel at `+https://control.<your-domain>+`
-. Deploy your first application from templates
-. Access code-server at `+https://code.<your-domain>+` for development
-. Explore optional services installation
-
-== Hardware Requirements
-
-Based on the installer's hardware detection:
-
-* *Minimum*: 4 CPU cores, 8GB RAM for control plane
-* *Recommended*: 16+ cores, 64GB+ RAM for comfortable operation
-* *AI Workloads*: 32+ cores, 128GB+ RAM, NVIDIA GPU with 24GB+ VRAM
-
-== Troubleshooting
-
-If issues occur:
-
-[arabic]
-. Check the live output in installer popups for specific errors
-. Verify all requirements passed in Step 2
-. Ensure network connectivity between nodes
-. Validate GitHub and overlay network tokens
-. Check firewall rules aren't blocking required ports
-
-== Next Steps
-
-[arabic]
-. Access your Control Panel at `+https://control.<your-domain>+`
-. Deploy your first application from templates
-. Access code-server at `+https://code.<your-domain>+` for development
-. Explore optional services installation
+* xref:adding-nodes.adoc[Add more nodes] when you have a second machine.
+* xref:thinkube-docs::start-here/quickstart.adoc[Quickstart] to mirror a model, load it and call it.

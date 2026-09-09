@@ -1,64 +1,57 @@
-= Prepare Your Machines
+= Prepare your machines
 :page-type: how-to
 
-Before running the Thinkube installer, ensure each machine meets these prerequisites. The installer handles all overlay network setup, SSH configuration, and system preparation automatically — no manual bootstrap script is needed.
+_What each machine needs before the installer can reach it, and what the installer does to it that you do not have to do yourself._
 
-== Prerequisites
+== What each machine needs
 
-Each node must have:
+* Ubuntu Server 24.04 LTS. The installer checks the version and refuses others.
+* A user that is not root and can use sudo. Use the same username and the same password on every machine; the SSH screen of the installer relies on it.
+* OpenSSH server installed and running.
+* Internet access, for packages, container images and model weights.
+* For the control plane: a physical machine, not a virtual one, with at least 4 CPU cores and 8 GB of memory.
+* For GPU nodes: an NVIDIA driver at version 580.0 or newer. If the driver is older or missing, the installer offers to install one during hardware detection. GPUs older than the Volta generation are not supported.
 
-* *Ubuntu 24.04 LTS* (Noble Numbat) installed
-* *A non-root user* with sudo access
-* *OpenSSH Server* installed and running
-* *Internet connectivity*
+Two hardware configurations have run this: a DGX Spark (GB10, arm64) and an x86-64 workstation with RTX 3090s, both on Ubuntu 24.04.
 
-=== Expand Disk Storage
+== What you do not have to do
 
-Ubuntu Server's installer creates a logical volume (LV) that uses only ~100 GB of the disk by default, regardless of actual disk size. Before proceeding, expand it to use all available space:
+Earlier versions asked you to grow the root filesystem by hand. Ubuntu Server's installer leaves the root logical volume at about 100 GB whatever the disk size. The installer's `15_expand_lvm.yaml` playbook now detects that case on every node and grows the volume and the filesystem to the whole volume group. Machines that are not on LVM, or already use the full disk, are left as they are.
 
-[source,bash]
-----
-sudo lvextend -l +100%FREE /dev/ubuntu-vg/ubuntu-lv
-sudo resize2fs /dev/ubuntu-vg/ubuntu-lv
-----
+The installer also:
 
-Verify with `+df -h /+` — it should now show the full disk size.
+* installs Tailscale on every node and joins it to your tailnet;
+* installs Git, Python and Ansible where they are missing;
+* configures SSH keys between the nodes;
+* loads the kernel modules and sysctl settings Kubernetes needs;
+* on a DGX Spark, turns swap off and sets `vm.swappiness=1` and `vm.dirty_bytes=256MB`, so a full unified-memory pool kills the offending process instead of freezing the machine.
 
-== What the Installer Handles
+== Docker
 
-During installation, the Thinkube installer automatically configures each node:
+The installer does not use Docker and does not touch it. Kubernetes runs its own containerd. NVIDIA's DGX Spark playbooks, which use Docker, keep working beside the platform; the two share the GPU, so memory used by one is not available to the other.
 
-=== Overlay Network
+== Check a machine before you start
 
-* Installs your chosen overlay provider (ZeroTier or Tailscale)
-* Joins each node to your overlay network
-* Assigns or discovers overlay IPs
-* Verifies connectivity between all nodes
-
-=== System
-
-* Installs required tools (Git, Python, Ansible)
-* Configures SSH key-based authentication between nodes
-* Sets up required kernel modules for Kubernetes
-
-== Verification
-
-After installation, you can verify overlay connectivity:
+On the machine:
 
 [source,bash]
 ----
-# For ZeroTier
-sudo zerotier-cli status
-sudo zerotier-cli listnetworks
+lsb_release -d          # Ubuntu 24.04.x LTS
+sudo -v                 # asks for your password and returns
+systemctl is-active ssh # active
+nvidia-smi              # GPU nodes: driver version 580 or newer
+----
 
-# For Tailscale
+== After the install
+
+Each node is a device on your tailnet:
+
+[source,bash]
+----
 tailscale status
 ----
 
-== Next Steps
+== Next
 
-Once all machines meet the prerequisites:
-
-[arabic]
-. Set up your xref:overlay-network.adoc[overlay network token] (ZeroTier or Tailscale)
-. Run the xref:overview.adoc[Thinkube Installer]
+* xref:overlay-network.adoc[Connect from anywhere] — the Tailscale keys the installer asks for.
+* xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.
