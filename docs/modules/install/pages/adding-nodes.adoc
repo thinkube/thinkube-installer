@@ -14,11 +14,11 @@ thinkube-control installs Tailscale on the new node and joins it to your tailnet
 
 == 1. Find and join the node
 
-. In thinkube-control open *Cluster Nodes* and choose *Add Nodes*.
-. Enter the network to scan, for example `192.168.1.0/24`. Several ranges may be given, separated by commas. Choose *Scan*.
+. In thinkube-control open *Cluster Nodes* and choose *Add Node*.
+. Enter the network to scan, for example `192.168.1.0/24`. Several ranges may be given, separated by commas. Scan it.
 . The wizard lists the machines it found with hostname, IP address, Ubuntu version and status. Select the ones to add. A machine that fails a requirement is marked, and the reason is shown.
-. Choose *Detect hardware*. thinkube-control connects to each machine over SSH and reads its CPU architecture, its GPUs and its disks. If the architecture is new to the cluster, the wizard says so.
-. Choose *Add nodes*.
+. Continue to hardware detection. thinkube-control connects to each machine over SSH and reads its CPU architecture, its GPUs and its disks. If the architecture is new to the cluster, the wizard says so.
+. Confirm the last step of the wizard.
 
 The page streams what thinkube-control does, in this order:
 
