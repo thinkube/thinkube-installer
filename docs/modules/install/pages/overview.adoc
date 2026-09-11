@@ -66,7 +66,7 @@ Each token is verified while you type: the installer calls the service and shows
 
 == 9. Overlay network
 
-The alpha supports Tailscale only. Enter the Tailscale auth key, which each node consumes once when it joins the tailnet, and the API access token, which the installer uses to talk to your tailnet's admin API. Press *Verify*. When you continue, the installer adds the `tag:k8s-operator` definition to your tailnet's policy file; the next screen needs it.
+Tailscale is the only overlay network supported. Enter the Tailscale auth key, which each node consumes once when it joins the tailnet, and the API access token, which the installer uses to talk to your tailnet's admin API. Press *Verify*. When you continue, the installer adds the `tag:k8s-operator` definition to your tailnet's policy file; the next screen needs it.
 
 == 10. Tailscale operator
 

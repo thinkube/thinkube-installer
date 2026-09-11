@@ -8,7 +8,7 @@ Create a Tailscale account, an auth key, an API access token and one OAuth clien
 
 Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. Your laptop joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
 
-The alpha supports Tailscale only. The installer shows no other choice.
+Tailscale is the only overlay network supported. The installer shows no other choice.
 
 == What you create
 
@@ -82,7 +82,7 @@ Each node is a separate tailnet device too, so `ssh <user>@<node>` works from th
 
 == Limits
 
-* Tailscale is the only overlay network the alpha supports.
+* Tailscale is the only overlay network supported.
 * Services are reachable from the tailnet and your LAN only; no public DNS records are created.
 
 == Next
