@@ -3,6 +3,9 @@
 
 _Put your domain's DNS zone at Cloudflare and create the API token the installer uses to obtain certificates._
 
+.TL;DR
+Move your domain's DNS to Cloudflare and create one API token that can edit that zone's DNS. The installer uses it to obtain a wildcard certificate from Let's Encrypt and renews it by itself.
+
 Every service gets a name under your domain and a certificate signed by Let's Encrypt. Parts of the platform refuse self-signed certificates, so this is not optional. The certificates are obtained with acme.sh using DNS validation: Let's Encrypt checks a DNS record that acme.sh creates in your Cloudflare zone, then issues a wildcard certificate for `<your domain>` and `*.<your domain>`.
 
 That is the only thing Cloudflare does here. Resolving the names is the cluster's own DNS server, on your network and over Tailscale. No public DNS records are created for your services.
@@ -45,6 +48,11 @@ The *Configuration* screen has a *Cloudflare API Token* field next to the domain
 * The token needs *DNS → Edit* on the zone, nothing less.
 * The domain must be active on Cloudflare. `dig NS <your domain>` should print Cloudflare nameservers.
 * Let's Encrypt limits how many identical certificates it issues per week. Repeated reinstalls can reach that limit; the encrypted backup is there so a certificate can be restored instead of reissued.
+
+== Limits
+
+* Cloudflare is the only DNS provider the installer supports for certificate validation.
+* The encrypted certificate backup is kept in GitHub but is not restored automatically on a reinstall.
 
 == Next
 

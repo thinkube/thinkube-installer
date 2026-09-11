@@ -3,6 +3,9 @@
 
 _Create the GitHub personal access token the installer asks for, and know exactly what the platform does with it._
 
+.TL;DR
+Create a GitHub personal access token with the scopes listed below and paste it into the installer. It logs `gh` in for you, lets you publish templates, reads your own template metadata, and keeps a backup of your certificate.
+
 Your code and your deployments live in Thinkube Git, inside the cluster. GitHub is used for four things that sit outside it:
 
 * Thinkube IDE logs the `gh` command-line tool in with the token, so `gh` works from a terminal without a browser.
@@ -45,6 +48,10 @@ The *Configuration* screen has two fields: *GitHub Personal Access Token* and *G
 == Rotating the token
 
 Generate a new token with the same scopes. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane. thinkube-control reads the file when it is deployed, so run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository again from Thinkube IDE. In the IDE, run `gh auth login --with-token` with the new token. Then revoke the old one on GitHub.
+
+== Limits
+
+* The token is stored in the cluster; rotating it means giving the new one to the platform as this page describes.
 
 == Next
 

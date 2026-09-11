@@ -3,6 +3,9 @@
 
 _Create the Tailscale keys the installer asks for, so every node joins your private network and the cluster is reachable from any device on it._
 
+.TL;DR
+Create a Tailscale account, an auth key, an API access token and one OAuth client, and paste the four into the installer. Every node joins your private network, and every service answers at `<name>.<your domain>` from any device on it.
+
 Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. Your laptop joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
 
 The alpha supports Tailscale only. The installer shows no other choice.
@@ -76,6 +79,11 @@ dig +short control.<your domain>      # should print the same address
 ----
 
 Each node is a separate tailnet device too, so `ssh <user>@<node>` works from the same laptop.
+
+== Limits
+
+* Tailscale is the only overlay network the alpha supports.
+* Services are reachable from the tailnet and your LAN only; no public DNS records are created.
 
 == Next
 

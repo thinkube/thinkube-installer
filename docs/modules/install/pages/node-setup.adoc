@@ -3,6 +3,9 @@
 
 _What each machine needs before the installer can reach it, and what the installer does to it that you do not have to do yourself._
 
+.TL;DR
+Ubuntu Server 24.04, one sudo user with the same name and password on every machine, OpenSSH, and internet access. That is all you prepare; the installer does the rest over SSH.
+
 == What each machine needs
 
 * Ubuntu Server 24.04 LTS. The installer checks the version and refuses others.
@@ -50,6 +53,11 @@ Each node is a device on your tailnet:
 ----
 tailscale status
 ----
+
+== Limits
+
+* Ubuntu Server 24.04 only; the installer refuses other versions.
+* The control plane must be a physical machine with at least 4 CPU cores and 8 GB of memory.
 
 == Next
 

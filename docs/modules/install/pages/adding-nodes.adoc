@@ -3,6 +3,9 @@
 
 _Join another machine to a running cluster from thinkube-control, including one of a different CPU architecture, and build the images it needs._
 
+.TL;DR
+In thinkube-control open *Cluster Nodes*, press *Add Node*, enter the machine's address and wait: it is found, joined and configured. If the new machine is a different CPU architecture, run the image build from a terminal in Thinkube IDE as section 2 shows.
+
 You add a node in two parts. The first runs in thinkube-control under *Cluster Nodes*: it finds the machine, joins it to the cluster, and configures it. The second runs in a terminal in Thinkube IDE when the new node brings a CPU architecture the cluster did not have: every container image must be built for it. Image builds take long and are worth retrying step by step, which is why they are a command rather than a button.
 
 == Before you start
@@ -75,6 +78,11 @@ An image build that fails with `exec format error` pulled a base image that exis
 == Remove a node
 
 In thinkube-control, under *Cluster Nodes*, choose *Remove Node* on the node's row. thinkube-control drains its workloads, removes it from the cluster, and removes it from the inventory.
+
+== Limits
+
+* A new node must meet the same requirements as the first ones.
+* The images for a new CPU architecture are built once, from Thinkube IDE, before that node can run them.
 
 == Next
 

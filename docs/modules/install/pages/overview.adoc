@@ -3,9 +3,12 @@
 
 _Run the desktop installer against one or more Ubuntu machines, screen by screen, and know what each screen does to them._
 
+.TL;DR
+Run the installer on your laptop. It asks for your domain and four tokens, finds your Ubuntu machines, and does everything else over SSH: prepares them, installs Kubernetes, deploys the platform. When it says *Complete*, open `control.<your domain>` and log in. You type nothing on the machines themselves.
+
 You will install Thinkube from your laptop onto machines you own. The installer is a desktop application for Linux and macOS. It asks for accounts and tokens, prepares each machine over SSH, installs Kubernetes with kubeadm, and deploys the platform. At the end it shows the addresses and the login it created.
 
-This page follows the wizard in the order its screens appear. The screens are described from the installer's source; new captures of each screen are pending.
+This page follows the wizard in the order its screens appear, and says what each screen does to your machines.
 
 == Before you start
 
@@ -18,10 +21,6 @@ Have these ready. Each has its own page.
 * A Hugging Face access token — xref:huggingface-token.adoc[Unlock AI models].
 
 The laptop is the client, not a node. When the install finishes, the tokens have been copied to the control-plane machine and the laptop can be put away.
-
-== Alpha
-
-Two hardware configurations have run this installer: a DGX Spark (GB10, arm64) and an x86-64 workstation with RTX 3090s, both on Ubuntu 24.04. A future version may require reinstalling from scratch; there is no promised migration path. If a step fails, the installer does not resume: you start again from the configuration screens.
 
 == 1. Welcome
 
@@ -142,6 +141,12 @@ Ubuntu itself, its packages, the kernel, netplan, your account and its sudo righ
 The script `scripts/thinkube-wipe.sh` in the `thinkube` repository returns a machine to as close to a fresh Ubuntu Server as it can, following one rule: if the installer created it, the script destroys it. It keeps Ubuntu, the kernel, your account, sudo, sshd and the NVIDIA driver. It empties your home directory and refills it from `/etc/skel`, after copying `~/.ssh` and `~/.env` to `/root/thinkube-wipe-keep/`. Run it on the machine being wiped. Back up first.
 
 Every platform component also has a rollback playbook, so a component can be removed and reinstalled over SSH without wiping the machine.
+
+== Limits
+
+* If a step fails, the installer does not resume; you start again from the beginning.
+* It has run on a DGX Spark and on an x86-64 workstation with RTX 3090s, both on Ubuntu 24.04; other hardware is untested.
+* A future version may require reinstalling from scratch.
 
 == Next
 
