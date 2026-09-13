@@ -65,7 +65,7 @@ export default function Complete() {
     // Get domain name from configuration (saved in configuration page)
     const domainName = sessionStorage.getItem("domainName") || networkConfig.domainName || ""
 
-    // SSO realm username for all services (Thinkube Control, Argo, Code Server)
+    // SSO realm username for all services (Thinkube Control, Argo, Thinkube IDE)
     const adminUsername = "thinkube"
 
     // SSO password is the sudo password used during installation
@@ -196,14 +196,14 @@ export default function Complete() {
               <Code2 className="w-6 h-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold mb-1">Code Server</h3>
+              <h3 className="font-semibold mb-1">Thinkube IDE</h3>
               <a
-                href={`https://code.${deploymentData.domainName}`}
+                href={`https://ide.${deploymentData.domainName}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                https://code.{deploymentData.domainName}
+                https://ide.{deploymentData.domainName}
               </a>
               <p className="text-sm text-muted-foreground mt-1">
                 VS Code in the browser with CI/CD integration
@@ -316,7 +316,7 @@ export default function Complete() {
           <TkAlert className="bg-warning/10 text-warning border-warning/20">
             <AlertCircle className="h-4 w-4" />
             <TkAlertDescription>
-              Save these credentials securely. Use them to access all services (Thinkube Control, Argo Workflows, Code Server). They will not be shown again.
+              Save these credentials securely. Use them to access all services (Thinkube Control, Argo Workflows, Thinkube IDE). They will not be shown again.
             </TkAlertDescription>
           </TkAlert>
 
