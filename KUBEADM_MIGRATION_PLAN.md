@@ -410,7 +410,7 @@ the version manifest agree on what each thing is.
 | **Thinkube Cluster** | The kubeadm-based Kubernetes distribution: kubeadm + containerd + Cilium + OpenEBS Rawfile + Envoy Gateway + Gateway API CRDs + GPU operator | Private only (bare metal / VM the user owns) |
 | **Thinkube Platform** | A capability-neutral API contract: identity, registry, git, cd, workflow, rdbms, object_storage, shared_filesystem, dns, tls, secrets, model_registry, observability. Apps consume this API and do not know which implementation backs it. | Portable — any deployment target with a connector |
 | **Thinkube Connectors** | Adapters that fulfil the Platform API against a specific deployment target. The 0.1.0 release ships one: the **self-hosted connector**, in which the in-cluster components (Keycloak, Harbor, PostgreSQL, …) directly satisfy the API. The schema reserves room for additional connectors targeting other substrates; specific implementations are tracked separately from this plan. | The connector layer is the substitution mechanism |
-| **Thinkube AI Lab** | The private AI development environment (umbrella concept; not a new URL). Three sub-components, each at an existing URL: **Notebooks** (`jupyter.<domain>` — JupyterHub + `thinkube-ai-lab-theme` + `tk-ai-extension`), **Code** (`code.<domain>` — code-server + `thinkube-ai-integration`), **Console** (`control.<domain>` — `thinkube-control`, includes templates catalogue) | Private only — coupled to host-path mounts, GPU passthrough, sovereign developer experience. Not portable. |
+| **Thinkube AI Lab** | The private AI development environment (umbrella concept; not a new URL). Three sub-components, each at an existing URL: **Notebooks** (`jupyter.<domain>` — JupyterHub + `thinkube-notebooks-theme` + `tk-ai-extension`), **Code** (`code.<domain>` — code-server + `thinkube-ai-integration`), **Console** (`control.<domain>` — `thinkube-control`, includes templates catalogue) | Private only — coupled to host-path mounts, GPU passthrough, sovereign developer experience. Not portable. |
 | **Thinkube Apps** | User-built workloads consuming the Thinkube Platform API. Independent of which connector fulfils the API at deployment time. | Portable — runs wherever a connector exists |
 | **Thinkube Installer** | The desktop bootstrap application | Private side |
 | **Thinkube Metadata** | Channel + release manifest + mirror catalogues; the canonical source of truth for what each release ships | Public metadata repo |
@@ -530,7 +530,7 @@ ai_lab:                               # private only
   scope: private_only
   notebooks:
     jupyterhub: "5.2.1"
-    theme: "thinkube-ai-lab-theme@v1.0.0"
+    theme: "thinkube-notebooks-theme@v1.0.0"
     extension: "tk-ai-extension@v0.3.0"
   code:
     code_server: "4.96.4"
@@ -551,7 +551,7 @@ way to fulfil the Platform API).
 #### Unified visual branding
 
 Out of scope for the migration PR set but tracked as an immediate
-follow-up: extend the `thinkube-ai-lab-theme` brand (logo strip, color
+follow-up: extend the `thinkube-notebooks-theme` brand (logo strip, color
 palette, header layout) to code-server's landing page and to
 `thinkube-control`'s home page so all three AI Lab sub-components feel
 like one product. Doc-only / theming work, no functional change.
