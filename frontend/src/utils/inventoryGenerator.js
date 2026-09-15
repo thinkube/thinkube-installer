@@ -8,6 +8,10 @@
  * Generates Ansible inventory based on user configuration with dynamic network allocation
  */
 
+// A host with ansible_connection: local runs modules in whichever machine or pod
+// runs Ansible, so it uses the Python that runs Ansible there.
+export const LOCAL_PYTHON_INTERPRETER = '{{ ansible_playbook_python }}'
+
 export function generateDynamicInventory() {
   // Get all configuration from sessionStorage and localStorage
   const config = JSON.parse(localStorage.getItem('thinkube-config') || '{}')
@@ -33,6 +37,10 @@ export function generateDynamicInventory() {
   
   if (!config.domainName) {
     throw new Error('Domain name is required.')
+  }
+
+  if (!config.systemUsername) {
+    throw new Error('System username is required.')
   }
   
   // Overlay provider credential validation
@@ -87,7 +95,6 @@ export function generateDynamicInventory() {
         admin_username: 'tkadmin',
         system_username: config.systemUsername,
         auth_realm_username: 'thinkube',
-        ansible_python_interpreter: '/usr/bin/python3',
         ansible_become_pass: "{{ lookup('env', 'ANSIBLE_BECOME_PASSWORD') }}",
         home: "{{ lookup('env', 'HOME') }}",
 
@@ -134,8 +141,12 @@ export function generateDynamicInventory() {
           }
         },
         
-        // Physical servers (baremetal)
+        // Physical servers (baremetal). Each node's Python virtual environment
+        // is created by 00_initial_setup/10_setup_ssh_keys.yaml.
         baremetal: {
+          vars: {
+            ansible_python_interpreter: `/home/${config.systemUsername}/.venv/bin/python3`
+          },
           hosts: {},
           children: {
             headless: {
@@ -287,6 +298,7 @@ export function generateDynamicInventory() {
     // that this server is the local machine (where the installer is running)
     if (discoveredServer?.is_local) {
       serverDef.ansible_connection = 'local'
+      serverDef.ansible_python_interpreter = LOCAL_PYTHON_INTERPRETER
     }
     // REMOVED: Do not assume first server is local - this causes issues
     // when the installer runs on a different machine
@@ -435,7 +447,8 @@ export function generateDynamicInventory() {
       ansible_connection: 'local',
       ansible_host: '127.0.0.1',
       lan_ip: controllerIP !== 'localhost' ? controllerIP : '127.0.0.1',
-      arch: controllerArch
+      arch: controllerArch,
+      ansible_python_interpreter: LOCAL_PYTHON_INTERPRETER
     }
     if (overlayProvider === 'zerotier') {
       const overlayPrefix = networkConfig.overlayCIDR.split('/')[0].split('.').slice(0, 3).join('.')

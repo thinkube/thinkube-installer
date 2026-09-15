@@ -151,24 +151,7 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         # Get parameters
         environment = data.get("environment", {})
         extra_vars = data.get("extra_vars", {})
-        
-        # Add venv Python to extra_vars BEFORE writing to file
-        # EXCEPT for the SSH setup playbook that needs to install Python first
-        initial_setup_playbooks = [
-            "10_setup_ssh_keys.yaml"
-        ]
-        
-        # Check if this is an initial setup playbook
-        is_initial_setup = any(playbook in playbook_relative_path for playbook in initial_setup_playbooks)
-        
-        user_venv = Path.home() / ".venv"
-        if user_venv.exists() and not is_initial_setup:
-            venv_python = str(user_venv / "bin" / "python3")
-            extra_vars['ansible_python_interpreter'] = venv_python
-            logger.info(f"Using venv Python interpreter: {venv_python}")
-        else:
-            logger.info(f"Not setting Python interpreter for playbook: {playbook_relative_path}")
-        
+
         # Build ansible-playbook command directly for better output control
         inventory_path = thinkube_root / "inventory" / "inventory.yaml"
         

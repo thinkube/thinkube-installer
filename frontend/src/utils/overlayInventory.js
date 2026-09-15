@@ -16,6 +16,8 @@
  * that it joins the overlay alongside the cluster.
  */
 
+import { LOCAL_PYTHON_INTERPRETER } from './inventoryGenerator.js'
+
 export function generateOverlayInventory() {
   const discoveredServers = JSON.parse(sessionStorage.getItem('discoveredServers') || '[]')
   if (!discoveredServers.length) {
@@ -43,7 +45,6 @@ export function generateOverlayInventory() {
   const allVars = {
     ansible_user: ansibleUser,
     ansible_become_pass: "{{ lookup('env', 'ANSIBLE_BECOME_PASSWORD') }}",
-    ansible_python_interpreter: '/usr/bin/python3',
     overlay_provider: provider,
   }
   if (provider === 'zerotier') {
@@ -60,10 +61,13 @@ export function generateOverlayInventory() {
     const hostname = server.hostname || server.host || server.name
     if (!hostname) continue
     const lanIp = server.ip_address || server.ip
+    // The node's Python virtual environment is created by
+    // 00_initial_setup/10_setup_ssh_keys.yaml, which runs before this stage.
     const host = {
       ansible_host: lanIp,
       ansible_user: ansibleUser,
       lan_ip: lanIp,
+      ansible_python_interpreter: `/home/${ansibleUser}/.venv/bin/python3`,
     }
     const allocated = ipAllocations[hostname]
     if (allocated) host.overlay_ip = allocated
@@ -79,6 +83,7 @@ export function generateOverlayInventory() {
       ansible_connection: 'local',
       ansible_host: '127.0.0.1',
       ansible_user: ansibleUser,
+      ansible_python_interpreter: LOCAL_PYTHON_INTERPRETER,
     }
     if (ipAllocations.controller) controllerHost.overlay_ip = ipAllocations.controller
     overlayHosts.controller = controllerHost
