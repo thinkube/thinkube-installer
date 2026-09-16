@@ -149,4 +149,4 @@ Every platform component has a rollback playbook, so a component can be removed 
 == Next
 
 * xref:adding-nodes.adoc[Add more nodes] when you have a second machine.
-* xref:thinkube-docs::start-here/quickstart.adoc[Quickstart] to mirror a model, load it and call it.
+* xref:thinkube-docs::playbooks/serve-your-first-model.adoc[Serve your first model] to mirror a model, load it and call it.

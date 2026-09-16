@@ -38,4 +38,4 @@ The *Configuration* screen has a *HuggingFace Access Token* field. The installer
 == Next
 
 * xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.
-* xref:thinkube-docs::lifecycle/get-models.adoc[Get a model] — mirroring a model after the install.
+* xref:thinkube-docs::playbooks/serve-your-first-model.adoc[Serve your first model] — mirroring a model after the install.
