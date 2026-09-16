@@ -138,9 +138,7 @@ Ubuntu itself, its packages, the kernel, netplan, your account and its sudo righ
 
 == Getting out
 
-The script `scripts/thinkube-wipe.sh` in the `thinkube` repository returns a machine to as close to a fresh Ubuntu Server as it can, following one rule: if the installer created it, the script destroys it. It keeps Ubuntu, the kernel, your account, sudo, sshd and the NVIDIA driver. It empties your home directory and refills it from `/etc/skel`, after copying `~/.ssh` and `~/.env` to `/root/thinkube-wipe-keep/`. Run it on the machine being wiped. Back up first.
-
-Every platform component also has a rollback playbook, so a component can be removed and reinstalled over SSH without wiping the machine.
+Every platform component has a rollback playbook, so a component can be removed and reinstalled over SSH.
 
 == Limits
 
