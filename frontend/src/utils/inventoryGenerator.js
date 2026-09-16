@@ -122,7 +122,6 @@ export function generateDynamicInventory() {
         cloudflare_api_token: sessionStorage.getItem('cloudflareToken') || '',
         
         // GitHub configuration
-        github_org: config.githubOrg || sessionStorage.getItem('githubOrg') || '',
         github_token: sessionStorage.getItem('githubToken') || '',
         
         // Admin email for Let's Encrypt registration

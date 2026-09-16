@@ -59,7 +59,7 @@ Choose one control plane. It must be a physical machine, not a virtual one, with
 Enter the cluster name, your domain, and the tokens:
 
 * the Cloudflare API token, used to obtain certificates;
-* the GitHub personal access token and the organisation or username to deploy under;
+* the GitHub personal access token; repositories are created in the account that owns it;
 * the Hugging Face access token.
 
 Each token is verified while you type: the installer calls the service and shows a green mark when the token works and has the access it needs.

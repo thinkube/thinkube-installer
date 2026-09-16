@@ -224,7 +224,6 @@ ${logOutput.map(log => log.message).join('\n')}`
               const ENV_BY_KEY: Record<string, string> = {
                 GITHUB_TOKEN: 'githubToken',
                 GITHUB_USERNAME: 'githubUsername',
-                GITHUB_ORG: 'githubOrg',
                 HF_TOKEN: 'hfToken',
                 CLOUDFLARE_TOKEN: 'cloudflareToken',
                 TAILSCALE_AUTH_KEY: 'tailscaleAuthKey',

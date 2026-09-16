@@ -29,7 +29,6 @@ interface ConfigData {
   domainName: string
   cloudflareToken: string
   githubToken: string
-  githubOrg: string
   hfToken: string
 }
 
@@ -38,7 +37,6 @@ interface ValidationErrors {
   domainName: string
   cloudflareToken: string
   githubToken: string
-  githubOrg: string
   hfToken: string
 }
 
@@ -50,7 +48,6 @@ export default function Configuration() {
     domainName: '',
     cloudflareToken: '',
     githubToken: '',
-    githubOrg: '',
     hfToken: ''
   })
 
@@ -59,7 +56,6 @@ export default function Configuration() {
     domainName: '',
     cloudflareToken: '',
     githubToken: '',
-    githubOrg: '',
     hfToken: ''
   })
 
@@ -86,7 +82,6 @@ export default function Configuration() {
             ...prev,
             ...(savedConfig.cloudflareToken && { cloudflareToken: savedConfig.cloudflareToken }),
             ...(savedConfig.githubToken && { githubToken: savedConfig.githubToken }),
-            ...(savedConfig.githubOrg && { githubOrg: savedConfig.githubOrg }),
             ...(savedConfig.hfToken && { hfToken: savedConfig.hfToken }),
             ...(savedConfig.clusterName && { clusterName: savedConfig.clusterName }),
             ...(savedConfig.domainName && { domainName: savedConfig.domainName }),
@@ -160,10 +155,8 @@ export default function Configuration() {
       config.domainName &&
       config.cloudflareToken &&
       config.githubToken &&
-      config.githubOrg &&
       !errors.clusterName &&
-      !errors.domainName &&
-      !errors.githubOrg
+      !errors.domainName
     )
   }, [config, errors])
 
@@ -322,7 +315,6 @@ export default function Configuration() {
       cloudflareToken: config.cloudflareToken,
       githubToken: config.githubToken,
       hfToken: config.hfToken,
-      githubOrg: config.githubOrg,
       clusterName: config.clusterName,
       domainName: config.domainName,
     }
@@ -340,7 +332,6 @@ export default function Configuration() {
     const configToSave: any = {
       clusterName: config.clusterName,
       domainName: config.domainName,
-      githubOrg: config.githubOrg,
       sudoPassword: sudoPassword,
       systemUsername: systemUsername,
     }
@@ -358,7 +349,6 @@ export default function Configuration() {
 
     if (config.githubToken) {
       sessionStorage.setItem('githubToken', config.githubToken)
-      sessionStorage.setItem('githubOrg', config.githubOrg)
     }
 
     if (config.hfToken) {
@@ -560,23 +550,6 @@ export default function Configuration() {
               </p>
             </div>
 
-            <div className="space-y-2 mt-4">
-              <TkLabel htmlFor="githubOrg">GitHub Organization or Username</TkLabel>
-              <TkInput
-                id="githubOrg"
-                type="text"
-                placeholder="your-github-org-or-username"
-                value={config.githubOrg}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, githubOrg: e.target.value })}
-                className={cn(errors.githubOrg && "border-destructive")}
-              />
-              {errors.githubOrg && (
-                <p className="text-xs text-destructive">{errors.githubOrg}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                The GitHub organization or username where repositories will be created
-              </p>
-            </div>
           </TkCardContent>
         </TkCard>
 

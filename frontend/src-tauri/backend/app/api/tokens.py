@@ -154,8 +154,6 @@ async def save_configuration(config: Dict) -> TokenResponse:
             env_vars['TAILSCALE_OAUTH_CLIENT_SECRET'] = config['tailscaleOauthClientSecret']
         if config.get('gatewayHostname'):
             env_vars['GATEWAY_HOSTNAME'] = config['gatewayHostname']
-        if config.get('githubOrg'):
-            env_vars['GITHUB_ORG'] = config['githubOrg']
         if config.get('clusterName'):
             env_vars['CLUSTER_NAME'] = config['clusterName']
         if config.get('domainName'):
@@ -202,8 +200,6 @@ async def load_configuration() -> Dict:
             config['tailscaleOauthClientSecret'] = env_vars['TAILSCALE_OAUTH_CLIENT_SECRET']
         if 'GATEWAY_HOSTNAME' in env_vars:
             config['gatewayHostname'] = env_vars['GATEWAY_HOSTNAME']
-        if 'GITHUB_ORG' in env_vars:
-            config['githubOrg'] = env_vars['GITHUB_ORG']
         if 'CLUSTER_NAME' in env_vars:
             config['clusterName'] = env_vars['CLUSTER_NAME']
         if 'DOMAIN_NAME' in env_vars:

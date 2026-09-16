@@ -42,14 +42,13 @@ async def verify_github_token(data: Dict[str, str]):
                 # `write:discussion` have no implied parents.
                 scopes = set(s.strip() for s in response.headers.get("X-OAuth-Scopes", "").split(",") if s.strip())
                 implied_by = {
-                    "read:org": {"read:org", "write:org", "admin:org"},
                     "write:packages": {"write:packages", "admin:packages"},
                     "read:packages": {"read:packages", "write:packages", "admin:packages"},
                     "repo": {"repo"},
                     "workflow": {"workflow"},
                     "write:discussion": {"write:discussion"},
                 }
-                required_scopes = ["repo", "workflow", "write:packages", "read:org", "write:discussion"]
+                required_scopes = ["repo", "workflow", "write:packages", "write:discussion"]
                 missing_scopes = [
                     req for req in required_scopes
                     if not (implied_by.get(req, {req}) & scopes)
