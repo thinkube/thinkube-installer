@@ -1,12 +1,12 @@
 = Install Thinkube
 :page-type: tutorial
 
-_Run the desktop installer against one or more Ubuntu machines, screen by screen, and know what each screen does to them._
+_Run the installer against one or more Ubuntu machines, screen by screen, and know what each screen does to them._
 
 .TL;DR
-Run the installer on your laptop. It asks for your domain and four tokens, finds your Ubuntu machines, and does everything else over SSH: prepares them, installs Kubernetes, deploys the platform. When it says *Complete*, open `control.<your domain>` and log in. You type nothing on the machines themselves.
+Run the installer on an Ubuntu 24.04 machine, one of the servers or any other. It asks for your domain and four tokens, finds your Ubuntu machines, and does everything else over SSH: prepares them, installs Kubernetes, deploys the platform. When it says *Complete*, open `control.<your domain>` and log in. You type nothing on the machines themselves.
 
-You will install Thinkube from your laptop onto machines you own. The installer is a desktop application for Linux and macOS. It asks for accounts and tokens, prepares each machine over SSH, installs Kubernetes with kubeadm, and deploys the platform. At the end it shows the addresses and the login it created.
+You will install Thinkube onto machines you own from a machine that runs Ubuntu 24.04 with a desktop. That machine can be one of the servers or a separate one; its form does not matter, its operating system does, and the installer checks it before anything else. The installer asks for accounts and tokens, prepares each machine over SSH, installs Kubernetes with kubeadm, and deploys the platform. At the end it shows the addresses and the login it created.
 
 This page follows the wizard in the order its screens appear, and says what each screen does to your machines.
 
@@ -20,7 +20,7 @@ Have these ready. Each has its own page.
 * A GitHub personal access token — xref:github-token.adoc[Connect to GitHub].
 * A Hugging Face access token — xref:huggingface-token.adoc[Unlock AI models].
 
-The laptop is the client, not a node. When the install finishes, the tokens have been copied to the control-plane machine and the laptop can be put away.
+A separate machine you install from is a client, not a node. When the install finishes, the tokens have been copied to the control-plane machine and it is no longer needed.
 
 == 1. Welcome
 
@@ -52,7 +52,7 @@ For each server the installer reads CPU cores, memory, disk and GPUs, and sums t
 
 == 7. Role assignment
 
-Choose one control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. In a single-node cluster it also runs your workloads. Every other selected server becomes a worker. Workers are optional; GPU nodes are the ones that serve and train models.
+Choose one control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. In a single-node cluster it also runs your workloads. Every other selected server becomes a worker. Workers are optional; GPU nodes are the ones that serve and train models. When the cluster mixes a DGX Spark with other machines, make one of the other machines the control plane. On a DGX Spark the GPU and the system share one pool of memory, and the control plane carries more than Kubernetes: on the reference cluster it also runs the registry, identity, the database, Thinkube Git and the builds. As a worker, the Spark keeps its memory for models, notebooks and fine-tuning. The installer preselects the first machine that qualifies, so check which one it chose.
 
 == 8. Configuration
 

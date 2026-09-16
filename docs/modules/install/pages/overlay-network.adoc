@@ -6,7 +6,7 @@ _Create the Tailscale keys the installer asks for, so every node joins your priv
 .TL;DR
 Create a Tailscale account, an auth key, an API access token and one OAuth client, and paste the four into the installer. Every node joins your private network, and every service answers at `<name>.<your domain>` from any device on it.
 
-Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. Your laptop joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
+Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. The computer or phone you work from joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
 
 Tailscale is the only overlay network supported. The installer shows no other choice.
 
@@ -33,7 +33,7 @@ Three things, all in the Tailscale admin console:
 
 == 1. Create an account
 
-Sign in at https://login.tailscale.com[login.tailscale.com]. Install Tailscale on the laptop you will use to reach the cluster and log it in to the same account.
+Sign in at https://login.tailscale.com[login.tailscale.com]. Install Tailscale on each device you will use to reach the cluster and log it in to the same account.
 
 == 2. Create an auth key
 
@@ -78,7 +78,7 @@ tailscale ip <cluster name>-gw        # the gateway's address
 dig +short control.<your domain>      # should print the same address
 ----
 
-Each node is a separate tailnet device too, so `ssh <user>@<node>` works from the same laptop.
+Each node is a separate tailnet device too, so `ssh <user>@<node>` works from any device on the tailnet.
 
 == Limits
 

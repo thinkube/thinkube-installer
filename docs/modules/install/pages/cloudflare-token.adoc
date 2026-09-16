@@ -38,7 +38,7 @@ The *Configuration* screen has a *Cloudflare API Token* field next to the domain
 
 == What the installer does with it
 
-* Writes it to `~/.env` on the machine running the installer. The `30_persist_user_secrets.yaml` playbook copies it to `~/.env` on the control plane, so certificates renew without the laptop.
+* Writes it to `~/.env` on the machine running the installer. The `30_persist_user_secrets.yaml` playbook copies it to `~/.env` on the control plane, so certificates renew without the machine you installed from.
 * Installs acme.sh on the control plane and issues the wildcard certificate with Let's Encrypt as the certificate authority.
 * Installs a renewal hook. acme.sh renews the certificate when it is 30 days old; the hook then updates every Kubernetes TLS secret that holds the old wildcard certificate, and the gateway reloads them.
 * If you gave the installer a GitHub token, it also keeps an encrypted copy of the certificate in a private repository named `thinkube-certificates` under your GitHub account, encrypted with AES-256 using your sudo password. The repository's README says how to decrypt it with `openssl` and restore it to a cluster by hand. The installer does not restore it automatically.

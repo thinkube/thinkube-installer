@@ -27,7 +27,7 @@ The *Configuration* screen has a *HuggingFace Access Token* field. The installer
 
 == Where it goes and what uses it
 
-* The installer writes it to `~/.env` on the machine running the installer, and the `30_persist_user_secrets.yaml` playbook copies it to `~/.env` on the control plane, so later operations do not need the laptop.
+* The installer writes it to `~/.env` on the machine running the installer, and the `30_persist_user_secrets.yaml` playbook copies it to `~/.env` on the control plane, so later operations do not need the machine you installed from.
 * The model mirror job reads it as `HF_TOKEN` when it downloads a model, and thinkube-control receives it as a secret when it is deployed.
 * The platform's playbooks read it from the same file through their shared environment role.
 

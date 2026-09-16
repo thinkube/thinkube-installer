@@ -42,7 +42,7 @@ The *Configuration* screen has two fields: *GitHub Personal Access Token* and *G
 == Where it goes
 
 * `~/.env` on the machine running the installer, as `GITHUB_TOKEN` and `GITHUB_ORG`.
-* `~/.env` on the control plane, copied by the `30_persist_user_secrets.yaml` playbook, so later operations do not need the laptop.
+* `~/.env` on the control plane, copied by the `30_persist_user_secrets.yaml` playbook, so later operations do not need the machine you installed from.
 * thinkube-control receives it as a secret when it is deployed; that is what publishing a template uses.
 
 == Rotating the token

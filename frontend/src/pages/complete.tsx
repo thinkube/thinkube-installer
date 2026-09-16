@@ -300,7 +300,7 @@ export default function Complete() {
               <TkAlertDescription>
                 Each cluster node also appears as a separate tailnet device
                 so you can SSH directly. The <code>tailscale</code> CLI on
-                your laptop must be logged in to the same tailnet.
+                the device you connect from must be logged in to the same tailnet.
               </TkAlertDescription>
             </TkAlert>
           </TkCardContent>
