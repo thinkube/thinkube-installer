@@ -61,7 +61,9 @@ export default function RoleAssignment() {
   }, [validationErrors, controlPlaneNodes])
 
   const canBeControlPlane = (node: NodeData) => {
-    return node.cpu >= 4 && node.memory >= 8
+    // Same minimum the Kubernetes install playbook enforces: 16 vCPUs, and 60 GiB
+    // detected for a machine with 64 GB installed.
+    return node.cpu >= 16 && node.memory >= 60
   }
 
   const getNodeGPUStatus = (node: NodeData) => {
@@ -169,7 +171,7 @@ export default function RoleAssignment() {
               <h3 className="font-semibold mb-2">Control Plane Node</h3>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Manages Kubernetes API and cluster state</li>
-                <li>• Requires at least 4 CPU cores and 8GB RAM</li>
+                <li>• Requires at least 16 CPU cores and 64GB RAM</li>
                 <li>• Can also run workloads (single-node cluster)</li>
                 <li>• Must be baremetal (no VM support)</li>
               </ul>

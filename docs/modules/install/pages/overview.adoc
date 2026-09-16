@@ -52,7 +52,7 @@ For each server the installer reads CPU cores, memory, disk and GPUs, and sums t
 
 == 7. Role assignment
 
-Choose one control plane. It must be a physical machine, not a virtual one, with at least 4 CPU cores and 8 GB of memory. In a single-node cluster it also runs your workloads. Every other selected server becomes a worker. Workers are optional; GPU nodes are the ones that serve and train models.
+Choose one control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. In a single-node cluster it also runs your workloads. Every other selected server becomes a worker. Workers are optional; GPU nodes are the ones that serve and train models.
 
 == 8. Configuration
 

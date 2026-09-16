@@ -12,7 +12,7 @@ Ubuntu Server 24.04, one sudo user with the same name and password on every mach
 * A user that is not root and can use sudo. Use the same username and the same password on every machine; the SSH screen of the installer relies on it.
 * OpenSSH server installed and running.
 * Internet access, for packages, container images and model weights.
-* For the control plane: a physical machine, not a virtual one, with at least 4 CPU cores and 8 GB of memory.
+* For the control plane: a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory.
 * For GPU nodes: an NVIDIA driver at version 580.0 or newer. If the driver is older or missing, the installer offers to install one during hardware detection. GPUs older than the Volta generation are not supported.
 
 Two hardware configurations have run this: a DGX Spark (GB10, arm64) and an x86-64 workstation with RTX 3090s, both on Ubuntu 24.04.
@@ -57,7 +57,7 @@ tailscale status
 == Limits
 
 * Ubuntu Server 24.04 only; the installer refuses other versions.
-* The control plane must be a physical machine with at least 4 CPU cores and 8 GB of memory.
+* The control plane must be a physical machine with at least 16 CPU cores and 64 GB of memory.
 
 == Next
 
