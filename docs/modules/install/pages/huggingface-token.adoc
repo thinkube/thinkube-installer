@@ -1,5 +1,5 @@
 = Unlock AI models
-:page-type: how-to
+:page-type: concept
 
 _Create the Hugging Face token the installer asks for, and know what it is used for._
 
@@ -31,9 +31,9 @@ The *Configuration* screen has a *HuggingFace Access Token* field. The installer
 * The model mirror job reads it as `HF_TOKEN` when it downloads a model, and thinkube-control receives it as a secret when it is deployed.
 * The platform's playbooks read it from the same file through their shared environment role.
 
-== Limits
+== Good to know
 
-* A gated model cannot be mirrored until its licence has been accepted on Hugging Face with the account the token belongs to.
+A gated model mirrors once its licence is accepted on Hugging Face with the account the token belongs to.
 
 == Next
 

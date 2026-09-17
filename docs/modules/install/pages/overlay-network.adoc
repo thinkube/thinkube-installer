@@ -1,5 +1,5 @@
 = Connect from anywhere
-:page-type: how-to
+:page-type: concept
 
 _Create the Tailscale keys the installer asks for, so every node joins your private network and the cluster is reachable from any device on it._
 
@@ -80,10 +80,10 @@ dig +short control.<your domain>      # should print the same address
 
 Each node is a separate tailnet device too, so `ssh <user>@<node>` works from any device on the tailnet.
 
-== Limits
+== Good to know
 
-* Tailscale is the only overlay network supported.
-* Services are reachable from the tailnet and your LAN only; no public DNS records are created.
+* Tailscale is the overlay network.
+* Services are reachable from the tailnet and your LAN; no public DNS record is created.
 
 == Next
 

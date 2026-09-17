@@ -1,5 +1,5 @@
 = Install Thinkube
-:page-type: tutorial
+:page-type: concept
 
 _Run the installer against one or more Ubuntu machines, screen by screen, and know what each screen does to them._
 
@@ -140,11 +140,9 @@ Ubuntu itself, its packages, the kernel, netplan, your account and its sudo righ
 
 Every platform component has a rollback playbook, so a component can be removed and reinstalled over SSH.
 
-== Limits
+== Good to know
 
-* If a step fails, the installer does not resume; you start again from the beginning.
-* It has run on a DGX Spark and on an x86-64 workstation with RTX 3090s, both on Ubuntu 24.04; other hardware is untested.
-* A future version may require reinstalling from scratch.
+A step that fails is retried by starting the installer again from the beginning. xref:thinkube-docs::start-here/what-is-thinkube.adoc#_where_it_runs[What Thinkube is] names the hardware it runs on.
 
 == Next
 

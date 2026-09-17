@@ -1,5 +1,5 @@
 = Add more nodes
-:page-type: how-to
+:page-type: concept
 
 _Join another machine to a running cluster from thinkube-control, including one of a different CPU architecture, and build the images it needs._
 
@@ -79,11 +79,11 @@ An image build that fails with `exec format error` pulled a base image that exis
 
 In thinkube-control, under *Cluster Nodes*, choose *Remove Node* on the node's row. thinkube-control drains its workloads, removes it from the cluster, and removes it from the inventory.
 
-== Limits
+== Good to know
 
-* A new node must meet the same requirements as the first ones.
-* The images for a new CPU architecture are built once, from Thinkube IDE, before that node can run them.
+* A new node meets the same requirements as the first ones.
+* The images for a new CPU architecture are built once, from Thinkube IDE; from then on that node runs them.
 
 == Next
 
-* xref:thinkube-docs::how-it-works/gpu-multiarch.adoc[GPU and multi-arch] — how one cluster runs amd64 and arm64 together and how GPU memory is budgeted.
+* xref:thinkube-docs::kubernetes/index.adoc[Thinkube Kubernetes] — how one cluster runs amd64 and arm64 together and how GPU memory is budgeted.

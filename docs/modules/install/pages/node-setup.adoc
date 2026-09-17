@@ -1,5 +1,5 @@
 = Prepare your machines
-:page-type: how-to
+:page-type: concept
 
 _What each machine needs before the installer can reach it, and what the installer does to it that you do not have to do yourself._
 
@@ -54,10 +54,10 @@ Each node is a device on your tailnet:
 tailscale status
 ----
 
-== Limits
+== Good to know
 
-* Ubuntu Server 24.04 only; the installer refuses other versions.
-* The control plane must be a physical machine with at least 16 CPU cores and 64 GB of memory.
+* Ubuntu Server 24.04 is the system the installer works on.
+* The control plane is a physical machine with at least 16 CPU cores and 64 GB of memory.
 
 == Next
 

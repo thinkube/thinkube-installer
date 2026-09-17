@@ -1,5 +1,5 @@
 = Connect to GitHub
-:page-type: how-to
+:page-type: concept
 
 _Create the GitHub personal access token the installer asks for, and know exactly what the platform does with it._
 
@@ -48,9 +48,9 @@ The *Configuration* screen has one field, *GitHub Personal Access Token*. The in
 
 Generate a new token with the same scopes. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane. thinkube-control reads the file when it is deployed, so run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository again from Thinkube IDE. In the IDE, run `gh auth login --with-token` with the new token. Then revoke the old one on GitHub.
 
-== Limits
+== Good to know
 
-* The token is stored in the cluster; rotating it means giving the new one to the platform as this page describes.
+The token is stored in the cluster. Rotating it is giving the new one to the platform as this page describes.
 
 == Next
 

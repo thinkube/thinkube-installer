@@ -1,5 +1,5 @@
 = Set up your domain
-:page-type: how-to
+:page-type: concept
 
 _Put your domain's DNS zone at Cloudflare and create the API token the installer uses to obtain certificates._
 
@@ -49,10 +49,10 @@ The *Configuration* screen has a *Cloudflare API Token* field next to the domain
 * The domain must be active on Cloudflare. `dig NS <your domain>` should print Cloudflare nameservers.
 * Let's Encrypt limits how many identical certificates it issues per week. Repeated reinstalls can reach that limit; the encrypted backup is there so a certificate can be restored instead of reissued.
 
-== Limits
+== Good to know
 
-* Cloudflare is the only DNS provider the installer supports for certificate validation.
-* The encrypted certificate backup is kept in GitHub but is not restored automatically on a reinstall.
+* The installer proves the certificate through Cloudflare DNS, so the domain is managed in Cloudflare.
+* The encrypted certificate backup in GitHub is restored by hand on a reinstall.
 
 == Next
 
