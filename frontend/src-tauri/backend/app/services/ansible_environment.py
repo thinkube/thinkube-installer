@@ -15,8 +15,6 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Callable
 
-from app.services.local_fonts import install_fonts
-
 logger = logging.getLogger(__name__)
 
 
@@ -71,10 +69,6 @@ class AnsibleEnvironment:
         """
         try:
             logger.info("Initializing Ansible environment...")
-
-            # This computer is the one the person works from, so it gets the
-            # Thinkube fonts; see local_fonts.
-            install_fonts()
 
             if self.is_initialized():
                 logger.info("Ansible environment already initialized")
