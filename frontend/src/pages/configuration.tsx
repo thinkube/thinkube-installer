@@ -29,6 +29,8 @@ interface ConfigData {
   domainName: string
   cloudflareToken: string
   githubToken: string
+  gitAuthorName: string
+  gitAuthorEmail: string
   hfToken: string
 }
 
@@ -37,6 +39,7 @@ interface ValidationErrors {
   domainName: string
   cloudflareToken: string
   githubToken: string
+  gitAuthorEmail: string
   hfToken: string
 }
 
@@ -48,6 +51,8 @@ export default function Configuration() {
     domainName: '',
     cloudflareToken: '',
     githubToken: '',
+    gitAuthorName: '',
+    gitAuthorEmail: '',
     hfToken: ''
   })
 
@@ -56,6 +61,7 @@ export default function Configuration() {
     domainName: '',
     cloudflareToken: '',
     githubToken: '',
+    gitAuthorEmail: '',
     hfToken: ''
   })
 
@@ -99,6 +105,8 @@ export default function Configuration() {
             ...prev,
             ...(parsed.domainName && { domainName: parsed.domainName }),
             ...(parsed.clusterName && { clusterName: parsed.clusterName }),
+            ...(parsed.gitAuthorName && { gitAuthorName: parsed.gitAuthorName }),
+            ...(parsed.gitAuthorEmail && { gitAuthorEmail: parsed.gitAuthorEmail }),
           }))
         } catch (e) {
           // Ignore parse errors
@@ -112,6 +120,7 @@ export default function Configuration() {
   // Validation functions
   const isValidClusterName = (name: string) => /^[a-z0-9-]+$/.test(name)
   const isValidDomain = (domain: string) => /^[a-z0-9.-]+$/.test(domain)
+  const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
   // Validate cluster name
   useEffect(() => {
@@ -130,6 +139,15 @@ export default function Configuration() {
       setErrors(prev => ({ ...prev, domainName: '' }))
     }
   }, [config.domainName])
+
+  // Validate git author email
+  useEffect(() => {
+    if (config.gitAuthorEmail && !isValidEmail(config.gitAuthorEmail.trim())) {
+      setErrors(prev => ({ ...prev, gitAuthorEmail: 'Invalid email address' }))
+    } else {
+      setErrors(prev => ({ ...prev, gitAuthorEmail: '' }))
+    }
+  }, [config.gitAuthorEmail])
 
   // Reset Cloudflare verification when token or domain changes
   useEffect(() => {
@@ -155,8 +173,11 @@ export default function Configuration() {
       config.domainName &&
       config.cloudflareToken &&
       config.githubToken &&
+      config.gitAuthorName.trim() &&
+      config.gitAuthorEmail.trim() &&
       !errors.clusterName &&
-      !errors.domainName
+      !errors.domainName &&
+      !errors.gitAuthorEmail
     )
   }, [config, errors])
 
@@ -332,6 +353,8 @@ export default function Configuration() {
     const configToSave: any = {
       clusterName: config.clusterName,
       domainName: config.domainName,
+      gitAuthorName: config.gitAuthorName.trim(),
+      gitAuthorEmail: config.gitAuthorEmail.trim(),
       sudoPassword: sudoPassword,
       systemUsername: systemUsername,
     }
@@ -548,6 +571,42 @@ export default function Configuration() {
               <p className="text-xs text-muted-foreground">
                 Required scopes: repo, workflow, packages:write
               </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <TkLabel htmlFor="gitAuthorName">Your name (for git commits)</TkLabel>
+                  <span className="text-xs text-muted-foreground">Shown as the author of your commits</span>
+                </div>
+                <TkInput
+                  id="gitAuthorName"
+                  type="text"
+                  placeholder="Ada Lovelace"
+                  value={config.gitAuthorName}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, gitAuthorName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <TkLabel htmlFor="gitAuthorEmail">Your email (for git commits)</TkLabel>
+                  <span className="text-xs text-muted-foreground">Recorded with each commit</span>
+                </div>
+                <TkInput
+                  id="gitAuthorEmail"
+                  type="email"
+                  placeholder="ada@example.com"
+                  value={config.gitAuthorEmail}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, gitAuthorEmail: e.target.value })}
+                  className={cn(errors.gitAuthorEmail && "border-destructive")}
+                  required
+                />
+                {errors.gitAuthorEmail && (
+                  <p className="text-xs text-destructive">{errors.gitAuthorEmail}</p>
+                )}
+              </div>
             </div>
 
           </TkCardContent>

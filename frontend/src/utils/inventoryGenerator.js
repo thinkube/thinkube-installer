@@ -42,6 +42,14 @@ export function generateDynamicInventory() {
   if (!config.systemUsername) {
     throw new Error('System username is required.')
   }
+
+  if (!config.gitAuthorName) {
+    throw new Error('Your name for git commits is required. Enter it on the configuration screen.')
+  }
+
+  if (!config.gitAuthorEmail) {
+    throw new Error('Your email for git commits is required. Enter it on the configuration screen.')
+  }
   
   // Overlay provider credential validation
   const overlayProvider = config.overlayProvider
@@ -123,9 +131,10 @@ export function generateDynamicInventory() {
         
         // GitHub configuration
         github_token: sessionStorage.getItem('githubToken') || '',
-        
-        // Admin email for Let's Encrypt registration
-        admin_email: config.adminEmail || 'admin@' + config.domainName
+
+        // Identity of the person installing Thinkube, used as the git commit author
+        git_author_name: config.gitAuthorName,
+        git_author_email: config.gitAuthorEmail
       },
       children: {
         // Architecture groups
@@ -477,6 +486,13 @@ export function inventoryToYAML(inventory) {
   yaml.push('# Dynamically generated inventory by Thinkube Installer')
   yaml.push('')
   
+  // A JSON string literal is a valid YAML double-quoted scalar: quotes,
+  // backslashes and control characters are escaped, and non-ASCII text
+  // such as accented names is kept as UTF-8.
+  function yamlString(value) {
+    return JSON.stringify(value)
+  }
+
   function indent(level) {
     return '  '.repeat(level)
   }
@@ -496,26 +512,21 @@ export function inventoryToYAML(inventory) {
             yaml.push(`${indent(level + 1)}-`)
             Object.entries(item).forEach(([itemKey, itemValue]) => {
               if (typeof itemValue === 'string') {
-                yaml.push(`${indent(level + 2)}${itemKey}: "${itemValue}"`)
+                yaml.push(`${indent(level + 2)}${itemKey}: ${yamlString(itemValue)}`)
               } else if (typeof itemValue === 'boolean') {
                 yaml.push(`${indent(level + 2)}${itemKey}: ${itemValue}`)
               } else {
                 yaml.push(`${indent(level + 2)}${itemKey}: ${itemValue}`)
               }
             })
-          } else if (typeof item === 'string' && item.match(/^\d+:\d+\.\d+$/)) {
-            yaml.push(`${indent(level + 1)}- "${item}"`)
           } else if (typeof item === 'string') {
-            yaml.push(`${indent(level + 1)}- "${item}"`)
+            yaml.push(`${indent(level + 1)}- ${yamlString(item)}`)
           } else {
             yaml.push(`${indent(level + 1)}- ${item}`)
           }
         })
-      } else if (typeof value === 'string' && value.includes('{{')) {
-        // Quote Jinja2 variables for proper YAML parsing
-        yaml.push(`${indent(level)}${key}: "${value}"`)
       } else if (typeof value === 'string') {
-        yaml.push(`${indent(level)}${key}: "${value}"`)
+        yaml.push(`${indent(level)}${key}: ${yamlString(value)}`)
       } else {
         yaml.push(`${indent(level)}${key}: ${value}`)
       }
