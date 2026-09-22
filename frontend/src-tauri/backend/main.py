@@ -12,7 +12,6 @@ Refactored modular version
 
 import os
 import sys
-import asyncio
 import logging
 from pathlib import Path
 from typing import List
@@ -110,43 +109,42 @@ async def get_current_user():
         }
 
 
+async def serve_status_socket(websocket: WebSocket, label: str):
+    """Send the current installation status, then hold the connection open
+    so broadcast_status can push updates. The client sends nothing; the
+    receive loop only waits for the disconnect message, which arrives when
+    the client closes or when the server shuts down, and ends the handler."""
+    await websocket.accept()
+    app_state.active_connections.append(websocket)
+    logger.info(f"{label} client connected. Total connections: {len(app_state.active_connections)}")
+
+    try:
+        logger.info(f"Sending initial status to new WebSocket client: {app_state.installation_status}")
+        await websocket.send_json(app_state.installation_status)
+
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                break
+    except WebSocketDisconnect:
+        pass
+    finally:
+        # broadcast_status removes a connection whose send failed, so the
+        # socket may already be gone from the list.
+        if websocket in app_state.active_connections:
+            app_state.active_connections.remove(websocket)
+        logger.info(f"{label} client disconnected. Total connections: {len(app_state.active_connections)}")
+
+
 # WebSocket for real-time updates
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    app_state.active_connections.append(websocket)
-    logger.info(f"WebSocket client connected. Total connections: {len(app_state.active_connections)}")
-    
-    try:
-        # Send current status immediately
-        logger.info(f"Sending initial status to new WebSocket client: {app_state.installation_status}")
-        await websocket.send_json(app_state.installation_status)
-        
-        # Keep connection alive
-        while True:
-            await asyncio.sleep(1)
-    except WebSocketDisconnect:
-        app_state.active_connections.remove(websocket)
-        logger.info(f"WebSocket client disconnected. Total connections: {len(app_state.active_connections)}")
+    await serve_status_socket(websocket, "WebSocket")
 
 # Also keep the /api/ws endpoint for compatibility
 @app.websocket("/api/ws")
 async def api_websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    app_state.active_connections.append(websocket)
-    logger.info(f"API WebSocket client connected. Total connections: {len(app_state.active_connections)}")
-    
-    try:
-        # Send current status immediately
-        logger.info(f"Sending initial status to new WebSocket client: {app_state.installation_status}")
-        await websocket.send_json(app_state.installation_status)
-        
-        # Keep connection alive
-        while True:
-            await asyncio.sleep(1)
-    except WebSocketDisconnect:
-        app_state.active_connections.remove(websocket)
-        logger.info(f"API WebSocket client disconnected. Total connections: {len(app_state.active_connections)}")
+    await serve_status_socket(websocket, "API WebSocket")
 
 
 if __name__ == "__main__":
