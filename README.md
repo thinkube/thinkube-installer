@@ -4,7 +4,7 @@ Desktop application for deploying Thinkube to Ubuntu servers. The installer runs
 
 ## Architecture
 
-- **Frontend**: Vue.js 3 + Tailwind CSS + DaisyUI
+- **Frontend**: React 19 + TypeScript, built with Vite, styled with Tailwind CSS 4 and the thinkube-style components
 - **Backend**: FastAPI (Python) - runs locally, executes Ansible playbooks
 - **Desktop Framework**: Tauri v2 (Rust + WebView)
 - **Deployment**: Ansible playbooks cloned from github.com/thinkube/thinkube
@@ -104,22 +104,22 @@ Same as build requirements, plus the backend test venv is created automatically.
 ```
 thinkube-installer/
 ├── frontend/
-│   ├── src/              # Vue.js components and views
+│   ├── src/              # React app: one page per installer step in pages/
 │   ├── src-tauri/        # Tauri Rust code
 │   │   ├── src/
 │   │   │   ├── main.rs   # Entry point
 │   │   │   └── lib.rs    # Backend startup logic
+│   │   ├── backend/      # FastAPI backend, started by Tauri
+│   │   │   ├── app/
+│   │   │   │   ├── api/          # FastAPI route handlers
+│   │   │   │   └── services/
+│   │   │   │       ├── ansible_environment.py  # Ansible venv + repo cloning
+│   │   │   │       └── ansible_executor.py     # Playbook execution
+│   │   │   ├── main.py
+│   │   │   └── requirements.txt
 │   │   ├── tauri.conf.json
 │   │   └── deb-postinst.sh  # .deb post-install script
 │   └── package.json
-├── backend/
-│   ├── app/
-│   │   ├── api/          # FastAPI route handlers
-│   │   └── services/
-│   │       ├── ansible_environment.py  # Ansible venv + repo cloning
-│   │       └── ansible_executor.py     # Playbook execution
-│   ├── main.py
-│   └── requirements.txt
 ├── scripts/
 │   ├── setup-build-env.sh   # Install build dependencies
 │   └── build.sh             # Build installer for current platform
