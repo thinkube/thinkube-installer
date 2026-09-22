@@ -64,14 +64,9 @@ npm run tauri:dev
 
 ### Other useful environment variables
 
-See the root `README.md` for the full list. The ones most relevant
+See the root `README.md` for the full list. The one most relevant
 during development:
 
-- `TK_TEST=1` — manual playbook control (no auto-advance between
-  steps). Use during iteration so you can re-run a failing playbook
-  without restarting the whole deploy queue.
-- `TK_SHELL_CONFIG=1` — include the shell-aliases playbook in the
-  deploy queue.
 - `TK_PROFILER=1` — enable Ansible profiling.
 
 ## Multi-repo worktree workflow

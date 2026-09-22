@@ -17,7 +17,6 @@ import { useCopyToClipboard } from "@/lib/use-copy-to-clipboard"
 interface PlaybookExecutorProps {
   title: string
   playbookName: string
-  testMode?: boolean
   onRetry?: () => void
   onComplete?: (result: any) => void
   playbookQueue?: Array<{ id: string; title: string; name: string; phase: string }>
@@ -54,7 +53,6 @@ export const PlaybookExecutorStream = forwardRef<PlaybookExecutorRef, PlaybookEx
     {
       title,
       playbookName,
-      testMode = false,
       onRetry,
       onComplete,
       playbookQueue = [],

@@ -168,7 +168,6 @@ export default function ServerDiscovery() {
 
   const proceedToNodeConfig = () => {
     sessionStorage.setItem("selectedServers", JSON.stringify(selectedServers))
-    sessionStorage.setItem("testMode", "false")
     sessionStorage.setItem("discoveredServers", JSON.stringify(selectedServers))
     sessionStorage.setItem("networkCIDR", networkCIDR)
 

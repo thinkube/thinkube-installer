@@ -11,28 +11,9 @@ use tauri::Manager;
 // State to hold the backend process
 struct BackendProcess(Mutex<Option<Child>>);
 
-#[tauri::command]
-fn get_config_flags() -> (bool, bool) {
-    let tk_test_raw = std::env::var("TK_TEST").ok();
-    let tk_shell_raw = std::env::var("TK_SHELL_CONFIG").ok();
-
-    println!("🔍 DEBUG get_config_flags:");
-    println!("  TK_TEST raw value: {:?}", tk_test_raw);
-    println!("  TK_SHELL_CONFIG raw value: {:?}", tk_shell_raw);
-
-    let test_mode = tk_test_raw.map(|v| v == "1").unwrap_or(false);
-    let shell_config = tk_shell_raw.map(|v| v == "1").unwrap_or(false);
-
-    println!("  test_mode: {}", test_mode);
-    println!("  shell_config: {}", shell_config);
-
-    (test_mode, shell_config)
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![get_config_flags])
     .setup(|app| {
       // Start backend
       println!("Starting FastAPI backend...");

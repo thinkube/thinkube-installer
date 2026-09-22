@@ -66,8 +66,6 @@ The installer sets up its environment on first run:
 
 **Runtime Behavior**:
 
-- `TK_TEST=1` and `TK_SHELL_CONFIG=1`: the desktop app reads both (`get_config_flags` in `frontend/src-tauri/src/lib.rs`) and passes them to the frontend (`frontend/src/utils/configFlags.js`). No installer page uses them, so setting them changes nothing.
-
 - `TK_PROFILER=1`: Enable Ansible profiling and detailed logging
   - Enables the `profile_tasks` and `timer` callbacks
   - Shows execution time for each task

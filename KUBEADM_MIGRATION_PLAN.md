@@ -1056,13 +1056,8 @@ git push origin feature/kubeadm-migration
 
 # 2. Run the installer in dev mode, pointed at the feature branch
 cd /home/thinkube/thinkube-installer-kubeadm/frontend
-THINKUBE_BRANCH=feature/kubeadm-migration TK_TEST=1 npm run tauri:dev
+THINKUBE_BRANCH=feature/kubeadm-migration npm run tauri:dev
 ```
-
-`TK_TEST=1` (validated at `frontend/src-tauri/src/lib.rs:14-29`) disables
-the auto-advance between playbooks and adds Test/Rollback buttons. Use
-it during migration testing — when a playbook fails, you can iterate
-without re-running the whole queue.
 
 For per-playbook isolation while iterating:
 

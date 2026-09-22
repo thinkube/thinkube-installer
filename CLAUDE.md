@@ -28,8 +28,6 @@ This starts Tauri in development mode, which:
 **Environment variables**:
 ```bash
 THINKUBE_BRANCH=feature-x npm run tauri:dev  # Clone specific thinkube branch
-TK_TEST=1 npm run tauri:dev                   # Enable test mode (manual playbook control)
-TK_SHELL_CONFIG=1 npm run tauri:dev           # Include shell configuration
 TK_PROFILER=1 npm run tauri:dev               # Enable Ansible profiling
 ```
 
@@ -114,7 +112,6 @@ React 19 app with a multi-step wizard flow using React Router v7:
 - Production: Backend from bundled resources, uses `.venv`
 - macOS: Creates venv on first launch
 - Linux: Venv created by `deb-postinst.sh` during package installation
-- `get_config_flags()` Tauri command exposes `TK_TEST` and `TK_SHELL_CONFIG` to frontend
 
 ### Two Inventory Systems
 

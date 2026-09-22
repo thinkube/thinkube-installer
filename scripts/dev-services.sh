@@ -18,9 +18,6 @@
 #   /tmp/thinkube-installer-frontend.log
 #
 # Notes:
-#   - Tauri-only frontend code paths (configFlags via invoke()) fail
-#     gracefully in pure-browser mode and default to feature flags off.
-#   - To pass TK_TEST=1 etc., export them before invoking this script.
 #   - First-time-only: the backend's venv-test is created by tauri:dev;
 #     if it doesn't exist, this script bootstraps it.
 
