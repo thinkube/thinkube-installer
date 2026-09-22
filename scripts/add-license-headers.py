@@ -56,6 +56,14 @@ NAMES = {
 # so foo.yaml.j2 is hash and foo.json.j2 is skipped like any JSON file.
 TEMPLATE_SUFFIXES = {'.j2', '.jinja', '.jinja2', '.tmpl', '.template'}
 
+# Directories holding generated output. Some repositories track their build
+# output, and a header written there is overwritten by the next build.
+SKIP_PATH_PARTS = {
+    'dist', 'demo-dist', 'build', 'out', 'coverage', 'target', '.next',
+    'node_modules', 'vendor', '__pycache__', 'venv', '.venv', 'venv-test',
+    'htmlcov', '.pytest_cache',
+}
+
 SKIP_FILES = {
     'LICENSE', 'NOTICE', 'README.md', 'CHANGELOG.md', 'package-lock.json',
     'yarn.lock', 'Cargo.lock', 'poetry.lock', 'requirements.txt', 'VERSION',
@@ -180,10 +188,13 @@ def main() -> None:
         )
 
     stats: Dict[str, int] = {'added': 0, 'present': 0, 'binary': 0,
-                             'unreadable': 0, 'no style': 0}
+                             'unreadable': 0, 'no style': 0, 'generated': 0}
 
     for filepath in tracked_files(repo_root):
         if not filepath.is_file() or filepath.is_symlink():
+            continue
+        if SKIP_PATH_PARTS & set(filepath.relative_to(repo_root).parts[:-1]):
+            stats['generated'] += 1
             continue
         style = get_comment_style(filepath)
         if style is None:
@@ -198,6 +209,7 @@ def main() -> None:
     print(f"  headers {'to add' if args.dry_run else 'added'}: {stats['added']}")
     print(f"  already carried one:   {stats['present']}")
     print(f"  no comment style:      {stats['no style']}")
+    print(f"  generated output:      {stats['generated']}")
     if stats['binary']:
         print(f"  not text:              {stats['binary']}")
     if stats['unreadable']:
