@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Copyright Alejandro Martínez Corriá and the Thinkube contributors
+# SPDX-License-Identifier: Apache-2.0
+
+
 # Validation script for thinkube-style migration
 # This script checks that all components have been properly migrated
 
