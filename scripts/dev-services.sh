@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors
+# Copyright Alejandro Martínez Corriá and the Thinkube contributors
 # SPDX-License-Identifier: Apache-2.0
 #
 # Run the installer's backend (FastAPI) and frontend (Vite) as separate
