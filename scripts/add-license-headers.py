@@ -15,15 +15,39 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 COPYRIGHT = 'Copyright Alejandro Martínez Corriá and the Thinkube contributors'
-SPDX = 'SPDX-License-Identifier: Apache-2.0'
 
-# Comment styles. A file type is here only when a comment at the top of the
-# file is valid for every file of that type.
-HEADERS = {
-    'hash': [f'# {COPYRIGHT}', f'# {SPDX}'],
-    'block': ['/*', f' * {COPYRIGHT}', f' * {SPDX}', ' */'],
-    'xml': ['<!--', f'  {COPYRIGHT}', f'  {SPDX}', '-->'],
-}
+# The identifier a LICENSE file declares, by a phrase only that licence uses.
+LICENCE_MARKERS = [
+    ('Apache License', 'Apache-2.0'),
+    ('MIT License', 'MIT'),
+    ('Redistribution and use in source and binary forms', 'BSD-3-Clause'),
+]
+
+
+def comment_styles(spdx_id: str) -> dict:
+    """The header lines for each comment style, for one licence."""
+    spdx = f'SPDX-License-Identifier: {spdx_id}'
+    return {
+        'hash': [f'# {COPYRIGHT}', f'# {spdx}'],
+        'block': ['/*', f' * {COPYRIGHT}', f' * {spdx}', ' */'],
+        'xml': ['<!--', f'  {COPYRIGHT}', f'  {spdx}', '-->'],
+    }
+
+
+def licence_of(repo_root: Path) -> str:
+    """The SPDX identifier of the repository's LICENSE file.
+
+    The header points at that file, so the two must agree: a repository whose
+    licence cannot be identified gets no headers.
+    """
+    text = (repo_root / 'LICENSE').read_text(encoding='utf-8')
+    for marker, spdx_id in LICENCE_MARKERS:
+        if marker in text:
+            return spdx_id
+    sys.exit(
+        f"error: cannot tell which licence {repo_root / 'LICENSE'} is. "
+        "Add its identifier to LICENCE_MARKERS."
+    )
 
 EXTENSIONS = {
     '.py': 'hash',
@@ -126,7 +150,7 @@ def get_comment_style(filepath: Path) -> Optional[str]:
     return EXTENSIONS.get(peeled.suffix.lower())
 
 
-def add_header(filepath: Path, style: str, dry_run: bool) -> str:
+def add_header(filepath: Path, style: str, headers: dict, dry_run: bool) -> str:
     """Add the header. Returns 'added', 'present', 'binary' or 'unreadable'."""
     try:
         content = filepath.read_text(encoding='utf-8')
@@ -139,7 +163,7 @@ def add_header(filepath: Path, style: str, dry_run: bool) -> str:
     if has_copyright(content):
         return 'present'
 
-    header_lines = HEADERS[style]
+    header_lines = headers[style]
     lines = content.split('\n')
 
     # A shebang, and an XML or a YAML document marker, must stay on line 1.
@@ -187,6 +211,10 @@ def main() -> None:
             "before writing SPDX headers that point at it."
         )
 
+    spdx_id = licence_of(repo_root)
+    headers = comment_styles(spdx_id)
+    print(f"licence: {spdx_id}")
+
     stats: Dict[str, int] = {'added': 0, 'present': 0, 'binary': 0,
                              'unreadable': 0, 'no style': 0, 'generated': 0}
 
@@ -200,7 +228,7 @@ def main() -> None:
         if style is None:
             stats['no style'] += 1
             continue
-        outcome = add_header(filepath, style, args.dry_run)
+        outcome = add_header(filepath, style, headers, args.dry_run)
         stats[outcome] += 1
         if args.verbose and outcome == 'added':
             print(f"  {filepath.relative_to(repo_root)}")
