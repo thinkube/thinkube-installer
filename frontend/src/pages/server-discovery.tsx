@@ -93,7 +93,6 @@ export default function ServerDiscovery() {
         "/api/discover-servers",
         {
           network_cidr: networkCIDR,
-          test_mode: false,
           username: currentUsername,
           password: sudoPassword
         },
@@ -123,8 +122,7 @@ export default function ServerDiscovery() {
 
       const response = await axios.post("/api/verify-server-ssh", {
         ip_address: server.ip,
-        password: sudoPassword,
-        test_mode: false
+        password: sudoPassword
       })
 
       const idx = discoveredServers.findIndex((s) => s.ip === server.ip)

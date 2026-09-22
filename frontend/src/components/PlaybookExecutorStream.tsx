@@ -22,8 +22,6 @@ interface PlaybookExecutorProps {
   playbookQueue?: Array<{ id: string; title: string; name: string; phase: string }>
   currentPlaybookIndex?: number
   onContinue?: () => void
-  onTestPlaybook?: () => void
-  onRollback?: () => void
   extraVars?: Record<string, any>
 }
 
@@ -58,8 +56,6 @@ export const PlaybookExecutorStream = forwardRef<PlaybookExecutorRef, PlaybookEx
       playbookQueue = [],
       currentPlaybookIndex = 0,
       onContinue,
-      onTestPlaybook,
-      onRollback,
       extraVars
     },
     ref
