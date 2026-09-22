@@ -1,303 +1,211 @@
 #!/usr/bin/env python3
 """
-Add license headers to all source files in the Thinkube project.
-Based on the formats defined in COPYRIGHT_HEADER.md
+Add license headers to the source files of a Thinkube repository.
+Formats are defined in COPYRIGHT_HEADER.md
 
-Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors
+Copyright Alejandro Martínez Corriá and the Thinkube contributors
 SPDX-License-Identifier: Apache-2.0
 """
 
-import os
+import argparse
+import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
-import argparse
-import re
 
-# License headers for different file types
+COPYRIGHT = 'Copyright Alejandro Martínez Corriá and the Thinkube contributors'
+SPDX = 'SPDX-License-Identifier: Apache-2.0'
+
+# Comment styles. A file type is here only when a comment at the top of the
+# file is valid for every file of that type.
 HEADERS = {
-    'python': [
-        '# Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        '# SPDX-License-Identifier: Apache-2.0'
-    ],
-    'yaml': [
-        '# Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        '# SPDX-License-Identifier: Apache-2.0'
-    ],
-    'javascript': [
-        '/*',
-        ' * Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        ' * SPDX-License-Identifier: Apache-2.0',
-        ' */'
-    ],
-    'shell': [
-        '# Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        '# SPDX-License-Identifier: Apache-2.0'
-    ],
-    'dockerfile': [
-        '# Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        '# SPDX-License-Identifier: Apache-2.0'
-    ],
-    'rust': [
-        '/*',
-        ' * Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        ' * SPDX-License-Identifier: Apache-2.0',
-        ' */'
-    ],
-    'html': [
-        '<!--',
-        '  Copyright 2025 Alejandro Martínez Corriá and the Thinkube contributors',
-        '  SPDX-License-Identifier: Apache-2.0',
-        '-->'
-    ]
+    'hash': [f'# {COPYRIGHT}', f'# {SPDX}'],
+    'block': ['/*', f' * {COPYRIGHT}', f' * {SPDX}', ' */'],
+    'xml': ['<!--', f'  {COPYRIGHT}', f'  {SPDX}', '-->'],
 }
 
-# File extensions to file types mapping
 EXTENSIONS = {
-    '.py': 'python',
-    '.yaml': 'yaml',
-    '.yml': 'yaml',
-    '.js': 'javascript',
-    '.ts': 'javascript',
-    '.jsx': 'javascript',
-    '.tsx': 'javascript',
-    '.vue': 'javascript',
-    '.sh': 'shell',
-    '.bash': 'shell',
-    '.rs': 'rust',
-    '.html': 'html',
-    '.j2': 'yaml',  # Jinja2 templates usually YAML
-    '.jinja': 'yaml',
-    '.jinja2': 'yaml'
+    '.py': 'hash',
+    '.yaml': 'hash',
+    '.yml': 'hash',
+    '.sh': 'hash',
+    '.bash': 'hash',
+    '.toml': 'hash',
+    '.js': 'block',
+    '.mjs': 'block',
+    '.cjs': 'block',
+    '.ts': 'block',
+    '.jsx': 'block',
+    '.tsx': 'block',
+    '.vue': 'block',
+    '.css': 'block',
+    '.scss': 'block',
+    '.rs': 'block',
+    '.go': 'block',
+    '.html': 'xml',
 }
 
-# Directories to skip
-SKIP_DIRS = {
-    '.git', 'node_modules', 'venv', 'dist', 'build', 'target',
-    '__pycache__', '.pytest_cache', '.vscode', '.idea',
-    'vendor', 'deps', '.terraform', 'coverage'
+# Names without an extension, or with one that says nothing about the syntax.
+NAMES = {
+    'Dockerfile': 'hash',
+    'Containerfile': 'hash',
 }
 
-# Files to skip
+# Template suffixes: the comment style comes from what the template renders,
+# so foo.yaml.j2 is hash and foo.json.j2 is skipped like any JSON file.
+TEMPLATE_SUFFIXES = {'.j2', '.jinja', '.jinja2', '.tmpl', '.template'}
+
 SKIP_FILES = {
-    'LICENSE', 'README.md', 'CHANGELOG.md', 'package-lock.json',
-    'yarn.lock', 'Cargo.lock', 'poetry.lock', 'requirements.txt'
+    'LICENSE', 'NOTICE', 'README.md', 'CHANGELOG.md', 'package-lock.json',
+    'yarn.lock', 'Cargo.lock', 'poetry.lock', 'requirements.txt', 'VERSION',
 }
+
+COPYRIGHT_PATTERNS = [
+    r'Copyright',
+    r'SPDX-License-Identifier',
+    r'Licensed under the Apache License',
+]
+
+
+def tracked_files(repo_root: Path) -> List[Path]:
+    """Every file git tracks in this repository.
+
+    Git is the only source of the file list: a filesystem walk reaches
+    virtual environments, caches and other checkouts, whose files belong to
+    someone else.
+    """
+    result = subprocess.run(
+        ['git', '-C', str(repo_root), 'ls-files', '-z'],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        sys.exit(
+            f"error: git ls-files failed in {repo_root}: "
+            f"{result.stderr.strip()}"
+        )
+    return [repo_root / name for name in result.stdout.split('\0') if name]
 
 
 def has_copyright(content: str) -> bool:
-    """Check if file already has a copyright header."""
-    # Check for various copyright patterns
-    patterns = [
-        r'Copyright.*202\d',
-        r'SPDX-License-Identifier',
-        r'Licensed under the Apache License'
-    ]
-    
-    # Check first 20 lines
-    lines = content.split('\n')[:20]
-    for line in lines:
-        for pattern in patterns:
+    """Whether the first 20 lines already carry a notice."""
+    for line in content.split('\n')[:20]:
+        for pattern in COPYRIGHT_PATTERNS:
             if re.search(pattern, line, re.IGNORECASE):
                 return True
     return False
 
 
-def get_file_type(filepath: Path) -> Optional[str]:
-    """Determine file type from extension or filename."""
-    
-    # Special cases for files without extensions
-    if filepath.name == 'Dockerfile':
-        return 'dockerfile'
-    if filepath.name.startswith('Dockerfile.'):
-        return 'dockerfile'
-    
-    # Check by extension
-    ext = filepath.suffix.lower()
-    return EXTENSIONS.get(ext)
+def get_comment_style(filepath: Path) -> Optional[str]:
+    """The comment style for a file, or None when it takes no header."""
+    if filepath.name in SKIP_FILES:
+        return None
+
+    name = filepath.name
+    # Peel template suffixes: the rendered format decides the syntax.
+    while True:
+        suffix = Path(name).suffix
+        if suffix in TEMPLATE_SUFFIXES:
+            name = name[: -len(suffix)]
+            continue
+        break
+
+    peeled = Path(name)
+    if peeled.name in NAMES:
+        return NAMES[peeled.name]
+    if peeled.name.startswith('Dockerfile.') or peeled.name.startswith('Containerfile.'):
+        return 'hash'
+    return EXTENSIONS.get(peeled.suffix.lower())
 
 
-def add_header_to_file(filepath: Path, file_type: str, dry_run: bool = False) -> bool:
-    """Add license header to a file."""
-    
+def add_header(filepath: Path, style: str, dry_run: bool) -> str:
+    """Add the header. Returns 'added', 'present', 'binary' or 'unreadable'."""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except Exception as e:
-        print(f"  ⚠️  Error reading {filepath}: {e}")
-        return False
-    
-    # Check if already has copyright
+        content = filepath.read_text(encoding='utf-8')
+    except UnicodeDecodeError:
+        return 'binary'
+    except OSError as exc:
+        print(f"  error reading {filepath}: {exc}")
+        return 'unreadable'
+
     if has_copyright(content):
-        return False
-    
-    # Get appropriate header
-    header_lines = HEADERS.get(file_type, [])
-    if not header_lines:
-        return False
-    
-    # Handle shebang for shell scripts and Python
+        return 'present'
+
+    header_lines = HEADERS[style]
     lines = content.split('\n')
-    insert_pos = 0
-    
-    if lines and lines[0].startswith('#!'):
-        # Preserve shebang
-        insert_pos = 1
-        header = '\n'.join([''] + header_lines + [''])
+
+    # A shebang, and an XML or a YAML document marker, must stay on line 1.
+    keep_first = bool(lines) and (
+        lines[0].startswith('#!') or lines[0].startswith('<?xml')
+    )
+
+    if keep_first:
+        new_lines = [lines[0], ''] + header_lines + [''] + lines[1:]
     else:
-        header = '\n'.join(header_lines + ['', ''])
-    
-    # Build new content
-    if insert_pos > 0:
-        new_lines = lines[:insert_pos] + header.split('\n') + lines[insert_pos:]
-        new_content = '\n'.join(new_lines)
-    else:
-        new_content = header + content
-    
+        new_lines = header_lines + [''] + lines
+
     if not dry_run:
-        try:
-            with open(filepath, 'w', encoding='utf-8') as f:
-                f.write(new_content)
-            return True
-        except Exception as e:
-            print(f"  ❌ Error writing {filepath}: {e}")
-            return False
-    
-    return True
+        filepath.write_text('\n'.join(new_lines), encoding='utf-8')
+    return 'added'
 
 
-def process_directory(root_dir: Path, dry_run: bool = False, verbose: bool = False) -> Dict[str, int]:
-    """Process all files in directory and add headers."""
-    
-    stats = {
-        'processed': 0,
-        'skipped': 0,
-        'errors': 0,
-        'already_has': 0
-    }
-    
-    # Collect all files to process
-    files_by_type: Dict[str, List[Path]] = {}
-    
-    for root, dirs, files in os.walk(root_dir):
-        # Skip certain directories
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        
-        root_path = Path(root)
-        
-        for filename in files:
-            # Skip certain files
-            if filename in SKIP_FILES:
-                continue
-            
-            filepath = root_path / filename
-            
-            # Skip symlinks
-            if filepath.is_symlink():
-                continue
-            
-            file_type = get_file_type(filepath)
-            if file_type:
-                if file_type not in files_by_type:
-                    files_by_type[file_type] = []
-                files_by_type[file_type].append(filepath)
-    
-    # Process files by type
-    for file_type, filepaths in sorted(files_by_type.items()):
-        print(f"\n📝 Processing {len(filepaths)} {file_type} files...")
-        
-        for filepath in filepaths:
-            rel_path = filepath.relative_to(root_dir)
-            
-            if verbose:
-                print(f"  Processing: {rel_path}")
-            
-            result = add_header_to_file(filepath, file_type, dry_run)
-            
-            if result:
-                stats['processed'] += 1
-                if verbose:
-                    print(f"    ✅ Added header")
-            elif has_copyright(filepath.read_text(encoding='utf-8')):
-                stats['already_has'] += 1
-                if verbose:
-                    print(f"    ⏭️  Already has copyright")
-            else:
-                stats['skipped'] += 1
-    
-    return stats
-
-
-def main():
-    """Main entry point."""
-    
+def main() -> None:
     parser = argparse.ArgumentParser(
-        description='Add license headers to Thinkube source files'
+        description='Add license headers to the tracked source files of a repository'
     )
-    parser.add_argument(
-        'path',
-        nargs='?',
-        default='.',
-        help='Path to process (default: current directory)'
-    )
-    parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Show what would be done without making changes'
-    )
-    parser.add_argument(
-        '--verbose',
-        action='store_true',
-        help='Show detailed progress'
-    )
-    
+    parser.add_argument('path', nargs='?', default='.',
+                        help='repository to process (default: current directory)')
+    parser.add_argument('--dry-run', action='store_true',
+                        help='list what would change, write nothing')
+    parser.add_argument('--verbose', action='store_true',
+                        help='name every file')
     args = parser.parse_args()
-    
-    root_dir = Path(args.path).resolve()
-    
-    if not root_dir.exists():
-        print(f"❌ Error: Path {root_dir} does not exist")
-        sys.exit(1)
-    
-    print(f"🚀 Adding license headers to files in: {root_dir}")
-    
+
+    root = Path(args.path).resolve()
+    if not root.exists():
+        sys.exit(f"error: {root} does not exist")
+
+    result = subprocess.run(
+        ['git', '-C', str(root), 'rev-parse', '--show-toplevel'],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        sys.exit(f"error: {root} is not inside a git repository")
+    repo_root = Path(result.stdout.strip())
+
+    if not (repo_root / 'LICENSE').exists():
+        sys.exit(
+            f"error: no LICENSE file in {repo_root}. Add the licence text "
+            "before writing SPDX headers that point at it."
+        )
+
+    stats: Dict[str, int] = {'added': 0, 'present': 0, 'binary': 0,
+                             'unreadable': 0, 'no style': 0}
+
+    for filepath in tracked_files(repo_root):
+        if not filepath.is_file() or filepath.is_symlink():
+            continue
+        style = get_comment_style(filepath)
+        if style is None:
+            stats['no style'] += 1
+            continue
+        outcome = add_header(filepath, style, args.dry_run)
+        stats[outcome] += 1
+        if args.verbose and outcome == 'added':
+            print(f"  {filepath.relative_to(repo_root)}")
+
+    print(f"\nrepository: {repo_root}")
+    print(f"  headers {'to add' if args.dry_run else 'added'}: {stats['added']}")
+    print(f"  already carried one:   {stats['present']}")
+    print(f"  no comment style:      {stats['no style']}")
+    if stats['binary']:
+        print(f"  not text:              {stats['binary']}")
+    if stats['unreadable']:
+        print(f"  unreadable:            {stats['unreadable']}")
     if args.dry_run:
-        print("🔍 DRY RUN MODE - No files will be modified")
-    
-    # Find project root (look for LICENSE file)
-    project_root = root_dir
-    while project_root.parent != project_root:
-        if (project_root / 'LICENSE').exists():
-            break
-        project_root = project_root.parent
-    
-    if not (project_root / 'LICENSE').exists():
-        print("⚠️  Warning: Could not find LICENSE file in project root")
-        response = input("Continue anyway? (y/N): ")
-        if response.lower() != 'y':
-            sys.exit(0)
-    
-    # Process files
-    stats = process_directory(root_dir, args.dry_run, args.verbose)
-    
-    # Print summary
-    print("\n" + "=" * 50)
-    print("📊 Summary:")
-    print(f"  ✅ Headers added: {stats['processed']}")
-    print(f"  ⏭️  Already had headers: {stats['already_has']}")
-    print(f"  ⏩ Skipped: {stats['skipped']}")
-    
-    if stats['errors'] > 0:
-        print(f"  ❌ Errors: {stats['errors']}")
-    
-    if args.dry_run:
-        print("\n🔍 This was a dry run. No files were modified.")
-        print("Run without --dry-run to apply changes.")
-    else:
-        print("\n✨ License headers have been added successfully!")
-    
-    # Return non-zero if there were errors
-    sys.exit(1 if stats['errors'] > 0 else 0)
+        print("\ndry run: nothing was written")
+
+    sys.exit(1 if stats['unreadable'] else 0)
 
 
 if __name__ == '__main__':
