@@ -18,6 +18,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["gpu"])
 
 
+# lspci names an NVIDIA chip by its architecture: GK is Kepler, GM Maxwell,
+# GP Pascal, and GF and GT older still, all older than Volta, the oldest the
+# platform supports. A chip too new for the local PCI name list shows as
+# "Device xxxx", and such a chip is newer still.
+PRE_VOLTA_CHIP = re.compile(r"NVIDIA Corporation (G[KMPFT]\d+)\b")
+
+
+def all_pre_volta(lspci_lines):
+    """Whether every GPU in these lspci lines is older than Volta.
+
+    Only display and 3D controller lines are GPUs; a GPU's HDMI audio
+    function is listed too and is not one.
+    """
+    gpus = [line for line in lspci_lines if re.search(r"VGA compatible controller|3D controller", line)]
+    return bool(gpus) and all(PRE_VOLTA_CHIP.search(line) for line in gpus)
+
+
 class GpuNodeStatus(BaseModel):
     """Status of GPU and driver on a single node"""
     hostname: str
@@ -114,7 +131,20 @@ async def detect_gpu_on_node(
             )
 
             if result.returncode != 0:
-                # nvidia-smi not available - driver not installed
+                # nvidia-smi not available - driver not installed. The chip
+                # name still says when a GPU is too old for any driver to help.
+                if all_pre_volta(gpu_lines):
+                    return GpuNodeStatus(
+                        hostname=hostname,
+                        ip=ip,
+                        gpu_detected=True,
+                        gpu_name=gpu_name,
+                        gpu_count=gpu_count,
+                        driver_installed=False,
+                        driver_status="unsupported_gpu",
+                        action_required="exclude",
+                        gpu_supported=False,
+                    )
                 return GpuNodeStatus(
                     hostname=hostname,
                     ip=ip,
