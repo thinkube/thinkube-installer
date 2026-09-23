@@ -59,3 +59,6 @@ htmlcov/
 .cache/
 # Development environment of the backend, created by tauri:dev
 frontend/src-tauri/backend/venv-test/
+
+# Local Claude Code and Tandem state
+.claude/ .tandem/
