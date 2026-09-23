@@ -17,22 +17,11 @@ from pathlib import Path
 from ..core.discovery import discover_ubuntu_servers, verify_ssh_connectivity
 from ..utils.network import get_local_ip_addresses
 from ..models.server import NetworkDiscoveryRequest, SSHVerificationRequest
+from .gpu_names import gpu_name
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["discovery"])
-
-# Fallback GPU name database for GPUs not yet in system pciids database
-# Only for newer datacenter/professional GPUs that lspci might show as "Device"
-GPU_FALLBACK_NAMES = {
-    "10de:2e12": "GB10 (DGX Spark / Blackwell)",
-    "10de:2330": "H100 PCIe",
-    "10de:2331": "H100 SXM5",
-    "10de:2339": "H100 NVL",
-    "10de:20b0": "A100 PCIe 40GB",
-    "10de:20b2": "A100 SXM4 40GB",
-    "10de:20f1": "A100 SXM4 80GB",
-}
 
 
 async def detect_lvm_status(
@@ -401,54 +390,7 @@ echo "}"
         
         # Process visible NVIDIA GPUs
         for line in visible_gpus:
-            logger.info(f"Processing GPU line: {line}")
-            # Extract NVIDIA GPU model from lspci output
-            # Format: "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GP107 [GeForce GTX 1050 Ti] [10de:1c82]"
-            if 'NVIDIA Corporation' in line:
-                # Split after NVIDIA Corporation to get the model part
-                parts = line.split('NVIDIA Corporation', 1)
-                if len(parts) > 1:
-                    model_part = parts[1]
-                    logger.info(f"Model part after split: {model_part}")
-                    # Extract text between first set of brackets after corporation name
-                    # This contains the actual GPU model name
-                    bracket_start = model_part.find('[')
-                    if bracket_start != -1:
-                        bracket_end = model_part.find(']', bracket_start)
-                        if bracket_end != -1:
-                            gpu_model = model_part[bracket_start+1:bracket_end].strip()
-                            logger.info(f"Extracted GPU model: {gpu_model}")
-                        else:
-                            gpu_model = model_part.split('[')[0].strip()
-                            logger.info(f"Fallback GPU model (no closing bracket): {gpu_model}")
-                    else:
-                        gpu_model = model_part.split('[')[0].strip()
-                        logger.info(f"Fallback GPU model (no opening bracket): {gpu_model}")
-
-                    # Always try to extract PCI ID and use fallback names
-                    import re
-                    pci_match = re.search(r'\[([0-9a-f]{4}:[0-9a-f]{4})\]', line)
-                    if pci_match:
-                        pci_id = pci_match.group(1)
-                        # If it's a device ID pattern (vendor:device), check fallback table
-                        if ':' in pci_id and pci_id in GPU_FALLBACK_NAMES:
-                            gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
-                            logger.info(f"Using fallback name for {pci_id}: {gpu_model}")
-                        elif gpu_model == "Device" or gpu_model.startswith("Device ") or len(gpu_model) == 4:
-                            # If gpu_model is "Device" or just a hex number like "2e12", use PCI ID
-                            if pci_id in GPU_FALLBACK_NAMES:
-                                gpu_model = f"NVIDIA {GPU_FALLBACK_NAMES[pci_id]}"
-                                logger.info(f"Using fallback name for generic device {pci_id}: {gpu_model}")
-                            else:
-                                gpu_model = f"NVIDIA GPU ({pci_id})"
-                                logger.info(f"No fallback name for {pci_id}, showing PCI ID")
-                else:
-                    gpu_model = "NVIDIA GPU"
-                    logger.info("No parts after split, using default")
-            else:
-                gpu_model = "Unknown GPU"
-                logger.info("No NVIDIA Corporation found in line")
-            nvidia_gpus.append(gpu_model)
+            nvidia_gpus.append(gpu_name(line))
         
         # Set GPU information: the GPUs the NVIDIA driver can use
         total_gpu_count = len(nvidia_gpus)

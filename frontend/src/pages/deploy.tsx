@@ -198,7 +198,7 @@ export default function Deploy() {
       ? JSON.parse(sessionStorage.getItem('serverHardware') || '[]')
       : []
     const hasDgxSpark = serverHardwareForSpark.some((s: any) => {
-      const name = s?.hardware?.gpu_name || ''
+      const name = s?.hardware?.gpu_model || ''
       return /GB10|DGX\s*Spark/i.test(name)
     })
     if (hasDgxSpark) {

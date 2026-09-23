@@ -13,6 +13,8 @@ import asyncssh
 import logging
 import re
 
+from .gpu_names import gpu_name as name_gpu, is_gpu
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["gpu"])
@@ -28,10 +30,10 @@ PRE_VOLTA_CHIP = re.compile(r"NVIDIA Corporation (G[KMPFT]\d+)\b")
 def all_pre_volta(lspci_lines):
     """Whether every GPU in these lspci lines is older than Volta.
 
-    Only display and 3D controller lines are GPUs; a GPU's HDMI audio
-    function is listed too and is not one.
+    The lines come from `lspci -nn`; only display and 3D controller lines
+    are GPUs.
     """
-    gpus = [line for line in lspci_lines if re.search(r"VGA compatible controller|3D controller", line)]
+    gpus = [line for line in lspci_lines if is_gpu(line)]
     return bool(gpus) and all(PRE_VOLTA_CHIP.search(line) for line in gpus)
 
 
@@ -93,8 +95,9 @@ async def detect_gpu_on_node(
 
         async with asyncssh.connect(**connect_kwargs) as conn:
             # Check for NVIDIA GPU
-            result = await conn.run("lspci | grep -i nvidia", check=False)
-            gpu_detected = result.returncode == 0
+            result = await conn.run("lspci -nn", check=True)
+            gpu_lines = [line for line in result.stdout.split('\n') if is_gpu(line)]
+            gpu_detected = bool(gpu_lines)
 
             if not gpu_detected:
                 return GpuNodeStatus(
@@ -106,21 +109,8 @@ async def detect_gpu_on_node(
                     action_required=None
                 )
 
-            # Get GPU count and names
-            gpu_output = result.stdout.strip()
-            gpu_lines = [line for line in gpu_output.split('\n') if line.strip()]
             gpu_count = len(gpu_lines)
-
-            # Extract GPU name from first line (usually most detailed)
-            gpu_name = "Unknown NVIDIA GPU"
-            if gpu_lines:
-                # Extract GPU name from lspci output
-                # Format: "01:00.0 VGA compatible controller: NVIDIA Corporation Device 2e12 (rev a1)"
-                match = re.search(r'NVIDIA.*?(?:\[([^\]]+)\]|$)', gpu_lines[0])
-                if match:
-                    gpu_name = match.group(0).strip()
-                else:
-                    gpu_name = "NVIDIA GPU"
+            gpu_name = name_gpu(gpu_lines[0])
 
             # Check for NVIDIA driver. Also pull compute_cap so we can flag
             # pre-Volta cards (compute_cap < 7.0) as architecturally
