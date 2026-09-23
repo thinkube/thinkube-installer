@@ -15,6 +15,8 @@ import ipaddress
 import re
 from typing import Dict, Any
 
+from ..services.scrub import Scrubber
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["system"])
@@ -892,6 +894,8 @@ async def run_setup_script(sudo_password: str):
                 os.close(askpass_fd)
                 raise
         
+        scrub = Scrubber.for_run({"sudo_password": sudo_password} if sudo_password else {}, env)
+
         # Update status to running
         app_state.installation_status["phase"] = "running"
         app_state.installation_status["progress"] = 40
@@ -913,7 +917,7 @@ async def run_setup_script(sudo_password: str):
             if not line:
                 break
                 
-            line_text = line.decode('utf-8', errors='replace').rstrip()
+            line_text = scrub.clean(line.decode('utf-8', errors='replace').rstrip())
             if not line_text:
                 continue
             

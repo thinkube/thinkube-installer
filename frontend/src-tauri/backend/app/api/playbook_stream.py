@@ -18,6 +18,7 @@ import datetime
 from pathlib import Path
 
 from ..services.ansible_environment import ansible_environment
+from ..services.scrub import Scrubber
 
 logger = logging.getLogger(__name__)
 
@@ -230,6 +231,8 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
             env['ANSIBLE_CALLBACK_RESULT_FORMAT'] = 'yaml'
             logger.info("Ansible profiling callbacks enabled")
         
+        scrub = Scrubber.for_run(extra_vars, env)
+
         # Send start message
         logger.info("Sending start message to WebSocket")
         await websocket.send_json({
@@ -261,6 +264,8 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         
         async def process_line(line_text):
             nonlocal current_task, task_count
+            # Blanked before any of the three places the line goes.
+            line_text = scrub.clean(line_text)
 
             # Debug logging
             if line_text:

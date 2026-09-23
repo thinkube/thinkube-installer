@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from app.services.ansible_environment import ansible_environment
+from app.services.scrub import Scrubber
 
 logger = logging.getLogger(__name__)
 
@@ -124,9 +125,10 @@ class AnsibleExecutor:
             env = ansible_environment.get_ansible_env()
             if environment:
                 env.update(environment)
-                
+            scrub = Scrubber.for_run(extra_vars, env)
+
             logger.info(f"Executing Ansible playbook: {playbook_path}")
-            logger.debug(f"Command: {' '.join(cmd)}")
+            logger.debug(f"Command: {scrub.clean(' '.join(cmd))}")
             
             # Send initial progress update
             if progress_callback:
@@ -157,8 +159,8 @@ class AnsibleExecutor:
                 )
                 
                 execution_time = time.time() - start_time
-                stdout_str = stdout.decode() if stdout else ""
-                stderr_str = stderr.decode() if stderr else ""
+                stdout_str = scrub.clean(stdout.decode()) if stdout else ""
+                stderr_str = scrub.clean(stderr.decode()) if stderr else ""
                 
                 # Send completion progress update
                 if progress_callback:
