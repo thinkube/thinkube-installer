@@ -61,4 +61,5 @@ htmlcov/
 frontend/src-tauri/backend/venv-test/
 
 # Local Claude Code and Tandem state
-.claude/ .tandem/
+.claude/
+.tandem/
