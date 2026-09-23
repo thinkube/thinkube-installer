@@ -30,7 +30,7 @@ interface Node {
   disk: number
   hasGPU?: boolean
   overlayIP?: string
-  localIP?: string
+  localIP: string
   gpuInfo?: {
     gpu_count: number
     gpu_model: string
@@ -104,7 +104,7 @@ export default function Review() {
             // distinct things. In Tailscale mode this is genuinely
             // unknown until deploy; the renderer below handles that.
             overlayIP: networkInfo?.overlayIP || "",
-            localIP: networkInfo?.localIP || hwInfo?.network?.ip_address || ""
+            localIP: networkInfo.localIP
           }
 
           if (result.hasGPU) {
@@ -296,12 +296,10 @@ export default function Review() {
                           </span>
                         </div>
                       ) : null}
-                      {node.localIP && (
-                        <div>
-                          <span className="text-muted-foreground">Local:</span>{" "}
-                          <span className="font-mono">{node.localIP}</span>
-                        </div>
-                      )}
+                      <div>
+                        <span className="text-muted-foreground">Local:</span>{" "}
+                        <span className="font-mono">{node.localIP}</span>
+                      </div>
                     </div>
 
                     {/* GPU information */}

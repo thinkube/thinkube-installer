@@ -291,7 +291,7 @@ export function generateDynamicInventory() {
     const serverDef = {
       ansible_host:
         overlayProvider === 'zerotier' ? server.overlayIP : server.ip,
-      lan_ip: server.ip || server.localIP || '',
+      lan_ip: server.ip,
       arch: normalizedArch,
     }
     if (overlayProvider === 'zerotier') {

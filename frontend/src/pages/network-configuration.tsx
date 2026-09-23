@@ -72,7 +72,7 @@ interface ServerNetworkInfo {
   hostname: string;
   cidr?: string;
   gateway?: string;
-  localIP?: string;
+  localIP: string;
 }
 
 interface ClusterNode {
@@ -647,6 +647,11 @@ export default function NetworkConfigurationPage() {
           const netInfo = serverNetworkInfo.find(
             (n) => n.hostname === server.hostname
           );
+          if (!netInfo) {
+            throw new Error(
+              `No detected network for ${server.hostname} — go back and run Hardware Detection again.`,
+            );
+          }
 
           // In Tailscale mode the overlay IP is assigned by the Tailscale
           // daemon at deploy time, so leave it empty here. Falling back to
@@ -659,9 +664,9 @@ export default function NetworkConfigurationPage() {
 
           return {
             hostname: server.hostname || server.ip,
-            ip: netInfo?.localIP || "",
+            ip: netInfo.localIP,
             overlayIP: initialOverlayIP,
-            localIP: netInfo?.localIP || "",
+            localIP: netInfo.localIP,
           };
         });
 
@@ -729,7 +734,9 @@ export default function NetworkConfigurationPage() {
       }
     };
 
-    initializeNetworkConfiguration();
+    initializeNetworkConfiguration().catch((error: Error) =>
+      setNetworkValidationErrors([error.message])
+    );
   }, [mounted]);
 
   // Prevent SSR rendering - wait for client-side mount
@@ -1196,7 +1203,7 @@ networkConfig.overlayCIDR
                     </TkTableCell>
                     <TkTableCell>
                       <div className="text-sm text-muted-foreground">
-                        {server.localIP || "Not detected"}
+                        {server.localIP}
                       </div>
                     </TkTableCell>
                     <TkTableCell>
