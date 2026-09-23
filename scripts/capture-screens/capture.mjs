@@ -20,11 +20,15 @@
 //   --out       where the screenshots go (default: screens/<date-time>)
 //
 // Secrets stay masked: every token and password field is a password field,
-// and the script never clicks the buttons that reveal them.
+// and the script never clicks the buttons that reveal them. Playbook output
+// is blanked by the installer backend. The Tailscale OAuth client ID is a
+// plain field, so every screenshot blacks out that field and any text that
+// contains the ID, read from TAILSCALE_OAUTH_CLIENT_ID in ~/.env.
 
 import { chromium } from "playwright"
 import fs from "node:fs"
 import path from "node:path"
+import os from "node:os"
 
 const BASE_URL = "http://localhost:5173"
 const WIDTH = 1440
@@ -47,6 +51,14 @@ function parseArgs(argv) {
   return args
 }
 
+function dotEnvValue(name) {
+  const file = path.join(os.homedir(), ".env")
+  const line = fs.readFileSync(file, "utf8").split("\n").find((l) => l.startsWith(`${name}=`))
+  const value = line?.slice(name.length + 1).trim().replace(/^["']|["']$/g, "")
+  if (!value) throw new Error(`${name} is not set in ${file}. The installer reads it from there too.`)
+  return value
+}
+
 function requiredEnv(name) {
   const value = process.env[name]
   if (!value) throw new Error(`${name} is not set. Export it before running the capture.`)
@@ -57,6 +69,7 @@ const args = parseArgs(process.argv.slice(2))
 const sudoPassword = requiredEnv("THINKUBE_SUDO_PASSWORD")
 const gitAuthorName = requiredEnv("GIT_AUTHOR_NAME")
 const gitAuthorEmail = requiredEnv("GIT_AUTHOR_EMAIL")
+const oauthClientId = dotEnvValue("TAILSCALE_OAUTH_CLIENT_ID")
 const outDir = args.out ?? path.join("screens", new Date().toISOString().replace(/[:.]/g, "-"))
 fs.mkdirSync(outDir, { recursive: true })
 
@@ -83,7 +96,12 @@ async function shot(page, label) {
   const file = path.join(outDir, `${String(shotNumber).padStart(3, "0")}-${route}${label ? "-" + label : ""}.png`)
   const height = Math.max(HEIGHT, await contentHeight(page))
   await page.setViewportSize({ width: WIDTH, height })
-  await page.screenshot({ path: file, fullPage: true })
+  await page.screenshot({
+    path: file,
+    fullPage: true,
+    mask: [page.locator("#oauthClientId"), page.getByText(oauthClientId)],
+    maskColor: "#000000",
+  })
   await page.setViewportSize({ width: WIDTH, height: HEIGHT })
   console.log(`saved ${file}`)
 }
