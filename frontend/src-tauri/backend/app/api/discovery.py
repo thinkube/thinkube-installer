@@ -290,34 +290,6 @@ async def debug_local_ips():
     }
 
 
-@router.post("/setup-ssh-keys")
-async def setup_ssh_keys(request: Dict[str, Any]):
-    """Set up SSH keys between servers using Ansible playbook"""
-    from ..services.ansible_executor import ansible_executor
-    
-    servers = request.get("servers", [])
-    username = request.get("username", "thinkube")
-    password = request.get("password")
-    
-    # Define playbook path
-    playbook_path = "ansible/00_initial_setup/10_setup_ssh_keys.yaml"
-    
-    # Set up environment variables for Ansible
-    environment = {}
-    if password:
-        environment["ANSIBLE_SUDO_PASS"] = password
-    
-    # Execute the playbook using the reusable service
-    result = await ansible_executor.execute_playbook(
-        playbook_path=playbook_path,
-        environment=environment,
-        timeout=180  # 3 minutes for SSH setup
-    )
-    
-    # Return standardized response
-    return ansible_executor.format_result_for_api(result)
-
-
 @router.post("/debug-ssh-check")
 async def debug_ssh_check(request: Dict[str, Any]):
     """Debug endpoint to test SSH verification logic"""
