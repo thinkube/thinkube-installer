@@ -32,6 +32,7 @@ interface Node {
   action_required?: "install" | "upgrade" | "exclude" | "none"
   compute_cap?: string
   gpu_supported?: boolean
+  error?: string
 }
 
 interface Summary {
@@ -89,7 +90,7 @@ export default function GpuDriverCheck() {
 
       // Prepare node list for detection
       const nodeList = discoveredServers.map((server: any) => ({
-        hostname: server.hostname || "unknown",
+        hostname: server.hostname,
         ip: server.ip,
         username: server.username,
         password: server.password,
@@ -101,22 +102,19 @@ export default function GpuDriverCheck() {
         nodes: nodeList
       })
 
-      // Ensure response has expected structure
-      if (!response.data || !response.data.nodes) {
-        throw new Error("Invalid response from GPU detection API")
+      // A node whose check failed has an unknown GPU state; the install
+      // cannot decide for it, so the page stops and names the failure.
+      const failed = response.data.nodes.filter((node: Node) => node.error)
+      if (failed.length > 0) {
+        setError(
+          failed.map((node: Node) => `${node.hostname} (${node.ip}): ${node.error}`).join("\n")
+        )
+        setLoading(false)
+        return
       }
 
-      setNodes(response.data.nodes || [])
-      setSummary(
-        response.data.summary || {
-          ready: 0,
-          needs_install: 0,
-          needs_upgrade: 0,
-          no_gpu: 0,
-          unsupported: 0,
-          error: 0
-        }
-      )
+      setNodes(response.data.nodes)
+      setSummary(response.data.summary)
 
       // Initialize decisions for nodes that need them
       if (Array.isArray(response.data.nodes)) {
@@ -286,7 +284,7 @@ export default function GpuDriverCheck() {
       <TkPageWrapper title="GPU Driver Detection">
         <TkAlert className="bg-destructive/10 text-destructive border-destructive/20 mb-6">
           <XCircle className="h-4 w-4" />
-          <TkAlertDescription>{error}</TkAlertDescription>
+          <TkAlertDescription className="whitespace-pre-line">{error}</TkAlertDescription>
         </TkAlert>
       </TkPageWrapper>
     )

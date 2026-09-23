@@ -116,13 +116,16 @@ async def detect_gpu_on_node(
             # pre-Volta cards (compute_cap < 7.0) as architecturally
             # unsupported by the project policy — drivers can't fix that.
             result = await conn.run(
+                "command -v nvidia-smi >/dev/null || { echo no-driver; exit 0; }; "
                 "nvidia-smi --query-gpu=name,driver_version,compute_cap --format=csv,noheader",
                 check=False
             )
-
             if result.returncode != 0:
-                # nvidia-smi not available - driver not installed. The chip
-                # name still says when a GPU is too old for any driver to help.
+                raise RuntimeError(f"nvidia-smi failed (exit {result.returncode}): {result.stderr.strip() or result.stdout.strip()}")
+
+            if result.stdout.strip() == "no-driver":
+                # The chip name still says when a GPU is too old for any
+                # driver to help.
                 if all_pre_volta(gpu_lines):
                     return GpuNodeStatus(
                         hostname=hostname,
@@ -146,66 +149,30 @@ async def detect_gpu_on_node(
                     action_required="install"
                 )
 
-            # Parse nvidia-smi output
-            smi_output = result.stdout.strip()
-            lines = smi_output.split('\n')
+            # One line per GPU: "NVIDIA GB10, 580.95.05, 12.1"
+            parts = [p.strip() for p in result.stdout.strip().split('\n')[0].split(',')]
+            if len(parts) != 3:
+                raise RuntimeError(f"Unexpected nvidia-smi output: {result.stdout.strip()}")
+            gpu_name, driver_version, compute_cap = parts
+            try:
+                driver_major = int(driver_version.split('.')[0])
+                gpu_supported = float(compute_cap) >= 7.0
+            except ValueError:
+                raise RuntimeError(
+                    f"nvidia-smi reported an unreadable driver version or compute capability: {result.stdout.strip()}"
+                )
 
-            if lines:
-                # Get first GPU info (format: "NVIDIA GB10, 580.95.05, 8.6")
-                first_line = lines[0].strip()
-                parts = [p.strip() for p in first_line.split(',')]
+            if not gpu_supported:
+                # Older than Volta: no driver can fix that.
+                driver_status = "unsupported_gpu"
+                action_required = "exclude"
+            elif driver_major >= int(min_version.split('.')[0]):
+                driver_status = "compatible"
+                action_required = None
+            else:
+                driver_status = "old"
+                action_required = "upgrade"
 
-                if len(parts) >= 2:
-                    gpu_name = parts[0]
-                    driver_version = parts[1]
-                    compute_cap = parts[2] if len(parts) >= 3 else None
-
-                    # Pre-Volta (compute_cap < 7.0) is unsupported by project
-                    # policy — driver upgrade won't help.
-                    gpu_supported: Optional[bool] = None
-                    if compute_cap:
-                        try:
-                            gpu_supported = float(compute_cap) >= 7.0
-                        except ValueError:
-                            gpu_supported = None
-
-                    # Compare versions
-                    try:
-                        current_major = int(driver_version.split('.')[0])
-                        required_major = int(min_version.split('.')[0])
-
-                        if gpu_supported is False:
-                            # Architecturally unsupported — no driver action
-                            # can fix this. Flag it as "unsupported_gpu" so
-                            # the UI can show the right message.
-                            driver_status = "unsupported_gpu"
-                            action_required = "exclude"
-                        elif current_major >= required_major:
-                            driver_status = "compatible"
-                            action_required = None
-                        else:
-                            driver_status = "old"
-                            action_required = "upgrade"
-                    except (ValueError, IndexError):
-                        driver_status = "unknown"
-                        action_required = None
-
-                    return GpuNodeStatus(
-                        hostname=hostname,
-                        ip=ip,
-                        gpu_detected=True,
-                        gpu_name=gpu_name,
-                        gpu_count=gpu_count,
-                        driver_installed=True,
-                        driver_version=driver_version,
-                        driver_status=driver_status,
-                        min_required_version=min_version,
-                        action_required=action_required,
-                        compute_cap=compute_cap,
-                        gpu_supported=gpu_supported,
-                    )
-
-            # Fallback if parsing fails
             return GpuNodeStatus(
                 hostname=hostname,
                 ip=ip,
@@ -213,9 +180,12 @@ async def detect_gpu_on_node(
                 gpu_name=gpu_name,
                 gpu_count=gpu_count,
                 driver_installed=True,
-                driver_status="unknown",
-                action_required=None,
-                error="Could not parse driver version"
+                driver_version=driver_version,
+                driver_status=driver_status,
+                min_required_version=min_version,
+                action_required=action_required,
+                compute_cap=compute_cap,
+                gpu_supported=gpu_supported,
             )
 
     except asyncssh.Error as e:
@@ -250,10 +220,10 @@ async def detect_drivers(request: GpuDetectionRequest) -> GpuDetectionResponse:
         tasks = []
         for node in request.nodes:
             task = detect_gpu_on_node(
-                hostname=node.get("hostname", "unknown"),
+                hostname=node["hostname"],
                 ip=node["ip"],
                 username=node["username"],
-                password=node.get("password", ""),
+                password=node.get("password"),
                 ssh_key=node.get("ssh_key")
             )
             tasks.append(task)

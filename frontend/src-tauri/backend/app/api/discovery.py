@@ -10,501 +10,204 @@ from typing import Dict, Any
 import logging
 import os
 import asyncio
+import ipaddress
 import json
+import shlex
 from datetime import datetime
 from pathlib import Path
 
 from ..core.discovery import discover_ubuntu_servers, verify_ssh_connectivity
 from ..utils.network import get_local_ip_addresses
 from ..models.server import NetworkDiscoveryRequest, SSHVerificationRequest
-from .gpu_names import gpu_name
+from .gpu_names import gpu_name, is_gpu
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["discovery"])
 
 
-async def detect_lvm_status(
-    ip_address: str,
-    username: str,
-    password: str = None,
-    is_local: bool = False,
-) -> dict:
-    """Detect whether the node's root LV can be grown into free VG space.
-
-    Mirrors thinkube-control's add-node detect_lvm_status (requires sudo
-    to query vgs/lvs). Returns {lvm_expandable, lvm_free_gb, lvm_lv_path}.
-    No-op result when root isn't on LVM, the volume group is already full,
-    or the probe fails.
-    """
-    if not password:
-        # Without sudo we can't run vgs/lvs reliably; skip.
-        return {"lvm_expandable": False, "lvm_free_gb": 0, "lvm_lv_path": ""}
-
-    probe = f"""set -e
-echo '{password}' | sudo -S bash -c '
-root_dev=$(df / 2>/dev/null | tail -1 | awk "{{print \\$1}}")
-if echo "$root_dev" | grep -q "/dev/mapper/"; then
-  vg_name=$(lvs --noheadings -o vg_name "$root_dev" 2>/dev/null | tr -d " ")
-  if [ -n "$vg_name" ]; then
-    vg_free=$(vgs --noheadings --nosuffix --units g -o vg_free "$vg_name" 2>/dev/null | tr -d " " | cut -d. -f1)
-    lv_path=$(lvs --noheadings -o lv_path "$root_dev" 2>/dev/null | tr -d " ")
-    echo "$vg_free $lv_path"
-  fi
-fi
-' 2>/dev/null
+# The disk layout needs sudo. The password goes to sudo on its own line,
+# never into the command text. The inner script stops at the first failing
+# command, so a failure reaches the caller with its own message.
+LVM_SCRIPT = r"""set -euo pipefail
+INNER=$(cat <<'EOF'
+set -euo pipefail
+root_dev=$(findmnt -no SOURCE /)
+case "$root_dev" in
+  /dev/mapper/*)
+    vg=$(lvs --noheadings -o vg_name "$root_dev" | tr -d ' ')
+    free=$(vgs --noheadings --nosuffix --units g -o vg_free "$vg" | tr -d ' ' | cut -d. -f1)
+    lv=$(lvs --noheadings -o lv_path "$root_dev" | tr -d ' ')
+    echo "lvm $free $lv" ;;
+  *) echo "not-lvm" ;;
+esac
+EOF
+)
+printf '%s\n' "$SUDO_PASSWORD" | sudo -S -p '' bash -c "$INNER"
 """
 
-    try:
-        if is_local:
-            process = await asyncio.create_subprocess_shell(
-                probe,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, _ = await asyncio.wait_for(process.communicate(), timeout=20)
-        else:
-            ssh_cmd = [
-                "sshpass", "-p", password,
-                "ssh", "-o", "ConnectTimeout=10",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "UserKnownHostsFile=/dev/null",
-                "-o", "PreferredAuthentications=password",
-                "-o", "PubkeyAuthentication=no",
-                f"{username}@{ip_address}",
-                "bash -s",
-            ]
-            process = await asyncio.create_subprocess_exec(
-                *ssh_cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, _ = await asyncio.wait_for(
-                process.communicate(input=probe.encode()),
-                timeout=20,
-            )
+# Each section starts with a marker line; every command must succeed.
+HARDWARE_SCRIPT = r"""set -euo pipefail
+echo "@@nproc"; nproc
+echo "@@arch"; uname -m
+echo "@@meminfo"; grep '^MemTotal:' /proc/meminfo
+echo "@@disk"; df -B1 --output=size / | tail -1
+echo "@@lspci"; lspci -nn
+echo "@@driver"; if command -v nvidia-smi >/dev/null; then nvidia-smi --query-gpu=driver_version --format=csv,noheader | head -1; fi
+echo "@@route"; ip -o route get 1.1.1.1
+echo "@@addr"; ip -o -4 addr show
+"""
 
-        parts = stdout.decode().strip().split()
-        if len(parts) >= 2 and parts[0].isdigit():
-            free_gb = int(parts[0])
+
+async def _run_on_node(script, ip_address, username, password, is_local, env=None):
+    """Run a bash script on the node and return its output; a failure raises with the script's own error."""
+    if is_local:
+        cmd = ["bash", "-s"]
+    elif password:
+        cmd = [
+            "sshpass", "-p", password,
+            "ssh", "-o", "ConnectTimeout=10",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "PreferredAuthentications=password",
+            "-o", "PubkeyAuthentication=no",
+            f"{username}@{ip_address}",
+            "bash -s",
+        ]
+    else:
+        cmd = [
+            "ssh", "-o", "ConnectTimeout=10",
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", "BatchMode=yes",
+            f"{username}@{ip_address}",
+            "bash -s",
+        ]
+    if env:
+        exports = "".join(f"export {name}={shlex.quote(value)}\n" for name, value in env.items())
+        script = exports + script
+    process = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await asyncio.wait_for(process.communicate(input=script.encode()), timeout=60)
+    if process.returncode != 0:
+        raise RuntimeError(
+            f"Command on {ip_address} failed (exit {process.returncode}): "
+            f"{stderr.decode(errors='replace').strip()}"
+        )
+    return stdout.decode(errors="replace")
+
+
+async def detect_lvm_status(ip_address: str, username: str, password: str, is_local: bool) -> dict:
+    """Whether the node's root LV can be grown into free space in its volume group.
+
+    Mirrors thinkube-control's add-node detect_lvm_status.
+    """
+    if not password:
+        raise RuntimeError(
+            f"Reading the disk layout of {ip_address} needs sudo, and no SSH password was given. "
+            "Enter the password on the SSH credentials page."
+        )
+    output = (await _run_on_node(
+        LVM_SCRIPT, ip_address, username, password, is_local, env={"SUDO_PASSWORD": password}
+    )).split()
+    if output == ["not-lvm"]:
+        return {"lvm_expandable": False, "lvm_free_gb": 0, "lvm_lv_path": ""}
+    if len(output) == 3 and output[0] == "lvm" and output[1].isdigit():
+        free_gb = int(output[1])
+        return {"lvm_expandable": free_gb > 10, "lvm_free_gb": free_gb, "lvm_lv_path": output[2]}
+    raise RuntimeError(f"Unexpected disk layout output from {ip_address}: {' '.join(output)}")
+
+
+def _sections(output):
+    """Split the hardware script's output into its marked sections."""
+    sections = {}
+    current = None
+    for line in output.splitlines():
+        if line.startswith("@@"):
+            current = line[2:]
+            sections[current] = []
+        elif current is not None:
+            sections[current].append(line)
+    missing = [name for name in ("nproc", "arch", "meminfo", "disk", "lspci", "driver", "route", "addr") if name not in sections]
+    if missing:
+        raise RuntimeError(f"Hardware output has no {', '.join(missing)} section")
+    return sections
+
+
+def _network(route_lines, addr_lines):
+    """The interface, address, network and gateway the node uses to reach the internet."""
+    route = route_lines[0].split()
+    fields = {key: route[route.index(key) + 1] for key in ("via", "dev", "src") if key in route}
+    missing = [key for key in ("via", "dev", "src") if key not in fields]
+    if missing:
+        raise RuntimeError(
+            f"The route to the internet ({route_lines[0].strip()}) names no {', '.join(missing)}; "
+            "the node needs a default route through a gateway on its local network."
+        )
+    for line in addr_lines:
+        parts = line.split()
+        if parts[1] == fields["dev"] and parts[3].split("/")[0] == fields["src"]:
             return {
-                "lvm_expandable": free_gb > 10,
-                "lvm_free_gb": free_gb,
-                "lvm_lv_path": parts[1],
+                "interface": fields["dev"],
+                "ip_address": fields["src"],
+                "cidr": str(ipaddress.IPv4Network(parts[3], strict=False)),
+                "gateway": fields["via"],
             }
-    except Exception as exc:
-        logger.warning(f"LVM detection failed for {ip_address}: {exc}")
-
-    return {"lvm_expandable": False, "lvm_free_gb": 0, "lvm_lv_path": ""}
+    raise RuntimeError(f"No IPv4 address {fields['src']} on interface {fields['dev']}")
 
 
-async def get_real_hardware_info(ip_address: str, username: str = "thinkube", password: str = None):
-    """Get actual hardware information via SSH commands"""
-    
-    # Check if this is the local machine first
+async def get_real_hardware_info(ip_address: str, username: str, password: str):
+    """The node's hardware and network, read over SSH (or locally for this machine)."""
     local_ips = await get_local_ip_addresses()
     is_local = ip_address in local_ips
-    
-    # Create a bash script that collects all hardware info in one go
-    hardware_script = r'''#!/bin/bash
-# Collect all hardware information in one script to minimize SSH connections
 
-# Initialize output
-echo "{"
+    logger.info(f"Collecting hardware info for {ip_address}")
+    sections = _sections(await _run_on_node(HARDWARE_SCRIPT, ip_address, username, password, is_local))
 
-# CPU cores
-echo -n '"cpu_cores": '
-nproc 2>/dev/null || echo -n "0"
-echo ","
+    mem_kb = int(sections["meminfo"][0].split()[1])
+    hardware_info = {
+        "cpu_cores": int(sections["nproc"][0]),
+        "memory_gb": round(mem_kb / (1024**2), 1),
+        "disk_gb": round(int(sections["disk"][0]) / (1024**3), 1),
+        "architecture": sections["arch"][0].strip(),
+        "gpu_detected": False,
+        "gpu_model": None,
+        "gpu_count": 0,
+    }
+    hardware_info.update(await detect_lvm_status(ip_address, username, password, is_local))
 
-# CPU model
-echo -n '"cpu_model": "'
-cat /proc/cpuinfo 2>/dev/null | grep 'model name' | head -1 | cut -d: -f2 | sed 's/^ *//' | tr -d '\n' | sed 's/"/\\"/g' || echo -n "Unknown"
-echo '",'
+    nvidia_gpus = [gpu_name(line) for line in sections["lspci"] if is_gpu(line)]
+    driver_version = sections["driver"][0].strip() if sections["driver"] else ""
+    hardware_info["nvidia_driver_installed"] = bool(driver_version)
+    hardware_info["nvidia_driver_version"] = driver_version
 
-# Architecture
-echo -n '"architecture": "'
-uname -m 2>/dev/null | tr -d '\n' || echo -n "unknown"
-echo '",'
-
-# Memory in bytes
-echo -n '"memory_bytes": '
-free -b 2>/dev/null | grep '^Mem:' | awk '{print $2}' | tr -d '\n' || echo -n "0"
-echo ","
-
-# Disk in bytes
-echo -n '"disk_bytes": '
-df -B1 / 2>/dev/null | tail -1 | awk '{print $2}' | tr -d '\n' || echo -n "0"
-echo ","
-
-# NVIDIA GPU detection
-echo -n '"nvidia_devices": ['
-first=true
-lspci -nn 2>/dev/null | grep -i nvidia | while IFS= read -r line; do
-    if [ "$first" = true ]; then
-        first=false
-    else
-        echo -n ","
-    fi
-    echo -n '"'
-    echo -n "$line" | sed 's/"/\\"/g' | tr -d '\n'
-    echo -n '"'
-done
-echo "],"
-
-# Visible NVIDIA GPUs (excluding audio devices)
-echo -n '"visible_gpus": ['
-first=true
-lspci -nn 2>/dev/null | grep -i nvidia | grep -E '\[030[0-2]\]' | while IFS= read -r line; do
-    if [ "$first" = true ]; then
-        first=false
-    else
-        echo -n ","
-    fi
-    echo -n '"'
-    echo -n "$line" | sed 's/"/\\"/g' | tr -d '\n'
-    echo -n '"'
-done
-echo "],"
-
-# NVIDIA driver version detection
-echo -n '"nvidia_driver_installed": '
-if command -v nvidia-smi >/dev/null 2>&1; then
-    echo -n "true"
-else
-    echo -n "false"
-fi
-echo ","
-
-echo -n '"nvidia_driver_version": "'
-if command -v nvidia-smi >/dev/null 2>&1; then
-    nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 | tr -d '\n' || echo -n ""
-else
-    echo -n ""
-fi
-echo '",'
-
-# IOMMU enabled check - check if IOMMU groups exist
-echo -n '"iommu_enabled": '
-if [ -d /sys/kernel/iommu_groups/ ] && [ $(ls -1 /sys/kernel/iommu_groups/ 2>/dev/null | wc -l) -gt 0 ]; then
-    echo -n "true"
-else
-    echo -n "false"
-fi
-echo ","
-
-# IOMMU groups check
-echo -n '"iommu_groups": ['
-if [ -d /sys/kernel/iommu_groups/ ]; then
-    group_count=$(ls -1 /sys/kernel/iommu_groups/ 2>/dev/null | wc -l)
-    if [ "$group_count" -gt 0 ]; then
-        first=true
-        for gpu in $(lspci -nn | grep -i nvidia | grep -E '\[030[0-2]\]' | cut -d' ' -f1); do
-            if [ "$first" = true ]; then
-                first=false
-            else
-                echo -n ","
-            fi
-            echo -n "{"
-            echo -n '"pci": "'$gpu'",'
-            if [ -e /sys/bus/pci/devices/0000:$gpu/iommu_group ]; then
-                group=$(readlink /sys/bus/pci/devices/0000:$gpu/iommu_group 2>/dev/null | sed 's/.*\///')
-                echo -n '"group": "'$group'",'
-                # Check if group has other devices that are NOT NVIDIA audio
-                other_count=0
-                for device in /sys/kernel/iommu_groups/$group/devices/*; do
-                    dev_id=$(basename $device)
-                    if [ "$dev_id" != "0000:$gpu" ]; then
-                        # Check if it's an NVIDIA audio device (class 0403)
-                        if ! lspci -n -s $dev_id 2>/dev/null | grep -q " 0403: 10de:"; then
-                            # Not an NVIDIA audio device
-                            other_count=$((other_count + 1))
-                        fi
-                    fi
-                done
-                if [ "$other_count" -eq 0 ]; then
-                    echo -n '"isolated": true,'
-                    echo -n '"eligible": true'
-                else
-                    echo -n '"isolated": false,'
-                    echo -n '"eligible": false,'
-                    echo -n '"other_devices": '$other_count
-                fi
-            else
-                echo -n '"group": null,'
-                echo -n '"eligible": false'
-            fi
-            echo -n "}"
-        done
-    fi
-fi
-echo "],"
-
-# Network interface detection
-echo -n '"network": {'
-
-# Get primary network interface and IP using ip route
-primary_route=$(ip route get 8.8.8.8 2>/dev/null | head -1)
-if [ ! -z "$primary_route" ]; then
-    # Extract interface name
-    interface=$(echo "$primary_route" | grep -oP 'dev \K\S+' || echo "")
-    echo -n '"interface": "'$interface'",'
-    
-    # Extract source IP
-    src_ip=$(echo "$primary_route" | grep -oP 'src \K\S+' || echo "")
-    echo -n '"ip_address": "'$src_ip'",'
-    
-    # Get CIDR for this interface
-    if [ ! -z "$interface" ] && [ ! -z "$src_ip" ]; then
-        cidr=$(ip addr show $interface 2>/dev/null | grep "inet $src_ip" | grep -oP 'inet \K\S+' || echo "")
-        # Convert to network CIDR
-        if [ ! -z "$cidr" ]; then
-            # Use Python to calculate network CIDR properly
-            network_cidr=$(python3 -c "import ipaddress; print(str(ipaddress.IPv4Network('$cidr', strict=False)))" 2>/dev/null || echo "$cidr")
-            echo -n '"cidr": "'$network_cidr'",'
-        else
-            echo -n '"cidr": "",'
-        fi
-    else
-        echo -n '"cidr": "",'
-    fi
-    
-    # Get gateway
-    gateway=$(ip route | grep "^default" | grep "dev $interface" | awk '{print $3}' | head -1 || echo "")
-    echo -n '"gateway": "'$gateway'"'
-else
-    # Fallback if route detection fails
-    echo -n '"interface": "",'
-    echo -n '"ip_address": "",'
-    echo -n '"cidr": "",'
-    echo -n '"gateway": ""'
-fi
-
-echo "}"
-
-echo "}"
-'''
-    
-    async def run_hardware_collection():
-        """Run the hardware collection script"""
-        if is_local:
-            # Run locally
-            process = await asyncio.create_subprocess_shell(
-                hardware_script,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate()
-            return stdout.decode().strip() if process.returncode == 0 else "{}"
+    if nvidia_gpus:
+        hardware_info["gpu_detected"] = True
+        hardware_info["gpu_count"] = len(nvidia_gpus)
+        if len(nvidia_gpus) == 1:
+            hardware_info["gpu_model"] = nvidia_gpus[0]
+        elif len(set(nvidia_gpus)) == 1:
+            hardware_info["gpu_model"] = f"{len(nvidia_gpus)}x {nvidia_gpus[0]}"
         else:
-            # Run via SSH - single connection for all data
-            # Always use password if provided since SSH keys might not be set up yet
-            if password:
-                # Use sshpass for password authentication
-                ssh_cmd = [
-                    'sshpass', '-p', password,
-                    'ssh', '-o', 'ConnectTimeout=10',
-                    '-o', 'StrictHostKeyChecking=no',
-                    '-o', 'UserKnownHostsFile=/dev/null',
-                    '-o', 'PreferredAuthentications=password',
-                    '-o', 'PubkeyAuthentication=no',
-                    f'{username}@{ip_address}',
-                    'bash -s'
-                ]
-            else:
-                # Try key-based authentication with BatchMode
-                ssh_cmd = [
-                    'ssh', '-o', 'ConnectTimeout=10',
-                    '-o', 'StrictHostKeyChecking=no',
-                    '-o', 'UserKnownHostsFile=/dev/null',
-                    '-o', 'BatchMode=yes',
-                    f'{username}@{ip_address}',
-                    'bash -s'
-                ]
-            process = await asyncio.create_subprocess_exec(
-                *ssh_cmd,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await process.communicate(input=hardware_script.encode())
-            if process.returncode != 0:
-                logger.error(f"SSH command failed with return code {process.returncode}")
-                logger.error(f"stderr: {stderr.decode()}")
-                return "{}"
-            return stdout.decode().strip()
-    
-    try:
-        # Run the collection script and get JSON output
-        logger.info(f"Collecting hardware info for {ip_address}")
-        json_output = await run_hardware_collection()
-        
-        logger.info(f"Raw JSON output length: {len(json_output)}")
-        if not json_output or json_output == "{}":
-            logger.error(f"Empty or minimal JSON output for {ip_address}")
-        
-        # Parse the JSON output
-        import json
-        try:
-            raw_data = json.loads(json_output)
-            logger.info(f"Raw IOMMU data from {ip_address}: iommu_groups={raw_data.get('iommu_groups', [])}")
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse hardware JSON: {e}, output was: {json_output}")
-            raw_data = {}
-        
-        # Convert to expected format
-        hardware_info = {
-            "cpu_cores": int(raw_data.get("cpu_cores", 0)),
-            "cpu_model": raw_data.get("cpu_model", "Unknown"),
-            "memory_gb": round(int(raw_data.get("memory_bytes", 0)) / (1024**3), 1),
-            "disk_gb": round(int(raw_data.get("disk_bytes", 0)) / (1024**3), 1),
-            "gpu_detected": False,
-            "gpu_model": None,
-            "gpu_count": 0,
-            "architecture": raw_data.get("architecture", "unknown"),
-            "nvidia_driver_installed": raw_data.get("nvidia_driver_installed", False),
-            "nvidia_driver_version": raw_data.get("nvidia_driver_version", ""),
-            "driver_status": "none",  # Will be set below: compatible/old/missing/none
-            "lvm_expandable": False,
-            "lvm_free_gb": 0,
-            "lvm_lv_path": "",
-        }
+            hardware_info["gpu_model"] = f"{len(nvidia_gpus)} NVIDIA GPUs: {', '.join(nvidia_gpus)}"
 
-        # Detect LVM volume group free space (requires sudo). Same approach
-        # as thinkube-control's add-node flow — flag when the root LV uses
-        # only a fraction of its volume group so the deploy can grow it.
-        lvm_status = await detect_lvm_status(ip_address, username, password, is_local)
-        hardware_info.update(lvm_status)
-        
-        # Process GPU information
-        nvidia_gpus = []
-        all_nvidia_devices = raw_data.get("nvidia_devices", [])
-        visible_gpus = raw_data.get("visible_gpus", [])
-        total_nvidia_devices = len(all_nvidia_devices)
-        
-        if total_nvidia_devices > 0:
-            logger.info(f"Total NVIDIA devices found: {total_nvidia_devices}")
-            for device in all_nvidia_devices:
-                logger.info(f"NVIDIA device: {device}")
-        
-        # Process visible NVIDIA GPUs
-        for line in visible_gpus:
-            nvidia_gpus.append(gpu_name(line))
-        
-        # Set GPU information: the GPUs the NVIDIA driver can use
-        total_gpu_count = len(nvidia_gpus)
-
-        if total_gpu_count > 0:
-            hardware_info["gpu_detected"] = True
-            hardware_info["gpu_count"] = total_gpu_count
-            if total_gpu_count == 1:
-                hardware_info["gpu_model"] = nvidia_gpus[0]
-            elif len(set(nvidia_gpus)) == 1:
-                hardware_info["gpu_model"] = f"{total_gpu_count}x {nvidia_gpus[0]}"
-            else:
-                hardware_info["gpu_model"] = f"{total_gpu_count} NVIDIA GPUs: {', '.join(nvidia_gpus)}"
-
-            logger.info(f"GPU Summary: {total_gpu_count} GPU(s)")
-
-        # Determine driver status based on GPU detection and driver version
-        if total_gpu_count > 0:
-            # GPU detected - check driver status
-            if hardware_info["nvidia_driver_installed"] and hardware_info["nvidia_driver_version"]:
-                driver_version = hardware_info["nvidia_driver_version"]
-                try:
-                    # Extract major version (e.g., "580.95.05" -> 580)
-                    major_version = int(driver_version.split('.')[0])
-                    if major_version >= 580:
-                        hardware_info["driver_status"] = "compatible"
-                        logger.info(f"Driver {driver_version} is compatible (>= 580.x)")
-                    else:
-                        hardware_info["driver_status"] = "old"
-                        logger.warning(f"Driver {driver_version} is outdated (< 580.x)")
-                except (ValueError, IndexError):
-                    # Can't parse version, assume compatible if installed
-                    hardware_info["driver_status"] = "compatible"
-                    logger.warning(f"Could not parse driver version: {driver_version}, assuming compatible")
-            else:
-                # No driver installed
-                hardware_info["driver_status"] = "missing"
-                logger.info("GPU detected but no NVIDIA driver installed")
+        if not driver_version:
+            hardware_info["driver_status"] = "missing"
         else:
-            # No GPU detected
-            hardware_info["driver_status"] = "none"
+            major = driver_version.split(".")[0]
+            if not major.isdigit():
+                raise RuntimeError(f"nvidia-smi on {ip_address} reported an unreadable driver version: {driver_version}")
+            hardware_info["driver_status"] = "compatible" if int(major) >= 580 else "old"
+    else:
+        hardware_info["driver_status"] = "none"
 
-        # Process IOMMU information for GPU passthrough
-        iommu_enabled = raw_data.get("iommu_enabled", False)
-        iommu_groups = raw_data.get("iommu_groups", [])
-        
-        # First, collect basic GPU info from visible GPUs (for baremetal use)
-        gpu_passthrough_info = []
-        
-        # Process all visible NVIDIA GPUs - these can be used by GPU operator on baremetal
-        if visible_gpus:
-            logger.info(f"Processing {len(visible_gpus)} visible GPU(s)")
-            for line in visible_gpus:
-                # Extract PCI address
-                pci_addr = line.split()[0] if line else "unknown"
-                
-                # For baremetal GPU operator use, all detected GPUs are "eligible"
-                # even without IOMMU (they just can't be passed to VMs)
-                gpu_info = {
-                    "pci": pci_addr,
-                    "group": None,
-                    "eligible": True,  # Eligible for baremetal GPU operator use
-                    "driver": "nvidia",  # Assume nvidia driver for visible GPUs
-                    "reason": "Available for GPU operator on baremetal"
-                }
-                
-                # If IOMMU is enabled, check passthrough eligibility
-                if iommu_enabled and iommu_groups:
-                    # Find matching IOMMU group info
-                    for iommu_gpu in iommu_groups:
-                        if iommu_gpu.get("pci") == pci_addr:
-                            gpu_info["group"] = iommu_gpu.get("group")
-                            gpu_info["eligible"] = iommu_gpu.get("eligible", False)
-                            if iommu_gpu.get("eligible"):
-                                gpu_info["reason"] = f"IOMMU group {gpu_info['group']} isolated - can pass to VMs"
-                            else:
-                                gpu_info["reason"] = f"IOMMU group {gpu_info['group']} not isolated - baremetal only"
-                            break
-                else:
-                    gpu_info["reason"] = "IOMMU not enabled - baremetal use only"
-                
-                gpu_passthrough_info.append(gpu_info)
-                logger.info(f"GPU {pci_addr}: {gpu_info['reason']}")
-        
-        # Add GPU passthrough information to the hardware info
-        hardware_info["gpu_passthrough"] = {
-            "iommu_enabled": iommu_enabled,
-            "gpus": gpu_passthrough_info,
-            "total_eligible": sum(1 for gpu in gpu_passthrough_info if gpu.get("eligible", False)),
-            "total_found": len(gpu_passthrough_info)
-        }
-        
-        # Debug log the GPU passthrough data
-        logger.info(f"GPU passthrough data for {ip_address}: {json.dumps(hardware_info['gpu_passthrough'], indent=2)}")
-            
-        # Log diagnostic info
-        if total_nvidia_devices != total_gpu_count:
-            logger.warning(f"Device count mismatch: {total_nvidia_devices} total devices vs {total_gpu_count} GPUs detected")
-        
-        # Add network information if available
-        network_info = raw_data.get("network", {})
-        
-        logger.info(f"Hardware detection completed for {ip_address}: {hardware_info}")
-        logger.info(f"Network info for {ip_address}: {network_info}")
-        
-        # Return both hardware and network info
-        return {
-            "hardware": hardware_info,
-            "network": network_info
-        }
-        
-    except Exception as e:
-        logger.error(f"Error in hardware detection for {ip_address}: {e}")
-        raise
+    network_info = _network(sections["route"], sections["addr"])
+    logger.info(f"Hardware detection completed for {ip_address}: {hardware_info}, network {network_info}")
+    return {"hardware": hardware_info, "network": network_info}
 
 
 @router.post("/discover-servers")
@@ -632,44 +335,15 @@ async def debug_ssh_check(request: Dict[str, Any]):
 @router.post("/detect-hardware")
 async def detect_hardware(server: Dict[str, Any]):
     """Detect hardware configuration of a server via SSH"""
-    # Handle both parameter names for compatibility
-    ip_address = server.get("ip_address") or server.get("server")
-    username = server.get("username", "thinkube")
-    password = server.get("password")
-    
-    if not ip_address:
-        return {"error": "IP address is required for hardware detection"}
-    
+    missing = [key for key in ("server", "username") if not server.get(key)]
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Hardware detection needs {', '.join(missing)}")
+    ip_address = server["server"]
     try:
-        logger.info(f"Detecting hardware for {ip_address} with user {username}")
-        
-        # Get actual hardware info via SSH
-        result = await get_real_hardware_info(ip_address, username, password)
-        
-        # Handle both old and new response formats
-        if isinstance(result, dict) and "hardware" in result:
-            # New format with hardware and network
-            return result
-        else:
-            # Old format - just hardware info
-            return {"hardware": result, "network": {}}
-        
+        return await get_real_hardware_info(ip_address, server["username"], server.get("password"))
     except Exception as e:
         logger.error(f"Failed to detect hardware for {ip_address}: {e}")
-        return {
-            "error": f"Hardware detection failed: {str(e)}",
-            "hardware": {
-                "cpu_cores": 0,
-                "cpu_model": "Detection Failed",
-                "memory_gb": 0,
-                "disk_gb": 0,
-                "gpu_detected": False,
-                "gpu_model": None,
-                "gpu_count": 0,
-                "architecture": "unknown"
-            },
-            "network": {}
-        }
+        raise HTTPException(status_code=500, detail=f"Hardware detection failed on {ip_address}: {e}")
 
 
 @router.post("/discover-zerotier-nodes")

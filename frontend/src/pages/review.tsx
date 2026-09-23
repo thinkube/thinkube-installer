@@ -34,9 +34,6 @@ interface Node {
   gpuInfo?: {
     gpu_count: number
     gpu_model: string
-    gpu_passthrough_info: any[]
-    iommu_enabled: boolean
-    gpu_passthrough_eligible_count: number
   }
   gpus?: any[]
 }
@@ -117,10 +114,6 @@ export default function Review() {
             result.gpuInfo = {
               gpu_count: hwInfo.hardware.gpu_count || 0,
               gpu_model: hwInfo.hardware.gpu_model || "",
-              gpu_passthrough_info: hwInfo.hardware.gpu_passthrough_info || [],
-              iommu_enabled: hwInfo.hardware.iommu_enabled || false,
-              gpu_passthrough_eligible_count:
-                hwInfo.hardware.gpu_passthrough_eligible_count || 0
             }
           }
 

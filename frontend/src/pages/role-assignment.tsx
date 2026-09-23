@@ -31,8 +31,6 @@ interface NodeData {
   gpuInfo?: {
     gpu_count: number
     gpu_model: string
-    gpu_passthrough_info: Array<{ passthrough_eligible: boolean }>
-    iommu_enabled: boolean
   }
   role: string
   host?: string
@@ -132,9 +130,7 @@ export default function RoleAssignment() {
       hasGPU: (s.hardware?.gpu_detected && s.hardware?.driver_status !== "unsupported_gpu") || false,
       gpuInfo: {
         gpu_count: s.hardware?.gpu_count || 0,
-        gpu_model: s.hardware?.gpu_model || '',
-        gpu_passthrough_info: s.hardware?.gpu_passthrough_info || [],
-        iommu_enabled: s.hardware?.iommu_enabled || false
+        gpu_model: s.hardware?.gpu_model || ''
       },
       role: ''
     }))

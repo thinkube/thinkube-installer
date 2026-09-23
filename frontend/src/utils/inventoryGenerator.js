@@ -200,8 +200,6 @@ export function generateDynamicInventory() {
           hosts: {}
         },
         
-        // GPU passthrough VMs
-        
         // Baremetal node GPU configuration
         baremetal_gpus: {
           vars: {}

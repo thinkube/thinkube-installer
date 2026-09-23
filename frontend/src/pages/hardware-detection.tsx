@@ -176,28 +176,12 @@ export default function HardwareDetection() {
             password: sshCreds.password
           })
 
-          if (response.data.error) {
-            server.error = response.data.error
-            server.hardware = null
-            server.network = null
-          } else if (response.data.hardware) {
-            const hardware = response.data.hardware
-            server.hardware = hardware
-            server.network = response.data.network || null
-
-            if (
-              hardware.cpu_cores === 0 ||
-              hardware.memory_gb === 0 ||
-              hardware.disk_gb === 0
-            ) {
-              server.error = "Hardware detection returned invalid values"
-              server.hardware = null
-            }
-          } else {
-            server.error = "Failed to detect hardware"
-          }
+          server.hardware = response.data.hardware
+          server.network = response.data.network
         } catch (error: any) {
-          server.error = error.response?.data?.detail || "Detection failed"
+          server.error = error.response?.data?.detail ?? error.message
+          server.hardware = null
+          server.network = null
         }
 
         setServers([...updatedServers])
