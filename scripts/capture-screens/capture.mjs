@@ -75,19 +75,15 @@ fs.mkdirSync(outDir, { recursive: true })
 
 let shotNumber = 0
 
-// The height that shows the whole page: the document or the tallest
-// scrolling panel, whichever is taller.
+// The height that shows the whole page, down to the footer.
+//
+// Panels that scroll inside the page — the live Ansible output — are left
+// at the size their CSS gives them and appear scrolled, as they do in the
+// app. Adding their hidden overflow here only stretched the page: the
+// panel has a fixed height, so the extra height was blank space below the
+// footer, thousands of pixels of it, and not one more line of log.
 async function contentHeight(page) {
-  return page.evaluate(() => {
-    let height = document.documentElement.scrollHeight
-    for (const el of document.querySelectorAll("*")) {
-      const style = getComputedStyle(el)
-      if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight) {
-        height = Math.max(height, document.documentElement.scrollHeight + el.scrollHeight - el.clientHeight)
-      }
-    }
-    return height
-  })
+  return page.evaluate(() => document.documentElement.scrollHeight)
 }
 
 async function shot(page, label) {
