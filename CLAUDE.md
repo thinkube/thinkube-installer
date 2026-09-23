@@ -82,7 +82,6 @@ Modular FastAPI application:
   - `playbook_stream.py` - WebSocket streaming of Ansible execution
   - `playbooks.py` - Playbook execution triggers
   - `configuration.py` - Save/load inventory and config
-  - `gpu_detection.py` - GPU and NVIDIA driver detection
   - `zerotier.py`, `github.py`, `tokens.py`, `system.py`, `logs.py`
 - `app/services/` - Business logic:
   - `ansible_environment.py` - `AnsibleEnvironment` singleton: manages venv at `~/.thinkube-installer/ansible-venv/`, clones thinkube repo to `/tmp/thinkube-installer/`
@@ -95,7 +94,7 @@ Modular FastAPI application:
 React 19 app with a multi-step wizard flow using React Router v7:
 
 - `main.tsx` - Entry point, `BrowserRouter` with all routes, wrapped in `TkThemeProvider`
-- `pages/` - 14 wizard screens: welcome, requirements, sudo-password, server-discovery, hardware-detection, gpu-driver-check, role-assignment, network-configuration, configuration, ssh-setup, review, deploy, installation, complete
+- `pages/` - 13 wizard screens: welcome, requirements, sudo-password, server-discovery, hardware-detection, role-assignment, network-configuration, configuration, ssh-setup, review, deploy, installation, complete
 - `components/PlaybookExecutorStream.tsx` - Core component for streaming Ansible playbook output via WebSocket
 - `utils/inventoryGenerator.js` - Full inventory generation for deployment
 - `utils/minimalInventory.js` - Minimal inventory for SSH setup only

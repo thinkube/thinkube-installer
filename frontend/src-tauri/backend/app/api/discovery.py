@@ -19,8 +19,7 @@ from pathlib import Path
 from ..core.discovery import discover_ubuntu_servers, verify_ssh_connectivity
 from ..utils.network import get_local_ip_addresses
 from ..models.server import NetworkDiscoveryRequest, SSHVerificationRequest
-from .gpu_detection import all_pre_volta
-from .gpu_names import gpu_name, is_gpu
+from .gpu_names import all_pre_volta, gpu_name, is_gpu
 
 logger = logging.getLogger(__name__)
 

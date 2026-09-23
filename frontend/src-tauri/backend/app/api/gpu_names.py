@@ -49,3 +49,16 @@ def gpu_name(lspci_nn_line):
     if marketing:
         return f"NVIDIA {marketing.group(1).strip()}"
     return f"NVIDIA {model.strip()} [{pci_id.group(1)}]"
+
+
+# lspci names an NVIDIA chip by its architecture: GK is Kepler, GM Maxwell,
+# GP Pascal, and GF and GT older still, all older than Volta, the oldest the
+# platform supports. A chip too new for the local PCI name list shows as
+# "Device xxxx", and such a chip is newer still.
+PRE_VOLTA_CHIP = re.compile(r"NVIDIA Corporation (G[KMPFT]\d+)\b")
+
+
+def all_pre_volta(lspci_nn_lines):
+    """Whether every GPU in these `lspci -nn` lines is older than Volta."""
+    gpus = [line for line in lspci_nn_lines if is_gpu(line)]
+    return bool(gpus) and all(PRE_VOLTA_CHIP.search(line) for line in gpus)

@@ -22,7 +22,6 @@ import RoleAssignmentPage from './pages/role-assignment';
 import NetworkConfigurationPage from './pages/network-configuration';
 import ConfigurationPage from './pages/configuration';
 import SshSetupPage from './pages/ssh-setup';
-import GpuDriverCheckPage from './pages/gpu-driver-check';
 import ReviewPage from './pages/review';
 import DeployPage from './pages/deploy';
 import InstallationPage from './pages/installation';
@@ -51,7 +50,6 @@ function App() {
           <Route path="/tailscale-operator-setup" element={<TailscaleOperatorSetupPage />} />
           <Route path="/overlay-setup" element={<OverlaySetupPage />} />
           <Route path="/ssh-setup" element={<SshSetupPage />} />
-          <Route path="/gpu-driver-check" element={<GpuDriverCheckPage />} />
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/deploy" element={<DeployPage />} />
           <Route path="/installation" element={<InstallationPage />} />
