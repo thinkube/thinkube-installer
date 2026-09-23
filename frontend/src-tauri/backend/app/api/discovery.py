@@ -19,6 +19,7 @@ from pathlib import Path
 from ..core.discovery import discover_ubuntu_servers, verify_ssh_connectivity
 from ..utils.network import get_local_ip_addresses
 from ..models.server import NetworkDiscoveryRequest, SSHVerificationRequest
+from .gpu_detection import all_pre_volta
 from .gpu_names import gpu_name, is_gpu
 
 logger = logging.getLogger(__name__)
@@ -180,7 +181,8 @@ async def get_real_hardware_info(ip_address: str, username: str, password: str):
     }
     hardware_info.update(await detect_lvm_status(ip_address, username, password, is_local))
 
-    nvidia_gpus = [gpu_name(line) for line in sections["lspci"] if is_gpu(line)]
+    gpu_lines = [line for line in sections["lspci"] if is_gpu(line)]
+    nvidia_gpus = [gpu_name(line) for line in gpu_lines]
     driver_version = sections["driver"][0].strip() if sections["driver"] else ""
     hardware_info["nvidia_driver_installed"] = bool(driver_version)
     hardware_info["nvidia_driver_version"] = driver_version
@@ -195,7 +197,10 @@ async def get_real_hardware_info(ip_address: str, username: str, password: str):
         else:
             hardware_info["gpu_model"] = f"{len(nvidia_gpus)} NVIDIA GPUs: {', '.join(nvidia_gpus)}"
 
-        if not driver_version:
+        if all_pre_volta(gpu_lines):
+            # Older than Volta: no driver makes it usable.
+            hardware_info["driver_status"] = "unsupported_gpu"
+        elif not driver_version:
             hardware_info["driver_status"] = "missing"
         else:
             major = driver_version.split(".")[0]

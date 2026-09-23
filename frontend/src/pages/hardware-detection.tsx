@@ -74,7 +74,9 @@ export default function HardwareDetection() {
           acc.cpu += server.hardware.cpu_cores || 0
           acc.memory += server.hardware.memory_gb || 0
           acc.storage += server.hardware.disk_gb || 0
-          acc.gpus += server.hardware.gpu_count || 0
+          if (server.hardware.driver_status !== "unsupported_gpu") {
+            acc.gpus += server.hardware.gpu_count || 0
+          }
         }
         return acc
       },
@@ -120,7 +122,11 @@ export default function HardwareDetection() {
     )
   }, [gpuServers])
 
-  const unsupportedGpuServers: typeof servers = []
+  const unsupportedGpuServers = useMemo(() => {
+    return servers.filter(
+      (server) => server.hardware?.driver_status === "unsupported_gpu"
+    )
+  }, [servers])
 
   useEffect(() => {
     const loadServers = async () => {
