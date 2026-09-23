@@ -65,33 +65,24 @@ This is **not** an airgap story. A real airgap would also require mirroring apt 
 
 ---
 
-## Replace ansible+podman-on-build-host with an in-cluster build service
+## Build the harbor-images base images in-cluster, as the app builds do
 
-**Status:** not started
+**Status:** partly done. App images, thinkube-control's own images and custom images build with Buildah in Argo Workflow pods (see `thinkube-release/BUILDAH-PLAN.md`). The harbor-images base images do not.
 
-**Why:** Today image builds (harbor-images and any future user CI/CD) work by Ansible delegating `podman build` to a designated build host (the control plane, by default), which then pushes to Harbor. That pattern requires podman to be wired up on whichever node is acting as the build host, doesn't parallelize, and ties build capacity to one machine. Kaniko (the historical Kubernetes-native answer) is deprecated. The modern replacement is BuildKit running in-cluster as a daemon: callers submit a build over gRPC, BuildKit builds and pushes to Harbor, the caller pulls from Harbor. Composes cleanly with the airgap/mirror story (item above) — the entire build path stays inside the cluster, talking to Harbor and DevPi mirrors.
+**Why:** `14_build_base_images.yaml` still builds by Ansible delegating `podman build` to one build host per architecture, which then pushes to Harbor. That needs podman wired up on each build host, runs one image at a time per host, and skips an image whose tags already exist unless `force_rebuild` is set. Kaniko, the earlier Kubernetes-native answer, is archived.
 
 **What the new shape looks like:**
 
-- `buildkitd` runs as a Kubernetes Deployment (rootless preferred; needs cgroup v2 + user namespaces — already available on the platform) with a Service.
-- A small thin wrapper (FastAPI / gRPC) accepts build requests `{ context: tarball|git-ref, dockerfile, build-args, target-image }`, dispatches to BuildKit via `buildctl`, returns a job id.
-- Argo Workflows (already in the cluster) is the natural orchestrator: a `WorkflowTemplate` per image type, parameterized on context + tag. Caller submits the workflow, polls for completion, pulls the image from Harbor.
-- Migration path: keep the existing ansible+podman path operational; introduce the new service in parallel; cut over one Containerfile at a time. The harbor-images set is the obvious first cohort because it's already a fixed catalog.
-
-**What this enables beyond reliability:**
-
-- Parallel builds (multiple BuildKit replicas).
-- No "build host" notion — any node with the BuildKit pod scheduled to it works.
-- Native buildkit features Thinkube doesn't get today: cache mounts, secret mounts at build time, multi-platform builds via emulation or per-arch nodes.
-- A coherent story for *user* CI/CD: same service builds platform images and user-application images, same code path.
+- The same Buildah step the app builds use (`library/buildah`, root in an unprivileged pod with `SYS_ADMIN` and AppArmor unconfined, `--isolation chroot`, overlay storage on an emptyDir, layer cache in Harbor at `<image>/cache`), in one WorkflowTemplate parameterized on Containerfile and tag.
+- One pod per architecture, pinned by `kubernetes.io/arch`, then one step that joins the per-architecture tags into a multi-architecture image, as `create-manifest` does with crane.
+- The Containerfiles reach the pod from the thinkube repository, cloned from Gitea, as the app builds clone their repositories.
+- No daemon and no build host: capacity is whatever nodes of each architecture can run the pods.
 
 **Things to watch:**
 
-- Rootless BuildKit needs `seccomp` / `apparmor` annotations and `securityContext` tuning. Some environments need a privileged fallback. Keep both modes available.
-- BuildKit's cache lives in a volume — sizing matters; on shared storage (juicefs/seaweedfs already in cluster) it can be reused across runs.
-- Harbor pull-through cache settings need to be tuned so BuildKit pulling base images during a build doesn't hammer dockerhub directly.
-- Don't try to reuse the existing podman flow's containers.conf / registries.conf — BuildKit configures registries through its own daemon flags / TOML.
-- Estimated effort: significant. The MVP (BuildKit daemon + one WorkflowTemplate that builds python-base) is a few hours; getting the whole harbor-images catalog migrated, with caching dialed in and the ansible playbooks updated, is days. Pair this with the mirror-upstream task above for compounding airgap value.
+- The base images build in order (python-base before the images built on it); the WorkflowTemplate DAG has to follow that order.
+- Pulls of public base images during a build go through Harbor, which the mirror task above already fills.
+- K1: a pod on tkspark can lose its first DNS lookup; the build step retries only the push.
 
 ---
 
