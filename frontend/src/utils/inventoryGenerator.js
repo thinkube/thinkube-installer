@@ -311,21 +311,6 @@ export function generateDynamicInventory() {
     // REMOVED: Do not assume first server is local - this causes issues
     // when the installer runs on a different machine
     
-    // Determine if this host needs GPU passthrough configuration
-    const assignedSlots = []
-    
-    // Since we no longer have VMs, all GPUs are for baremetal use
-    // No GPU passthrough configuration needed
-    
-    const hasGPUPassthrough = assignedSlots.length > 0
-    serverDef.configure_gpu_passthrough = hasGPUPassthrough
-    
-    // Add assigned PCI slots if any
-    if (hasGPUPassthrough) {
-      serverDef.assigned_pci_slots = assignedSlots
-      console.log(`Host ${hostname} configured for GPU passthrough with slots: ${assignedSlots}`)
-    }
-
     // Add GPU node configuration from GPU Driver Check screen
     const gpuNodes = config.gpuNodes || []
     const gpuNodeConfig = gpuNodes.find(node =>
