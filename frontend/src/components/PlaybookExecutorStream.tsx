@@ -74,6 +74,9 @@ export const PlaybookExecutorStream = forwardRef<PlaybookExecutorRef, PlaybookEx
     const [autoScroll, setAutoScroll] = useState(true)
     const websocketRef = useRef<WebSocket | null>(null)
     const startTimeRef = useRef<number>(0)
+    // Whether the current run has ended. The socket handlers are created once
+    // per run, so they read this ref, not the status state they captured.
+    const finishedRef = useRef(false)
 
     // Idle detection: track when we last received WebSocket output and
     // tick `now` every 5s so the UI can render "no output for X seconds"
@@ -128,6 +131,7 @@ ${logOutput.map(log => log.message).join('\n')}`
 
     // Methods
     const startExecution = (params: any = {}) => {
+      finishedRef.current = false
       setIsExecuting(true)
       setStatus('running')
       setMessage('')
@@ -343,7 +347,7 @@ ${logOutput.map(log => log.message).join('\n')}`
         }
 
         ws.onclose = () => {
-          if (status === 'running') {
+          if (!finishedRef.current) {
             setStatus('error')
             setMessage('Connection lost')
             completeExecution({
@@ -447,13 +451,21 @@ ${logOutput.map(log => log.message).join('\n')}`
           break
 
         case 'error':
+          setDuration((Date.now() - startTimeRef.current) / 1000)
           setStatus('error')
           setMessage(data.message)
+          completeExecution({
+            status: 'error',
+            message: data.message,
+            duration: (Date.now() - startTimeRef.current) / 1000
+          })
           break
       }
     }
 
     const completeExecution = (result: any) => {
+      if (finishedRef.current) return
+      finishedRef.current = true
       setIsExecuting(false)
       websocketRef.current?.close()
       websocketRef.current = null
@@ -469,6 +481,7 @@ ${logOutput.map(log => log.message).join('\n')}`
     }
 
     const cancelExecution = () => {
+      finishedRef.current = true
       setIsCancelling(true)
       websocketRef.current?.close()
       setStatus('cancelled')
