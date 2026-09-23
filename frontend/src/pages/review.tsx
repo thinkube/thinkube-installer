@@ -25,9 +25,9 @@ interface Node {
   hostname: string
   role: string
   type: string
-  cpu?: number
-  memory?: number
-  disk?: number
+  cpu: number
+  memory: number
+  disk: number
   hasGPU?: boolean
   overlayIP?: string
   localIP?: string
@@ -99,10 +99,7 @@ export default function Review() {
 
           const result: Node = {
             ...node,
-            cpu: node.cpu || hwInfo?.hardware?.cpu_cores || 0,
-            memory: node.memory || hwInfo?.hardware?.memory_gb || 0,
-            disk: node.disk || hwInfo?.hardware?.disk_gb || 0,
-            hasGPU: (hwInfo?.hardware?.gpu_detected && hwInfo?.hardware?.driver_status !== "unsupported_gpu") || false,
+            hasGPU: hwInfo.hardware.gpu_detected && hwInfo.hardware.driver_status !== "unsupported_gpu",
             // Don't fall back to the LAN IP — overlay and local are
             // distinct things. In Tailscale mode this is genuinely
             // unknown until deploy; the renderer below handles that.
@@ -110,10 +107,10 @@ export default function Review() {
             localIP: networkInfo?.localIP || hwInfo?.network?.ip_address || ""
           }
 
-          if (hwInfo?.hardware?.gpu_detected && hwInfo?.hardware?.driver_status !== "unsupported_gpu") {
+          if (result.hasGPU) {
             result.gpuInfo = {
-              gpu_count: hwInfo.hardware.gpu_count || 0,
-              gpu_model: hwInfo.hardware.gpu_model || "",
+              gpu_count: hwInfo.hardware.gpu_count,
+              gpu_model: hwInfo.hardware.gpu_model,
             }
           }
 
@@ -267,14 +264,14 @@ export default function Review() {
                     {/* Hardware specs */}
                     <div className="text-sm mt-2">
                       <div>
-                        <span className="font-medium">{node.cpu || 0}</span> CPU
+                        <span className="font-medium">{node.cpu}</span> CPU
                         cores,{" "}
                         <span className="font-medium">
-                          {Math.round(node.memory || 0)}
+                          {Math.round(node.memory)}
                         </span>{" "}
                         GB RAM,
                         <span className="font-medium">
-                          {Math.round(node.disk || 0)}
+                          {Math.round(node.disk)}
                         </span>{" "}
                         GB Storage
                       </div>

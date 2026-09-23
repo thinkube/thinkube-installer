@@ -124,13 +124,13 @@ export default function RoleAssignment() {
       hostname: s.hostname,
       ip: s.ip,
       type: 'baremetal',
-      cpu: s.hardware?.cpu_cores || 0,
-      memory: s.hardware?.memory_gb || 0,
-      disk: s.hardware?.disk_gb || 0,
-      hasGPU: (s.hardware?.gpu_detected && s.hardware?.driver_status !== "unsupported_gpu") || false,
+      cpu: s.hardware.cpu_cores,
+      memory: s.hardware.memory_gb,
+      disk: s.hardware.disk_gb,
+      hasGPU: s.hardware.gpu_detected && s.hardware.driver_status !== "unsupported_gpu",
       gpuInfo: {
-        gpu_count: s.hardware?.gpu_count || 0,
-        gpu_model: s.hardware?.gpu_model || ''
+        gpu_count: s.hardware.gpu_count,
+        gpu_model: s.hardware.gpu_model
       },
       role: ''
     }))
