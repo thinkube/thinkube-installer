@@ -19,6 +19,11 @@
 //               first page that installs anything on the server
 //   --out       where the screenshots go (default: screens/<date-time>)
 //
+// When a playbook fails, the capture stops on the failed step and waits
+// instead of ending the run. Fix the playbooks in the clone it names, press
+// Enter, and it clicks Retry and goes on from that step; press q and Enter
+// to end it there. With no terminal attached it does not wait.
+//
 // Secrets stay masked: every token and password field is a password field,
 // and the script never clicks the buttons that reveal them. Playbook output
 // is blanked by the installer backend. The Tailscale OAuth client ID is a
@@ -29,8 +34,14 @@ import { chromium } from "playwright"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
+import readline from "node:readline"
 
 const BASE_URL = "http://localhost:5173"
+// Where the installer backend clones the playbooks it runs. It re-reads them
+// from here on every run, so a failed step can be fixed in place and retried.
+// Kept in step with ansible_environment.py, which scopes the clone by UID
+// because the sticky bit on /tmp keeps one user off another's stale copy.
+const CLONE_DIR = path.join(os.tmpdir(), `thinkube-installer-${process.getuid()}`)
 const WIDTH = 1440
 const HEIGHT = 900
 // Pages that run playbooks are captured again whenever their text changes.
@@ -106,6 +117,35 @@ function button(page, name) {
   return page.getByRole("button", { name, exact: true })
 }
 
+function readLine() {
+  const rl = readline.createInterface({ input: process.stdin })
+  return new Promise((resolve) => rl.once("line", (line) => (rl.close(), resolve(line))))
+}
+
+// A playbook failed. The installer keeps the step on screen with a retry
+// button and the backend still holds the wizard's state, so the run can go
+// on once the cause is fixed. Waiting here rather than throwing is what
+// makes that possible: the capture exiting takes the installer down with it
+// (run.sh stops dev-services.sh on the way out), and a one-line playbook fix
+// would then cost a whole fresh install to get back to this point.
+//
+// Only worth waiting when someone is watching. With no terminal attached
+// nobody can fix anything and the wait would never end, so the failure
+// stands and the capture stops as it did before.
+async function pauseForRetry(page, retryButton, failure) {
+  if (!process.stdin.isTTY) return false
+  console.log(`\n${failure}`)
+  console.log(`Fix the playbooks in ${CLONE_DIR}, then press Enter to run the step again.`)
+  console.log("Press q and Enter to end the capture instead.")
+  if ((await readLine()).trim().toLowerCase() === "q") return false
+  await button(page, retryButton).click()
+  // The failure text stays up for a moment after the click. Waiting for it
+  // to go keeps the watch loop from reading it again and calling the fresh
+  // attempt a failure.
+  await page.waitForFunction((t) => !document.body.innerText.includes(t), failure, { timeout: 60000 })
+  return true
+}
+
 async function clickWhenEnabled(page, name, timeout = 120000) {
   const b = button(page, name)
   await b.waitFor({ state: "visible", timeout })
@@ -137,8 +177,8 @@ async function stageText(page) {
 
 // Captures a page that runs work on its own, each time its text changes,
 // until the page is left or a failure text appears.
-async function watchUntilLeft(page, route, failureTexts, timeout) {
-  const started = Date.now()
+async function watchUntilLeft(page, route, failureTexts, retryButton, timeout) {
+  let started = Date.now()
   let lastStage = ""
   while (currentRoute(page) === route) {
     const text = await mainText(page)
@@ -150,7 +190,13 @@ async function watchUntilLeft(page, route, failureTexts, timeout) {
     const failure = failureTexts.find((t) => text.includes(t))
     if (failure) {
       await shot(page, "failed")
-      throw new Error(`${route} failed: the page shows "${failure}"`)
+      const message = `${route} failed: the page shows "${failure}"`
+      if (!(await pauseForRetry(page, retryButton, message))) throw new Error(message)
+      // A retry is a fresh attempt: it gets the whole timeout, and its first
+      // stage is worth a screenshot even if it reads like the last one.
+      started = Date.now()
+      lastStage = ""
+      continue
     }
     if (Date.now() - started > timeout) throw new Error(`${route} did not finish within ${timeout / 60000} minutes`)
     await page.waitForTimeout(WATCH_INTERVAL_MS)
@@ -210,7 +256,7 @@ const handlers = {
     await clickWhenEnabled(page, "Setup SSH Connectivity")
   },
 
-  "ssh-setup": (page) => watchUntilLeft(page, "ssh-setup", ["Retry SSH Setup"], 30 * 60000),
+  "ssh-setup": (page) => watchUntilLeft(page, "ssh-setup", ["Retry SSH Setup"], "Retry SSH Setup", 30 * 60000),
 
   "hardware-detection": async (page) => {
     const next = page.getByRole("button", { name: /^(Assign Roles|Continue Without GPU Nodes)$/ })
@@ -247,7 +293,7 @@ const handlers = {
     await clickWhenEnabled(page, "Continue")
   },
 
-  "overlay-setup": (page) => watchUntilLeft(page, "overlay-setup", ["Retry Setup"], 30 * 60000),
+  "overlay-setup": (page) => watchUntilLeft(page, "overlay-setup", ["Retry Setup"], "Retry Setup", 30 * 60000),
 
   "network-configuration": async (page) => {
     await button(page, "Review Configuration").waitFor()
@@ -269,7 +315,7 @@ const handlers = {
   },
 
   deploy: async (page) => {
-    await watchUntilText(page, ["Deployment Complete!"], ["Deployment Failed"], DEPLOY_TIMEOUT_MS)
+    await watchUntilText(page, ["Deployment Complete!"], ["Deployment Failed"], "Retry", DEPLOY_TIMEOUT_MS)
     await button(page, "View Cluster Details").click()
   },
 
@@ -294,8 +340,8 @@ async function watchUntilDone(page, doneLocator) {
   await shot(page)
 }
 
-async function watchUntilText(page, doneTexts, failureTexts, timeout) {
-  const started = Date.now()
+async function watchUntilText(page, doneTexts, failureTexts, retryButton, timeout) {
+  let started = Date.now()
   let lastStage = ""
   for (;;) {
     const text = await mainText(page)
@@ -308,7 +354,11 @@ async function watchUntilText(page, doneTexts, failureTexts, timeout) {
     const failure = failureTexts.find((t) => text.includes(t))
     if (failure) {
       await shot(page, "failed")
-      throw new Error(`The page shows "${failure}"`)
+      const message = `The page shows "${failure}"`
+      if (!(await pauseForRetry(page, retryButton, message))) throw new Error(message)
+      started = Date.now()
+      lastStage = ""
+      continue
     }
     if (Date.now() - started > timeout) throw new Error(`Not finished within ${timeout / 60000} minutes`)
     await page.waitForTimeout(WATCH_INTERVAL_MS)

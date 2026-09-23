@@ -33,6 +33,7 @@ tmux select-window -t "$SESSION:installer"
 
 echo "Started. Screenshots go to $HERE/screens/<date-time>/"
 echo "Window \"installer\" lists each screenshot as it is saved; Ctrl+B then N shows the Ansible output."
+echo "A failed playbook waits in the \"installer\" window: fix it in the clone named there and press Enter to run the step again."
 if [ -t 1 ]; then
     tmux attach -t "$SESSION"
 else
