@@ -65,27 +65,6 @@ This is **not** an airgap story. A real airgap would also require mirroring apt 
 
 ---
 
-## Build the harbor-images base images in-cluster, as the app builds do
-
-**Status:** partly done. App images, thinkube-control's own images and custom images build with Buildah in Argo Workflow pods (see `thinkube-release/BUILDAH-PLAN.md`). The harbor-images base images do not.
-
-**Why:** `14_build_base_images.yaml` still builds by Ansible delegating `podman build` to one build host per architecture, which then pushes to Harbor. That needs podman wired up on each build host, runs one image at a time per host, and skips an image whose tags already exist unless `force_rebuild` is set. Kaniko, the earlier Kubernetes-native answer, is archived.
-
-**What the new shape looks like:**
-
-- The same Buildah step the app builds use (`library/buildah`, root in an unprivileged pod with `SYS_ADMIN` and AppArmor unconfined, `--isolation chroot`, overlay storage on an emptyDir, layer cache in Harbor at `<image>/cache`), in one WorkflowTemplate parameterized on Containerfile and tag.
-- One pod per architecture, pinned by `kubernetes.io/arch`, then one step that joins the per-architecture tags into a multi-architecture image, as `create-manifest` does with crane.
-- The Containerfiles reach the pod from the thinkube repository, cloned from Gitea, as the app builds clone their repositories.
-- No daemon and no build host: capacity is whatever nodes of each architecture can run the pods.
-
-**Things to watch:**
-
-- The base images build in order (python-base before the images built on it); the WorkflowTemplate DAG has to follow that order.
-- Pulls of public base images during a build go through Harbor, which the mirror task above already fills.
-- K1: a pod on tkspark can lose its first DNS lookup; the build step retries only the push.
-
----
-
 ## Sweep `k8s_info` + `until:` polling → `kubectl rollout status`
 
 **Status:** not started
