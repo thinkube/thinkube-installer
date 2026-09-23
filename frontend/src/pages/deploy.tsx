@@ -475,6 +475,15 @@ export default function Deploy() {
       name: 'ansible/40_thinkube/core/thinkube-control/00_install.yaml'
     })
 
+    // The SSH setup made sudo passwordless for the install; the installed
+    // platform passes the password itself, so the rule goes last.
+    queue.push({
+      id: 'cleanup-installer',
+      phase: 'initial',
+      title: 'Removing passwordless sudo used during the install',
+      name: 'ansible/00_initial_setup/99_cleanup_installer.yaml'
+    })
+
     return queue
   }
 
