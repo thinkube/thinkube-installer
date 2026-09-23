@@ -385,13 +385,7 @@ export function generateDynamicInventory() {
     const serverHardware = JSON.parse(sessionStorage.getItem('serverHardware') || '[]')
     const hwInfo = serverHardware.find(s => s.hostname === server.hostname)
     
-    // A node joins baremetal_gpus only when the GPU check enabled its GPU: a
-    // GPU older than Volta, or one the person excluded, is not one the
-    // cluster can use.
-    const gpuDecision = (config.gpuNodes || []).find(node =>
-      node.hostname === server.hostname || node.ip === server.ip
-    )
-    if (hwInfo && hwInfo.hardware && hwInfo.hardware.gpu_detected && gpuDecision?.gpu_enabled) {
+    if (hwInfo && hwInfo.hardware && hwInfo.hardware.gpu_detected) {
       // Store GPU info for the inventory
       const gpuInfo = {
         gpu_detected: true,

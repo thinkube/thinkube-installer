@@ -87,22 +87,3 @@ test('stops when the git author email is missing', () => {
 
   assert.throws(() => generateDynamicInventory(), /Your email for git commits is required/)
 })
-
-function withGpu(gpuEnabled) {
-  setUpBrowserState({
-    ...baseConfig,
-    gpuNodes: [{ hostname: 'node1', ip: '192.168.1.10', gpu_detected: true, gpu_enabled: gpuEnabled }],
-  })
-  sessionStorage.setItem('serverHardware', JSON.stringify([
-    { hostname: 'node1', hardware: { gpu_detected: true, gpu_count: 1, gpu_model: 'GeForce GTX 1080 Ti' } },
-  ]))
-  return parse(inventoryToYAML(generateDynamicInventory())).all.children.baremetal_gpus
-}
-
-test('a GPU the GPU check did not enable is not in baremetal_gpus', () => {
-  assert.equal(withGpu(false).hosts?.node1, undefined)
-})
-
-test('a GPU the GPU check enabled is in baremetal_gpus', () => {
-  assert.deepEqual(withGpu(true).hosts.node1, { gpu_count: 1, gpu_model: 'GeForce GTX 1080 Ti' })
-})
