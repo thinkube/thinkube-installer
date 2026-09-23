@@ -196,11 +196,6 @@ else
 fi
 echo '",'
 
-# VFIO info
-echo -n '"vfio_info": "'
-lspci -k 2>/dev/null | grep -A 3 -i nvidia | tr '\n' ' ' | tr '\t' ' ' | sed 's/"/\\"/g' | sed 's/  */ /g' | tr -d '\n' || echo -n ""
-echo '",'
-
 # IOMMU enabled check - check if IOMMU groups exist
 echo -n '"iommu_enabled": '
 if [ -d /sys/kernel/iommu_groups/ ] && [ $(ls -1 /sys/kernel/iommu_groups/ 2>/dev/null | wc -l) -gt 0 ]; then
@@ -395,10 +390,8 @@ echo "}"
         
         # Process GPU information
         nvidia_gpus = []
-        vfio_gpus = []
         all_nvidia_devices = raw_data.get("nvidia_devices", [])
         visible_gpus = raw_data.get("visible_gpus", [])
-        vfio_info = raw_data.get("vfio_info", "")
         total_nvidia_devices = len(all_nvidia_devices)
         
         if total_nvidia_devices > 0:
@@ -457,64 +450,20 @@ echo "}"
                 logger.info("No NVIDIA Corporation found in line")
             nvidia_gpus.append(gpu_model)
         
-        # Check for VFIO-bound GPUs in vfio_info
-        if vfio_info:
-            vfio_lines = vfio_info.split('  ')  # Split by double space since we joined with spaces
-            for i, segment in enumerate(vfio_lines):
-                if 'nvidia' in segment.lower() and ('vga' in segment.lower() or '3d' in segment.lower()):
-                    # Check if vfio-pci is mentioned nearby
-                    combined_text = ' '.join(vfio_lines[i:i+4])  # Check next few segments
-                    if 'vfio-pci' in combined_text:
-                        # Try to extract GPU model name from VFIO info
-                        if 'NVIDIA Corporation' in segment:
-                            parts = segment.split('NVIDIA Corporation', 1)
-                            if len(parts) > 1 and '[' in parts[1]:
-                                model_part = parts[1]
-                                bracket_start = model_part.find('[')
-                                bracket_end = model_part.find(']', bracket_start)
-                                if bracket_end != -1:
-                                    gpu_model = model_part[bracket_start+1:bracket_end].strip()
-                                else:
-                                    gpu_model = "NVIDIA GPU (VFIO-bound)"
-                            else:
-                                gpu_model = "NVIDIA GPU (VFIO-bound)"
-                        else:
-                            gpu_model = "NVIDIA GPU (VFIO-bound)"
-                        vfio_gpus.append(gpu_model)
-                        logger.info(f"Found VFIO-bound GPU: {gpu_model}")
-        
-        # Set GPU information
-        visible_count = len(nvidia_gpus)
-        vfio_count = len(vfio_gpus)
-        total_gpu_count = visible_count + vfio_count
-        
+        # Set GPU information: the GPUs the NVIDIA driver can use
+        total_gpu_count = len(nvidia_gpus)
+
         if total_gpu_count > 0:
             hardware_info["gpu_detected"] = True
             hardware_info["gpu_count"] = total_gpu_count
-            
-            # Create descriptive model string
-            if visible_count > 0 and vfio_count > 0:
-                # Mix of visible and VFIO-bound
-                if visible_count == 1 and vfio_count == 1:
-                    hardware_info["gpu_model"] = f"{nvidia_gpus[0]} + 1 VFIO-bound"
-                else:
-                    hardware_info["gpu_model"] = f"{visible_count} visible + {vfio_count} VFIO-bound NVIDIA GPUs"
-            elif visible_count > 0:
-                # Only visible GPUs
-                if visible_count == 1:
-                    hardware_info["gpu_model"] = nvidia_gpus[0]
-                elif len(set(nvidia_gpus)) == 1:
-                    hardware_info["gpu_model"] = f"{visible_count}x {nvidia_gpus[0]}"
-                else:
-                    hardware_info["gpu_model"] = f"{visible_count} NVIDIA GPUs: {', '.join(nvidia_gpus)}"
-            elif vfio_count > 0:
-                # Only VFIO-bound GPUs
-                if vfio_count == 1:
-                    hardware_info["gpu_model"] = f"{vfio_gpus[0]} (VFIO-bound)"
-                else:
-                    hardware_info["gpu_model"] = f"{vfio_count} NVIDIA GPUs (all VFIO-bound)"
-            
-            logger.info(f"GPU Summary: {visible_count} visible, {vfio_count} VFIO-bound, {total_gpu_count} total")
+            if total_gpu_count == 1:
+                hardware_info["gpu_model"] = nvidia_gpus[0]
+            elif len(set(nvidia_gpus)) == 1:
+                hardware_info["gpu_model"] = f"{total_gpu_count}x {nvidia_gpus[0]}"
+            else:
+                hardware_info["gpu_model"] = f"{total_gpu_count} NVIDIA GPUs: {', '.join(nvidia_gpus)}"
+
+            logger.info(f"GPU Summary: {total_gpu_count} GPU(s)")
 
         # Determine driver status based on GPU detection and driver version
         if total_gpu_count > 0:
