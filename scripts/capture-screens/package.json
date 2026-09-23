@@ -1,0 +1,13 @@
+{
+  "name": "thinkube-installer-capture-screens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Drives the installer in Chromium and saves a screenshot of every page, for the documentation",
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}
