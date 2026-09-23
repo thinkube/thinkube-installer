@@ -57,3 +57,5 @@ htmlcov/
 *.tmp
 *.temp
 .cache/
+# Development environment of the backend, created by tauri:dev
+frontend/src-tauri/backend/venv-test/

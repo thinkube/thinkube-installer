@@ -37,7 +37,9 @@
     "active": true,
     "targets": ["deb", "dmg"],
     "resources": [
-      "backend"
+      "backend/app/",
+      "backend/main.py",
+      "backend/requirements.txt"
     ],
     "linux": {
       "deb": {
