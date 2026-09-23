@@ -188,7 +188,8 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         
         # Find ansible-playbook in user venv or system
         ansible_playbook_path = "ansible-playbook"
-        user_venv_ansible = Path.home() / ".venv" / "bin" / "ansible-playbook"
+        user_venv = Path.home() / ".venv"
+        user_venv_ansible = user_venv / "bin" / "ansible-playbook"
         if user_venv_ansible.exists():
             ansible_playbook_path = str(user_venv_ansible)
         
