@@ -59,7 +59,7 @@ function App() {
 
       <footer className="py-4 bg-muted text-center">
         <p className="text-sm text-muted-foreground">
-          © 2025 Alejandro Martínez Corriá and the Thinkube contributors | Apache-2.0 License
+          © Alejandro Martínez Corriá and the Thinkube contributors | Apache-2.0 License
         </p>
       </footer>
     </div>

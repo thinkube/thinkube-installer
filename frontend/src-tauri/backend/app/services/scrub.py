@@ -35,6 +35,15 @@ _PATTERNS = [
 # Keys of injected variables whose values are secrets, by name.
 _SECRET_KEY = re.compile(r"(?i)" + _NAMES)
 
+# Keys whose value is blanked wherever it appears, without the name beside it
+# counting as a credential. An OAuth client id is not a secret the way its
+# matching client secret is, but it names the tailnet's OAuth client and the
+# documentation screenshots would otherwise carry it, so the value goes. This
+# is deliberately not in _NAMES: a bare client_id there would blank every
+# Keycloak client id in the output, and those are not secrets and are worth
+# reading when a deployment goes wrong.
+_VALUE_ONLY_KEY = re.compile(r"(?i)oauth[_-]?client[_-]?id$")
+
 
 class Scrubber:
     def __init__(self, values: Iterable[str] = ()):
@@ -47,7 +56,7 @@ class Scrubber:
         values: List[str] = []
         for source in (extra_vars or {}, env or {}):
             for key, value in source.items():
-                if isinstance(value, str) and _SECRET_KEY.search(str(key)):
+                if isinstance(value, str) and (_SECRET_KEY.search(str(key)) or _VALUE_ONLY_KEY.search(str(key))):
                     values.append(value)
         return cls(values)
 
