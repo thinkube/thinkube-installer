@@ -38,9 +38,13 @@ Enter the sudo password of your user. The installer uses it to configure SSH to 
 
 The same password must work on the server you select next; the SSH screen checks it.
 
+image::sudo-password.png[The Administrator Access screen with the current user and the sudo password field]
+
 == 4. Server discovery
 
-Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. Select the one server to install on and continue. It becomes the control plane. The installer installs one server; you add more machines afterwards from thinkube-control — xref:adding-nodes.adoc[Add more nodes].
+Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on the one server to install on, then *Setup SSH Connectivity*. That server becomes the control plane. The installer installs one server; you add more machines afterwards from thinkube-control — xref:adding-nodes.adoc[Add more nodes].
+
+image::server-discovery.png[The Server Discovery screen after a scan, with one server selected]
 
 == 5. SSH setup
 
@@ -62,17 +66,25 @@ Enter the cluster name, your domain, and the tokens:
 * the GitHub personal access token; repositories are created in the account that owns it;
 * the Hugging Face access token.
 
-Each token is verified while you type: the installer calls the service and shows a green mark when the token works and has the access it needs.
+The screen also asks for your name and email. They are the author of the commits you make on the platform.
+
+Press *Verify* next to a token to check it now: the installer calls the service and shows a green mark when the token works and has the access it needs. When you continue, the installer verifies every token you have not verified yet.
+
+image::configuration.png[The Cluster Configuration screen with the cluster name, domain, tokens and git identity filled in]
 
 == 9. Overlay network
 
 Tailscale is the only overlay network supported. Enter the Tailscale auth key, which each node consumes once when it joins the tailnet, and the API access token, which the installer uses to talk to your tailnet's admin API. Press *Verify*. When you continue, the installer adds the `tag:k8s-operator` definition to your tailnet's policy file; the next screen needs it.
+
+image::overlay-network.png[The Overlay Network screen with the Tailscale auth key and API access token]
 
 == 10. Tailscale operator
 
 The cluster runs the Tailscale Kubernetes operator, which needs an OAuth client that it uses to mint per-device auth keys at runtime. Tailscale does not let the installer create that client, so this is the one step done in Tailscale's own console. The screen lists it: open *Settings → Trust Credentials*, add an OAuth credential with the *Devices → Core* and *Keys → Auth Keys* scopes, read and write, tagged `tag:k8s-operator`, and paste the client ID and secret. Press *Verify*.
 
 The same screen asks for the gateway hostname the operator will claim on your tailnet. Leave it blank to use `<cluster name>-gw`. It becomes reachable as `<name>.<your tailnet>.ts.net`.
+
+image::tailscale-operator.png[The Tailscale Operator Setup screen with the steps in the Tailscale console, the OAuth client fields and the gateway hostname]
 
 == 11. Overlay setup
 
@@ -84,7 +96,9 @@ In Tailscale mode there is nothing to configure on this screen. It shows the net
 
 == 13. Review
 
-The last look before anything is installed: cluster name and domain, the node with its hardware and role, and the generated Ansible inventory, which you can copy or download. Press *Start Deployment*.
+The last look before anything is installed: cluster name and domain, the admin username, the overlay provider, and the node with its hardware, addresses and role. Press *Start Deployment*.
+
+image::review.png[The Review Configuration screen with the cluster settings and the control plane node]
 
 == 14. Deployment
 
