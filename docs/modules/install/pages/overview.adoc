@@ -4,9 +4,9 @@
 _Run the installer against one Ubuntu machine, the control plane, screen by screen, and know what each screen does to it._
 
 .TL;DR
-Run the installer on an Ubuntu 24.04 machine, one of the servers or any other. It asks for your domain and four tokens, finds your Ubuntu machines, and does everything else over SSH on the one you select: prepares it, installs Kubernetes, deploys the platform. When it says *Complete*, open `control.<your domain>` and log in. You type nothing on the machine itself. More machines join later from thinkube-control.
+Run the installer on an Ubuntu 24.04 machine, one of the servers or any other. It asks for your domain and your tokens, and finds your Ubuntu machines. On the one you select, it prepares the machine, installs Kubernetes and deploys the platform. The installer does all the work on the server over SSH. When it says *Complete*, open `control.<your domain>` and log in.
 
-You will install Thinkube onto machines you own from a machine that runs Ubuntu 24.04 with a desktop. That machine can be one of the servers or a separate one; its form does not matter, its operating system does, and the installer checks it before anything else. The installer asks for accounts and tokens, prepares the server over SSH, installs Kubernetes with kubeadm, and deploys the platform. At the end it shows the addresses and the login it created.
+You install Thinkube onto machines you own. Any machine with Ubuntu 24.04 and a desktop can run the installer. It can be one of the servers or a separate one. The installer checks that machine before anything else. Then it asks for accounts and tokens, prepares the server, installs Kubernetes, and deploys the platform. At the end it shows the addresses and the login it created.
 
 This page follows the wizard in the order its screens appear, and says what each screen does to your machines.
 
@@ -15,14 +15,14 @@ This page follows the wizard in the order its screens appear, and says what each
 Have these ready. Each has its own page.
 
 * Thinkube Installer on the Ubuntu 24.04 desktop you install from — xref:get-the-installer.adoc[Get the installer].
-* A machine with Ubuntu Server 24.04, a user with sudo, OpenSSH server running, and internet access — xref:node-setup.adoc[Prepare your machines]. It becomes the control plane. Other machines are added after the install — xref:adding-nodes.adoc[Add more nodes].
+* A machine with Ubuntu Server 24.04, a user with sudo, OpenSSH server running, and internet access — xref:node-setup.adoc[Prepare your machines]. It becomes the control plane.
 * A Tailscale account with an auth key, an API access token, and an OAuth client for the Tailscale Kubernetes operator — xref:overlay-network.adoc[Connect from anywhere].
 * A domain whose DNS zone is at Cloudflare, and a Cloudflare API token that can edit that zone's DNS — xref:cloudflare-token.adoc[Set up your domain].
 * A GitHub personal access token — xref:github-token.adoc[Connect to GitHub].
 * A Hugging Face access token — xref:huggingface-token.adoc[Unlock AI models].
 * An Anthropic account for Claude Code, which is a paid service. Thinkube installs Claude Code from Anthropic's official installer; you sign in with your own account the first time you start it in Thinkube IDE.
 
-A separate machine you install from is a client, not a node. When the install finishes, the tokens have been copied to the control-plane machine and it is no longer needed.
+A separate machine you install from does not become a node. After the install, the tokens are on the control plane, and you no longer need the machine you installed from.
 
 == 1. Welcome
 
@@ -44,7 +44,7 @@ image::sudo-password.png["The Administrator Access screen with the current user 
 
 == 4. Server discovery
 
-Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on the one server to install on, then *Setup SSH Connectivity*. That server becomes the control plane. The installer installs one server; you add more machines afterwards from Thinkube Control — xref:adding-nodes.adoc[Add more nodes].
+Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on the one server to install on, then *Setup SSH Connectivity*. That server becomes the control plane. The installer sets up this one server. You add more machines later from Thinkube Control — xref:adding-nodes.adoc[Add more nodes].
 
 image::server-discovery.png["The Server Discovery screen after a scan, with one server selected"]
 
@@ -58,7 +58,9 @@ The installer reads the server's CPU cores, memory, disk and GPUs. It also reads
 
 == 7. Role assignment
 
-The selected server is the control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. Until you add workers, it also runs your workloads. Workers are optional and join after the install; GPU nodes are the ones that serve and train models. When you will mix a DGX Spark with other machines, install on one of the other machines and add the Spark later as a worker. On a DGX Spark the GPU and the system share one pool of memory, and the control plane carries more than Kubernetes: on the reference cluster it also runs the registry, identity, the database, Thinkube Git and the builds. As a worker, the Spark keeps its memory for models, notebooks and fine-tuning.
+The selected server is the control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. Until you add workers, it also runs your workloads. GPU nodes serve and train models.
+
+With a DGX Spark, install on another machine and add the Spark later as a worker, so its memory stays free for AI work. On a DGX Spark, the GPU and the system share one pool of memory. The control plane runs more than Kubernetes. It also runs Thinkube Registry, Thinkube Identity, the database, Thinkube Git and the image builds. As a worker, the Spark keeps its memory for models, notebooks and fine-tuning.
 
 == 8. Configuration
 
@@ -82,7 +84,7 @@ image::overlay-network.png["The Overlay Network screen with the Tailscale auth k
 
 == 10. Tailscale operator
 
-The cluster runs the Tailscale Kubernetes operator, which needs an OAuth client that it uses to mint per-device auth keys at runtime. Tailscale does not let the installer create that client, so this is the one step done in Tailscale's own console. The screen lists it: open *Settings → Trust Credentials*, add an OAuth credential with the *Devices → Core* and *Keys → Auth Keys* scopes, read and write, tagged `tag:k8s-operator`, and paste the client ID and secret. Press *Verify*.
+The cluster runs the Tailscale Kubernetes operator, which needs an OAuth client. The operator uses it to add the cluster's gateway to your tailnet. Tailscale does not let the installer create that client, so this is the one step done in Tailscale's own console. The screen lists it: open *Settings → Trust Credentials*, add an OAuth credential with the *Devices → Core* and *Keys → Auth Keys* scopes, read and write, tagged `tag:k8s-operator`, and paste the client ID and secret. Press *Verify*.
 
 The same screen asks for the gateway hostname the operator will claim on your tailnet. Leave it blank to use `<cluster name>-gw`. It becomes reachable as `<name>.<your tailnet>.ts.net`.
 
@@ -94,7 +96,7 @@ The installer installs Tailscale on the server and joins it to your tailnet, the
 
 == 12. Network configuration
 
-In Tailscale mode there is nothing to configure on this screen. It shows the network overview: the overlay range Tailscale uses, the container build architecture detected from the server, and the server with its addresses and role. The cluster's gateway is exposed by the Tailscale operator as one tailnet device, so no load-balancer range is entered.
+This screen shows the network overview for you to check: the overlay range Tailscale uses, the container build architecture detected from the server, and the server with its addresses and role.
 
 == 13. Review
 
@@ -126,13 +128,13 @@ The installer runs the platform's playbooks in order and streams their output. T
 | Installing PostgreSQL · Installing Keycloak · Installing Harbor · Mirroring public images · Building base images · Building Jupyter images · Building the code-server image · Installing SeaweedFS · Installing JuiceFS · Installing Argo Workflows · Installing ArgoCD · Installing DevPi · Installing Gitea · Installing code-server · Installing MLflow · Installing JupyterHub · Deploying Thinkube Control
 |===
 
-Most of the time goes to downloading container images and building the ones this cluster's architectures need. If the output stops moving, it is pulling or building an image. A failed phase stops the deployment; the output names the task that failed.
+Most of the time goes to downloading container images and building the ones this cluster's architectures need. If no new output appears for some minutes, it is pulling or building an image. A failed phase stops the deployment; the output names the task that failed.
 
 == 15. Complete
 
 The final screen shows:
 
-* the control panel at `https://control.<your domain>`;
+* Thinkube Control at `https://control.<your domain>`;
 * Thinkube IDE, VS Code in the browser (code-server), at `https://ide.<your domain>` (the screen labels it Code Server);
 * SSH access to the control plane as your user;
 * the single sign-on username and password. They are shown once. Save them; they open every service.
@@ -140,17 +142,16 @@ The final screen shows:
 
 == What it changed on your machines
 
-The uninstall script keeps a list of everything the installer creates, so that list is the honest inventory. On each node:
+The installer adds these to each node:
 
 * Kubernetes: kubeadm, kubelet, kubectl and containerd packages, `/etc/kubernetes`, `/var/lib/kubelet`, `/var/lib/etcd`, and the CNI configuration.
 * Container tools: podman, buildah, skopeo, podman-compose, podman-toolbox, qemu-user-static and binfmt-support.
 * Tailscale, joined to your tailnet.
 * Storage: SeaweedFS, JuiceFS and OpenEBS rawfile volumes, with their data.
-* System: `thinkube-*` systemd units, the `k8s0` dummy network interface that carries the cluster's stable virtual IP, drop-ins for kernel modules, sysctl and systemd-resolved, and the Kubernetes and Tailscale apt repositories.
-* On a DGX Spark: swap off, `vm.swappiness=1` and `vm.dirty_bytes=256MB`.
-* Your home directory: `~/.env` with the tokens, and `shared-code`, the workspace the IDE, the notebooks and the control panel share.
+* System: `thinkube-*` systemd units; a network interface for the cluster's fixed address; kernel and memory settings (on a DGX Spark: swap off and memory tuning); DNS settings; and the Kubernetes and Tailscale apt repositories.
+* Your home directory: `~/.env` with the tokens, and `shared-code`, the workspace that Thinkube IDE, the notebooks and Thinkube Control share.
 
-Ubuntu itself, its packages, the kernel, netplan, your account and its sudo rights, sshd, and the NVIDIA driver are not the installer's and are left alone.
+The installer leaves Ubuntu, its packages, the kernel, netplan, your account and its sudo rights, sshd, and the NVIDIA driver as they are.
 
 == Good to know
 

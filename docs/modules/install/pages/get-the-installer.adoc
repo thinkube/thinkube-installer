@@ -65,7 +65,6 @@ Removing the installer leaves your cluster as it is: once the install is complet
 
 == Good to know
 
-* Start the installer from its menu entry or the `thinkube-installer` command. The program inside the package needs the Python environment the package set up when it was installed.
 * To install a newer version, download its package and install it the same way; `apt` replaces the old one.
 
 == Next

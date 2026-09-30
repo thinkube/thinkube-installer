@@ -6,7 +6,7 @@ _Create the Hugging Face token the installer asks for, and know what it is used 
 .TL;DR
 Create a read-only token on Hugging Face, accept the licence of any gated model you want, and paste the token into the installer. Models are downloaded once with it and served from your own storage from then on.
 
-Models come from Hugging Face. The platform mirrors a model once into Thinkube Storage and serves it from there; the download is the only time Hugging Face is contacted. Some models are gated: you must accept their licence on the model's page before the download is allowed, and the download must present a token from the account that accepted it.
+Models come from Hugging Face. The platform mirrors a model once into Thinkube Storage and serves it from there. The download is the only time Hugging Face is contacted. Some models are gated: you must accept their licence on the model's page before the download is allowed.
 
 == 1. Create a token
 
@@ -27,13 +27,7 @@ The *Configuration* screen has a *HuggingFace Access Token* field. The installer
 
 == Where it goes and what uses it
 
-* The installer writes it to `~/.env` on the machine running the installer, and the `30_persist_user_secrets.yaml` playbook copies it to `~/.env` on the control plane, so later operations do not need the machine you installed from.
-* The model mirror job reads it as `HF_TOKEN` when it downloads a model, and Thinkube Control receives it as a secret when it is deployed.
-* The platform's playbooks read it from the same file through their shared environment role.
-
-== Good to know
-
-A gated model mirrors once its licence is accepted on Hugging Face with the account the token belongs to.
+The installer stores it on the control plane. Model downloads and Thinkube Control use it from there.
 
 == Next
 

@@ -10,8 +10,8 @@ Your code and your deployments live in Thinkube Git, inside the cluster. GitHub 
 
 * Thinkube IDE logs the `gh` command-line tool in with the token, so `gh` works from a terminal without a browser.
 * When you publish an application as a template, Thinkube Control creates the repository in the GitHub account that owns the token and pushes the code there.
-* If you keep a metadata repository named `<your username>-metadata` with your own templates, the installer reads it and clones the templates marked for development into the IDE.
-* The certificate playbook keeps an encrypted backup of your wildcard certificate in a private repository named `thinkube-certificates` under the same account.
+* If you keep a repository named `<your username>-metadata` that lists your own templates, the installer reads it. It clones the templates marked for development into Thinkube IDE.
+* The installer keeps an encrypted backup of your wildcard certificate in a private repository named `thinkube-certificates` under the same account.
 
 Container images are stored in Thinkube Registry, not on GitHub.
 
@@ -29,8 +29,8 @@ Container images are stored in Thinkube Registry, not on GitHub.
 
 | `repo` | Create and push the repositories above
 | `workflow` | Push repositories that contain GitHub Actions workflows
-| `write:packages` | Required by the check; `admin:packages` also satisfies it
-| `write:discussion` | Required by the check
+| `write:packages` | The installer requires it. `admin:packages` also satisfies it.
+| `write:discussion` | The installer requires it.
 |===
 . *Generate token* and copy it now. Classic tokens start with `ghp_`.
 
@@ -41,16 +41,20 @@ The *Configuration* screen has one field, *GitHub Personal Access Token*. The in
 == Where it goes
 
 * `~/.env` on the machine running the installer, as `GITHUB_TOKEN`. The GitHub username is learned from the token, and kept as `GITHUB_USERNAME` beside it on the control plane.
-* `~/.env` on the control plane, copied by the `30_persist_user_secrets.yaml` playbook, so later operations do not need the machine you installed from.
+* `~/.env` on the control plane. The installer copies it there, so later operations do not need the machine you installed from.
 * Thinkube Control receives it as a secret when it is deployed; that is what publishing a template uses.
 
 == Rotating the token
 
-Generate a new token with the same scopes. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane. Thinkube Control reads the file when it is deployed, so run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository again from Thinkube IDE. In the IDE, run `gh auth login --with-token` with the new token. Then revoke the old one on GitHub.
+. Generate a new token with the same scopes.
+. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane.
+. Deploy Thinkube Control again, because it reads the file when it is deployed. From Thinkube IDE, run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository.
+. In Thinkube IDE, run `gh auth login --with-token` with the new token.
+. Revoke the old token on GitHub.
 
 == Good to know
 
-The token is stored in the cluster. Rotating it is giving the new one to the platform as this page describes.
+The token is stored in the cluster.
 
 == Next
 

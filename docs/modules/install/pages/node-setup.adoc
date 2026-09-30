@@ -15,7 +15,7 @@ Ubuntu Server 24.04, the same sudo user and password on every machine, SSH, and 
 * *Control plane:* a physical machine with at least 16 CPU cores and 64 GB of memory. With a DGX Spark, use another machine as the control plane, so the Spark's memory stays free for AI work.
 * *GPU machines:* an NVIDIA GPU from the Volta generation or newer, with driver 580 or newer. If the driver is missing or old, the installer offers to install it.
 
-Tested so far on a DGX Spark and on an x86 workstation with RTX 3090 GPUs.
+Tested on a DGX Spark and on an x86 workstation with RTX 3090 GPUs.
 
 == What the installer does for you
 
@@ -27,7 +27,7 @@ Tested so far on a DGX Spark and on an x86 workstation with RTX 3090 GPUs.
 
 == Docker
 
-Thinkube runs beside Docker and does not change it. NVIDIA's DGX Spark playbooks keep working. Both use the same GPU, so memory used by one is not available to the other.
+Thinkube runs beside Docker and leaves Docker as it is. NVIDIA's DGX Spark playbooks keep working. Both use the same GPU, so memory used by one is not available to the other.
 
 == Check a machine before you start
 

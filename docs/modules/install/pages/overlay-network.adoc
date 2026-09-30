@@ -4,7 +4,7 @@
 _Create the Tailscale keys the installer asks for, so every node joins your private network and the cluster is reachable from any device on it._
 
 .TL;DR
-Create a Tailscale account, an auth key, an API access token and one OAuth client, and paste the four into the installer. Every node joins your private network, and every service answers at `<name>.<your domain>` from any device on it.
+Create a Tailscale account. Then create three items (auth key, API token, OAuth client) and paste their four values into the installer. Every node joins your private network, and every service answers at `<name>.<your domain>` from any device on it.
 
 Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. The computer or phone you work from joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
 
@@ -27,7 +27,7 @@ Three things, all in the Tailscale admin console:
 | `tskey-api-…`
 
 | OAuth client for the Kubernetes operator
-| The Tailscale Kubernetes operator running in the cluster uses it to mint per-device auth keys at runtime; that is how the cluster gateway becomes a tailnet device
+| The Tailscale Kubernetes operator in the cluster uses it. It lets the cluster's gateway join your tailnet
 | client ID `k…`, secret `tskey-client-…`
 |===
 
@@ -82,7 +82,6 @@ Each node is a separate tailnet device too, so `ssh <user>@<node>` works from an
 
 == Good to know
 
-* Tailscale is the overlay network.
 * Services are reachable from the tailnet and your LAN; no public DNS record is created.
 
 == Next
