@@ -20,6 +20,7 @@ Have these ready. Each has its own page.
 * A domain whose DNS zone is at Cloudflare, and a Cloudflare API token that can edit that zone's DNS — xref:cloudflare-token.adoc[Set up your domain].
 * A GitHub personal access token — xref:github-token.adoc[Connect to GitHub].
 * A Hugging Face access token — xref:huggingface-token.adoc[Unlock AI models].
+* An Anthropic account for Claude Code, which is a paid service. Thinkube installs Claude Code from Anthropic's official installer; you sign in with your own account the first time you start it in Thinkube IDE.
 
 A separate machine you install from is a client, not a node. When the install finishes, the tokens have been copied to the control-plane machine and it is no longer needed.
 
