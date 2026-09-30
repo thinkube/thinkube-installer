@@ -1,29 +1,29 @@
 = Add more nodes
 :page-type: concept
 
-_Join another machine to a running cluster from thinkube-control, including one of a different CPU architecture, and build the images it needs._
+_Join another machine to a running cluster from Thinkube Control, including one of a different CPU architecture, and build the images it needs._
 
 .TL;DR
-In thinkube-control open *Cluster Nodes*, press *Add Node*, enter the machine's address and wait: it is found, joined and configured. If the new machine is a different CPU architecture, run the image build from a terminal in Thinkube IDE as section 2 shows.
+In Thinkube Control open *Cluster Nodes*, press *Add Node*, enter the machine's address and wait: it is found, joined and configured. If the new machine is a different CPU architecture, run the image build from a terminal in Thinkube IDE as section 2 shows.
 
-You add a node in two parts. The first runs in thinkube-control under *Cluster Nodes*: it finds the machine, joins it to the cluster, and configures it. The second runs in a terminal in Thinkube IDE when the new node brings a CPU architecture the cluster did not have: every container image must be built for it. Image builds take long and are worth retrying step by step, which is why they are a command rather than a button.
+You add a node in two parts. The first runs in Thinkube Control under *Cluster Nodes*: it finds the machine, joins it to the cluster, and configures it. The second runs in a terminal in Thinkube IDE when the new node brings a CPU architecture the cluster did not have: every container image must be built for it. Image builds take long and are worth retrying step by step, which is why they are a command rather than a button.
 
 == Before you start
 
 * The new machine meets the same requirements as the first ones — xref:node-setup.adoc[Prepare your machines]: Ubuntu Server 24.04, the same user and sudo password, OpenSSH server, internet access.
 * The cluster is running and you can open thinkube-control.
 
-thinkube-control installs Tailscale on the new node and joins it to your tailnet with the auth key the installer stored; nothing has to be run on the machine by hand.
+Thinkube Control installs Tailscale on the new node and joins it to your tailnet with the auth key the installer stored; nothing has to be run on the machine by hand.
 
 == 1. Find and join the node
 
-. In thinkube-control open *Cluster Nodes* and choose *Add Node*.
+. In Thinkube Control open *Cluster Nodes* and choose *Add Node*.
 . Enter the network to scan, for example `192.168.1.0/24`. Several ranges may be given, separated by commas. Scan it.
 . The wizard lists the machines it found with hostname, IP address, Ubuntu version and status. Select the ones to add. A machine that fails a requirement is marked, and the reason is shown.
-. Continue to hardware detection. thinkube-control connects to each machine over SSH and reads its CPU architecture, its GPUs and its disks. If the architecture is new to the cluster, the wizard says so.
+. Continue to hardware detection. Thinkube Control connects to each machine over SSH and reads its CPU architecture, its GPUs and its disks. If the architecture is new to the cluster, the wizard says so.
 . Confirm the last step of the wizard.
 
-The page streams what thinkube-control does, in this order:
+The page streams what Thinkube Control does, in this order:
 
 . installs and configures Tailscale on the new node;
 . joins the node to the Kubernetes cluster;
@@ -39,7 +39,7 @@ The page streams what thinkube-control does, in this order:
 
 What happens next depends on the architecture.
 
-*Same architecture as an existing node.* Every image already exists for it. thinkube-control restarts any pod that pulled a wrong-architecture image before the cordon took effect, uncordons the node, and reports it ready.
+*Same architecture as an existing node.* Every image already exists for it. Thinkube Control restarts any pod that pulled a wrong-architecture image before the cordon took effect, uncordons the node, and reports it ready.
 
 *New architecture.* The node stays cordoned. The page says which architectures now need images and shows the command to run.
 
@@ -77,7 +77,7 @@ An image build that fails with `exec format error` pulled a base image that exis
 
 == Remove a node
 
-In thinkube-control, under *Cluster Nodes*, choose *Remove Node* on the node's row. thinkube-control drains its workloads, removes it from the cluster, and removes it from the inventory.
+In Thinkube Control, under *Cluster Nodes*, choose *Remove Node* on the node's row. Thinkube Control drains its workloads, removes it from the cluster, and removes it from the inventory.
 
 == Good to know
 

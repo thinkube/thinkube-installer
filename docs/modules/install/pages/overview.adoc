@@ -14,6 +14,7 @@ This page follows the wizard in the order its screens appear, and says what each
 
 Have these ready. Each has its own page.
 
+* Thinkube Installer on the Ubuntu 24.04 desktop you install from — xref:get-the-installer.adoc[Get the installer].
 * A machine with Ubuntu Server 24.04, a user with sudo, OpenSSH server running, and internet access — xref:node-setup.adoc[Prepare your machines]. It becomes the control plane. Other machines are added after the install — xref:adding-nodes.adoc[Add more nodes].
 * A Tailscale account with an auth key, an API access token, and an OAuth client for the Tailscale Kubernetes operator — xref:overlay-network.adoc[Connect from anywhere].
 * A domain whose DNS zone is at Cloudflare, and a Cloudflare API token that can edit that zone's DNS — xref:cloudflare-token.adoc[Set up your domain].
@@ -42,7 +43,7 @@ image::sudo-password.png["The Administrator Access screen with the current user 
 
 == 4. Server discovery
 
-Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on the one server to install on, then *Setup SSH Connectivity*. That server becomes the control plane. The installer installs one server; you add more machines afterwards from thinkube-control — xref:adding-nodes.adoc[Add more nodes].
+Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on the one server to install on, then *Setup SSH Connectivity*. That server becomes the control plane. The installer installs one server; you add more machines afterwards from Thinkube Control — xref:adding-nodes.adoc[Add more nodes].
 
 image::server-discovery.png["The Server Discovery screen after a scan, with one server selected"]
 
@@ -121,7 +122,7 @@ The installer runs the platform's playbooks in order and streams their output. T
 | Setting up SSL certificates · Configuring the certificate renewal hook · Deploying Gateway API · Deploying the DNS server (BIND9) · Deploying CoreDNS · Configuring node DNS
 
 | Platform
-| Installing PostgreSQL · Installing Keycloak · Installing Harbor · Mirroring public images · Building base images · Building Jupyter images · Building the code-server image · Installing SeaweedFS · Installing JuiceFS · Installing Argo Workflows · Installing ArgoCD · Installing DevPi · Installing Gitea · Installing code-server · Installing MLflow · Installing JupyterHub · Deploying thinkube-control
+| Installing PostgreSQL · Installing Keycloak · Installing Harbor · Mirroring public images · Building base images · Building Jupyter images · Building the code-server image · Installing SeaweedFS · Installing JuiceFS · Installing Argo Workflows · Installing ArgoCD · Installing DevPi · Installing Gitea · Installing code-server · Installing MLflow · Installing JupyterHub · Deploying Thinkube Control
 |===
 
 Most of the time goes to downloading container images and building the ones this cluster's architectures need. If the output stops moving, it is pulling or building an image. A failed phase stops the deployment; the output names the task that failed.

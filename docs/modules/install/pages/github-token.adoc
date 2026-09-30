@@ -9,7 +9,7 @@ Create a GitHub personal access token with the scopes listed below and paste it 
 Your code and your deployments live in Thinkube Git, inside the cluster. GitHub is used for four things that sit outside it:
 
 * Thinkube IDE logs the `gh` command-line tool in with the token, so `gh` works from a terminal without a browser.
-* When you publish an application as a template, thinkube-control creates the repository in the GitHub account that owns the token and pushes the code there.
+* When you publish an application as a template, Thinkube Control creates the repository in the GitHub account that owns the token and pushes the code there.
 * If you keep a metadata repository named `<your username>-metadata` with your own templates, the installer reads it and clones the templates marked for development into the IDE.
 * The certificate playbook keeps an encrypted backup of your wildcard certificate in a private repository named `thinkube-certificates` under the same account.
 
@@ -42,11 +42,11 @@ The *Configuration* screen has one field, *GitHub Personal Access Token*. The in
 
 * `~/.env` on the machine running the installer, as `GITHUB_TOKEN`. The GitHub username is learned from the token, and kept as `GITHUB_USERNAME` beside it on the control plane.
 * `~/.env` on the control plane, copied by the `30_persist_user_secrets.yaml` playbook, so later operations do not need the machine you installed from.
-* thinkube-control receives it as a secret when it is deployed; that is what publishing a template uses.
+* Thinkube Control receives it as a secret when it is deployed; that is what publishing a template uses.
 
 == Rotating the token
 
-Generate a new token with the same scopes. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane. thinkube-control reads the file when it is deployed, so run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository again from Thinkube IDE. In the IDE, run `gh auth login --with-token` with the new token. Then revoke the old one on GitHub.
+Generate a new token with the same scopes. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane. Thinkube Control reads the file when it is deployed, so run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository again from Thinkube IDE. In the IDE, run `gh auth login --with-token` with the new token. Then revoke the old one on GitHub.
 
 == Good to know
 
