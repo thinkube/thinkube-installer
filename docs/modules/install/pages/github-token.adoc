@@ -59,4 +59,4 @@ The token is stored in the cluster.
 == Next
 
 * xref:huggingface-token.adoc[Unlock AI models].
-* xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.

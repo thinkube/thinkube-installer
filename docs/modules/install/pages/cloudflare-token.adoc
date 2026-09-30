@@ -52,4 +52,4 @@ The *Configuration* screen has a *Cloudflare API Token* field next to the domain
 == Next
 
 * xref:github-token.adoc[Connect to GitHub].
-* xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.

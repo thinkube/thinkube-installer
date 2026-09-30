@@ -31,5 +31,5 @@ The installer stores it on the control plane. Model downloads and Thinkube Contr
 
 == Next
 
-* xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.
 * xref:thinkube-docs::playbooks/serve-your-first-model.adoc[Serve your first model] — mirroring a model after the install.

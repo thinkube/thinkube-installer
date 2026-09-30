@@ -87,4 +87,4 @@ Each node is a separate tailnet device too, so `ssh <user>@<node>` works from an
 == Next
 
 * xref:cloudflare-token.adoc[Set up your domain] — the certificates every service uses.
-* xref:overview.adoc[Install Thinkube] — the wizard, screen by screen.
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.

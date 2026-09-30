@@ -44,4 +44,4 @@ nvidia-smi              # GPU machines: driver version 580 or newer
 == Next
 
 * xref:overlay-network.adoc[Connect from anywhere] — the Tailscale keys the installer asks for.
-* xref:overview.adoc[Install Thinkube] — the installer, screen by screen.
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.
