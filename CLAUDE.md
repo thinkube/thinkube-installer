@@ -13,6 +13,8 @@ Thinkube Installer is a desktop application for deploying Thinkube (single-user,
 
 ## Development Commands
 
+The installer is a desktop application: it has no cluster pipeline, and it is built and run on a desktop workstation with a display. Every command in this section runs on that workstation, never in Thinkube IDE (see the CI/CD policy). In the IDE, the installer's code is edited, committed and pushed only.
+
 ### Running in Development Mode
 
 ```bash
