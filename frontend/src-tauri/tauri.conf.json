@@ -45,7 +45,8 @@
       "deb": {
         "depends": ["python3", "python3-pip", "python3-venv"],
         "postInstallScript": "deb-postinst.sh",
-        "preRemoveScript": "deb-prerm.sh"
+        "preRemoveScript": "deb-prerm.sh",
+        "desktopTemplate": "thinkube-installer.desktop"
       }
     },
     "macOS": {
