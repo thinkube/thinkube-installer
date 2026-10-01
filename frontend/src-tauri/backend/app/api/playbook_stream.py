@@ -211,6 +211,9 @@ async def stream_playbook_execution(websocket: WebSocket, playbook_name: str):
         env = os.environ.copy()
         # Filter out None values — JS null serializes to Python None and breaks subprocess
         env.update({k: str(v) for k, v in environment.items() if v is not None})
+        # The thinkube branch and metadata repository come from the installer's
+        # clone settings and take precedence over the request environment.
+        env.update(ansible_environment.get_thinkube_env())
         
         # Add venv to PATH if it exists
         if user_venv.exists():

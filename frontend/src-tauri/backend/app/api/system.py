@@ -881,6 +881,7 @@ async def run_setup_script(sudo_password: str):
         
         # Set up environment
         env = os.environ.copy()
+        env.update(ansible_environment.get_thinkube_env())
         if sudo_password:
             # Create a temporary askpass script for sudo
             import tempfile

@@ -38,6 +38,10 @@ class AnsibleEnvironment:
             "THINKUBE_REPO_URL", "https://github.com/thinkube/thinkube.git"
         )
         self.thinkube_branch = os.environ.get("THINKUBE_BRANCH", "main")
+        # THINKUBE_METADATA_REPO names the thinkube-metadata repository
+        # (owner/name). It has no default here: when the backend process
+        # does not have it, playbooks do not receive it.
+        self.thinkube_metadata_repo = os.environ.get("THINKUBE_METADATA_REPO")
         self.thinkube_clone_dir = None  # Will be set during initialization
 
     def is_initialized(self) -> bool:
@@ -306,11 +310,20 @@ class AnsibleEnvironment:
         # Set ANSIBLE_HOME to avoid conflicts
         env["ANSIBLE_HOME"] = str(self.installer_dir)
 
-        # Pass the thinkube branch so playbooks can use it (e.g.,
-        # code-server's 15_configure_environment.yaml clones repos
-        # on the same branch the installer used).
-        env["THINKUBE_BRANCH"] = self.thinkube_branch
+        env.update(self.get_thinkube_env())
 
+        return env
+
+    def get_thinkube_env(self) -> dict:
+        """Environment that tells a playbook which thinkube it runs from.
+
+        THINKUBE_BRANCH is the branch the thinkube repository was cloned at,
+        so playbooks that clone further repositories use the same branch.
+        THINKUBE_METADATA_REPO is included only when the backend has it.
+        """
+        env = {"THINKUBE_BRANCH": self.thinkube_branch}
+        if self.thinkube_metadata_repo:
+            env["THINKUBE_METADATA_REPO"] = self.thinkube_metadata_repo
         return env
 
     def get_ansible_playbook_command(self) -> str:
