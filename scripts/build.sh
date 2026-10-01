@@ -156,20 +156,16 @@ elif [ "$PLATFORM" = "macOS" ]; then
 fi
 
 echo ""
-echo "🔧 Installing Node.js dependencies..."
+echo "🔧 Installing Node.js dependencies at their locked versions..."
 
-# Install root dependencies
+# The build uses exactly the versions in the lock files, so a commit always
+# builds the same installer. Dependencies are updated on purpose with
+# scripts/update-deps.sh, which updates npm and Cargo together.
 cd "$PROJECT_DIR"
-npm install
+npm ci
 
-# Install frontend dependencies
 cd "$PROJECT_DIR/frontend"
-npm install
-
-echo ""
-echo "🦀 Updating Rust dependencies..."
-cd "$PROJECT_DIR/frontend/src-tauri"
-cargo update
+npm ci
 
 echo ""
 echo "📦 Building installer..."

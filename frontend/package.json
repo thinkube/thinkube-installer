@@ -11,7 +11,7 @@
     "test": "node --test src/**/*.test.js",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build -- --locked"
   },
   "dependencies": {
     "@fontsource/noto-sans-mono": "^5.2.10",

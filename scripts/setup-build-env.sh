@@ -100,6 +100,15 @@ else
     echo "   source \$HOME/.cargo/env"
     echo "   OR restart your terminal"
 fi
+
+# scripts/update-deps.sh checks the Rust dependencies with cargo-audit.
+if command -v cargo-audit >/dev/null 2>&1; then
+    echo "✅ cargo-audit already installed"
+else
+    echo "📦 Installing cargo-audit..."
+    cargo install cargo-audit --locked
+    echo "✅ cargo-audit installed"
+fi
 echo ""
 
 # 3. Check Python3
