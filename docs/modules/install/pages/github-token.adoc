@@ -52,10 +52,6 @@ The *Configuration* screen has one field, *GitHub Personal Access Token*. The in
 . In Thinkube IDE, run `gh auth login --with-token` with the new token.
 . Revoke the old token on GitHub.
 
-== Good to know
-
-The token is stored in the cluster.
-
 == Next
 
 * xref:huggingface-token.adoc[Unlock AI models].

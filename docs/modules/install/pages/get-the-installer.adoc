@@ -63,10 +63,6 @@ sudo apt remove thinkube-installer
 
 Removing the installer leaves your cluster as it is: once the install is complete, the control plane runs on its own, and the machine you installed from is no longer needed.
 
-== Good to know
-
-* To install a newer version, download its package and install it the same way; `apt` replaces the old one.
-
 == Next
 
 xref:node-setup.adoc[Prepare your machines]: what each server needs before the installer can reach it.

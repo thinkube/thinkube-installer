@@ -70,6 +70,8 @@ The same screen asks for the hostname the gateway will have on your tailnet. Lea
 
 == Reach the cluster afterwards
 
+Services are reachable from the tailnet and your LAN. Their names resolve only through the cluster's own DNS server; no public DNS record is created.
+
 From any device logged in to the tailnet:
 
 [source,bash]
@@ -79,10 +81,6 @@ dig +short control.<your domain>      # should print the same address
 ----
 
 Each node is a separate tailnet device too, so `ssh <user>@<node>` works from any device on the tailnet.
-
-== Good to know
-
-* Services are reachable from the tailnet and your LAN; no public DNS record is created.
 
 == Next
 

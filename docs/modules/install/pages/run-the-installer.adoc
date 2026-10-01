@@ -122,6 +122,8 @@ The installer runs the platform's playbooks in order and streams their output. T
 
 Most of the time goes to downloading container images and building the ones this cluster's architectures need. If no new output appears for some minutes, it is pulling or building an image. A failed phase stops the deployment; the output names the task that failed.
 
+If a step fails, the Deployment screen names it and offers *Retry*, which runs that step again. *Copy Failed Log* and *Download All Logs* keep the output for a support request. Closing the installer loses the progress; the next run starts from the first screen.
+
 == 15. Complete
 
 The final screen shows:
@@ -144,11 +146,6 @@ The installer adds these to each node:
 * Your home directory: `~/.env` with the tokens, and `shared-code`, the workspace that Thinkube IDE, the notebooks and Thinkube Control share.
 
 The installer leaves Ubuntu, its packages, the kernel, netplan, your account and its sudo rights, sshd, and the NVIDIA driver as they are.
-
-== Good to know
-
-* If a step fails, the Deployment screen names it and offers *Retry*, which runs that step again. *Copy Failed Log* and *Download All Logs* keep the output for a support request.
-* Closing the installer loses the progress. The next run starts from the first screen.
 
 == Next
 
