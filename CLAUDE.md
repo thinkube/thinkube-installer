@@ -54,9 +54,12 @@ python main.py --reload        # FastAPI with hot reload on http://localhost:800
 ### Building
 
 ```bash
-./scripts/setup-build-env.sh   # One-time build environment setup
+./scripts/setup-build-env.sh   # One-time build environment setup (Node, Rust, cargo-audit)
 ./scripts/build.sh             # Build .deb (Linux) or .dmg (macOS) to installers/
+./scripts/update-deps.sh       # Update npm and Cargo dependencies together, then audit them
 ```
+
+The build uses only the locked versions (`npm ci`, `tauri build -- --locked`), so a commit always builds the same installer. Dependencies change only through `scripts/update-deps.sh`: run it before a release and when Dependabot reports a high or critical issue, then build, test, and commit the lock files. It keeps `@tauri-apps/api` and `@tauri-apps/cli` on the minor version of the Rust `tauri` crate; Tauri refuses to build when they differ.
 
 ### Testing Production Builds
 
