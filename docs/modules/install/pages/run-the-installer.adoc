@@ -1,7 +1,7 @@
 = Run the installer
 :page-type: concept
 
-_Run the installer against one Ubuntu machine, the control plane, screen by screen, and know what each screen does to it._
+_Run the installer against one or more Ubuntu machines, screen by screen, and know what each screen does to them._
 
 .TL;DR
 Run the installer on an Ubuntu 24.04 machine, one of the servers or any other. It asks for your domain and your tokens, and finds your Ubuntu machines. On the one you select, it prepares the machine, installs Kubernetes and deploys the platform. The installer does all the work on the server over SSH. When it says *Complete*, open `control.<your domain>` and log in.
@@ -30,27 +30,27 @@ Every required item must pass before you can continue.
 
 Enter the sudo password of your user. The installer uses it to configure SSH to the server, install missing tools, set up its environment, and configure system services. The password is not written to disk.
 
-The same password must work on the server you select next; the SSH screen checks it.
+The same password must work on every server you select next; the SSH screen checks it.
 
 image::sudo-password.png["The Administrator Access screen with the current user and the sudo password field"]
 
 == 4. Server discovery
 
-Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on the one server to install on, then *Setup SSH Connectivity*. That server becomes the control plane. The installer sets up this one server. You add more machines later from Thinkube Control — xref:adding-nodes.adoc[Add more nodes].
+Enter the network to scan as a CIDR, for example `192.168.1.0/24`, and press *Start Network Scan*. Each discovered server is listed with its IP address, hostname, operating system and whether SSH is reachable. A machine that is not Ubuntu is marked *Failed*. Press *Select* on each server to install on, and *Deselect* to take one out again, then *Setup SSH Connectivity*. One of them becomes the control plane and the others workers; you choose which on the Role Assignment screen. You can also add machines later from Thinkube Control — xref:adding-nodes.adoc[Add more nodes].
 
-image::server-discovery.png["The Server Discovery screen after a scan, with one server selected"]
+image::server-discovery.png["The Server Discovery screen after a scan, with the servers to install selected"]
 
 == 5. SSH setup
 
-The installer verifies that it can reach the selected server, then configures passwordless SSH to it: it generates keys where needed and distributes them. If the server cannot be reached, check that SSH is running there and that the sudo password is the same as on the machine you install from.
+The installer verifies that it can reach every selected server, then configures passwordless SSH between them: it generates keys where needed and distributes them. If a server cannot be reached, check that SSH is running there and that the sudo password is the same as on the machine you install from.
 
 == 6. Hardware detection
 
-The installer reads the server's CPU cores, memory, disk and GPUs. It also reads the NVIDIA driver when the server has a GPU. The driver must be version 580.0 or newer. An older driver is reported as outdated and the installer offers to install a compatible one. A GPU older than the Volta generation is reported as unsupported. If the server has no usable GPU you can continue without a GPU, or stop.
+For each server the installer reads CPU cores, memory, disk and GPUs, and sums them in a capacity summary. It also reads the NVIDIA driver on each server with a GPU. The driver must be version 580.0 or newer. An older driver is reported as outdated and the installer offers to install a compatible one. A GPU older than the Volta generation is reported as unsupported. If no server has a usable GPU you can continue without a GPU, or stop.
 
 == 7. Role assignment
 
-The selected server is the control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. Until you add workers, it also runs your workloads. GPU nodes serve and train models.
+Choose one control plane. It must be a physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory. A smaller machine cannot be chosen. Every other server becomes a worker. With a single server, the control plane also runs your workloads. GPU nodes serve and train models.
 
 With a DGX Spark, install on another machine and add the Spark later as a worker, so its memory stays free for AI work. On a DGX Spark, the GPU and the system share one pool of memory. The control plane runs more than Kubernetes. It also runs Thinkube Registry, Thinkube Identity, the database, Thinkube Git and the image builds. As a worker, the Spark keeps its memory for models, notebooks and fine-tuning.
 
@@ -84,11 +84,11 @@ image::tailscale-operator.png["The Tailscale Operator Setup screen with the step
 
 == 11. Overlay setup
 
-The installer installs Tailscale on the server and joins it to your tailnet, then shows its overlay address. Tailscale assigns the addresses; nothing is entered here.
+The installer installs Tailscale on every selected server and joins each one to your tailnet, then shows the overlay address of each node. Tailscale assigns the addresses; nothing is entered here.
 
 == 12. Network configuration
 
-This screen shows the network overview for you to check: the overlay range Tailscale uses, the container build architecture detected from the server, and the server with its addresses and role.
+This screen shows the network overview for you to check: the overlay range Tailscale uses, the container build architectures detected from the servers, and each server with its addresses and role.
 
 == 13. Review
 
@@ -111,7 +111,7 @@ The installer runs the platform's playbooks in order and streams their output. T
 | Configuring Tailscale overlay routing · Setting up Python Kubernetes libraries
 
 | Kubernetes
-| Installing Kubernetes (kubeadm) · Installing the NVIDIA GPU Operator · Configuring resource policies · Installing the Tailscale Kubernetes operator
+| Installing Kubernetes (kubeadm) · Joining worker nodes (when there are workers) · Installing the NVIDIA GPU Operator · Configuring resource policies · Installing the Tailscale Kubernetes operator
 
 | Certificates and DNS
 | Setting up SSL certificates · Configuring the certificate renewal hook · Deploying Gateway API · Deploying the DNS server (BIND9) · Deploying CoreDNS · Configuring node DNS
