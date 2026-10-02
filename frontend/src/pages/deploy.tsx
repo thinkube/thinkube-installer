@@ -263,8 +263,8 @@ export default function Deploy() {
       name: 'ansible/40_thinkube/core/infrastructure/k8s/10_install_k8s.yaml'
     })
 
-    // Join worker nodes. Runs only when more than one server is selected;
-    // server discovery currently allows one, and workers join from thinkube-control.
+    // Join worker nodes. Runs when more than one server was selected; a
+    // single server has no workers. Nodes added later join from thinkube-control.
     const clusterNodes = typeof window !== 'undefined'
       ? JSON.parse(sessionStorage.getItem('clusterNodes') || '[]')
       : []

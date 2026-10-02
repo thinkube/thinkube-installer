@@ -143,8 +143,7 @@ export default function RoleAssignment() {
       eligibleForCP[0].role = 'control_plane'
     }
 
-    // Every other server becomes a worker. Applies only when more than one
-    // server is selected; server discovery currently allows one.
+    // Every other server becomes a worker; a single server has none.
     baremetalList.forEach((node: NodeData) => {
       if (!node.role && node.hostname !== 'dns' && (node.type === 'baremetal' || node.cpu >= 2)) {
         node.role = 'worker'

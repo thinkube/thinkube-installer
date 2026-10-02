@@ -157,11 +157,15 @@ export default function ServerDiscovery() {
     }
   }
 
-  // Alpha release: only one server (the control plane) is installed via
-  // the desktop installer. Additional workers are added afterward via
-  // thinkube-control's add-nodes flow. Selection is therefore radio-style.
-  const selectServer = (server: DiscoveredServer) => {
-    setSelectedServers([server])
+  // Every selected server is installed: the role screen makes one of them
+  // the control plane and the others workers. Selecting a server again
+  // removes it from the selection.
+  const toggleServer = (server: DiscoveredServer) => {
+    setSelectedServers((current) =>
+      current.find((s) => s.ip === server.ip)
+        ? current.filter((s) => s.ip !== server.ip)
+        : [...current, server]
+    )
   }
 
   const proceedToNodeConfig = () => {
@@ -326,7 +330,7 @@ export default function ServerDiscovery() {
                           !selectedServers.find((s) => s.ip === server.ip) && (
                             <TkButton
                               size="sm"
-                              onClick={() => selectServer(server)}
+                              onClick={() => toggleServer(server)}
                             >
                               Select
                             </TkButton>
@@ -337,7 +341,16 @@ export default function ServerDiscovery() {
                           </TkButton>
                         )}
                         {selectedServers.find((s) => s.ip === server.ip) && (
-                          <TkBadge status="active">Selected</TkBadge>
+                          <>
+                            <TkBadge status="active">Selected</TkBadge>
+                            <TkButton
+                              size="sm"
+                              intent="ghost"
+                              onClick={() => toggleServer(server)}
+                            >
+                              Deselect
+                            </TkButton>
+                          </>
                         )}
                       </div>
                     </div>
