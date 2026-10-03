@@ -15,7 +15,7 @@ Get the installer, prepare one machine, have your accounts and tokens ready, the
 ** xref:cloudflare-token.adoc[Set up your domain] — a domain at Cloudflare and an API token.
 ** xref:github-token.adoc[Connect to GitHub] — a GitHub personal access token.
 ** xref:huggingface-token.adoc[Unlock AI models] — a Hugging Face access token.
-** An Anthropic account for Claude Code, which is a paid service. Thinkube installs Claude Code from Anthropic's official installer; you sign in with your own account the first time you start it in Thinkube IDE.
+** Optional: an Anthropic account for Claude Code, which is a paid service. Thinkube installs Claude Code from Anthropic's official installer; you sign in with your own account the first time you start it in Thinkube IDE.
 . xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen, and what each screen does to your machine.
 . xref:adding-nodes.adoc[Add more nodes] — from Thinkube Control, after the install.
 
