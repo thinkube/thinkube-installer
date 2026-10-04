@@ -1,0 +1,64 @@
+= Install Thinkube
+:page-type: concept
+
+_What you need before you install Thinkube, and the order to do it in._
+
+.TL;DR
+Check this list first: the machines, and four accounts with their tokens. When you have everything, get the installer and run it.
+
+== Before you start
+
+Go through both lists. Each line links to the page with the details.
+
+=== Machines
+
+[cols="1,3",options="header"]
+|===
+| Machine | What it needs
+
+| A desktop to run the installer
+| Ubuntu 24.04 with a desktop. It can be one of your servers or a separate computer. It reaches the servers over SSH. See xref:get-the-installer.adoc[Get the installer].
+
+| The control plane
+| A physical machine, not a virtual one, with at least 16 CPU cores and 64 GB of memory, running Ubuntu Server 24.04. The installer refuses a smaller machine. See xref:node-setup.adoc[Prepare your machines].
+
+| GPU machines
+| An NVIDIA GPU of the Volta generation or newer, with driver 580 or newer. The installer offers to install the driver when it is missing or older.
+
+| A DGX Spark
+| Add it as a worker, with another machine as the control plane, so the Spark's memory stays free for models.
+|===
+
+Every server needs Ubuntu Server 24.04, the same sudo user and password, a running SSH server and internet access.
+
+Thinkube has been tested on a DGX Spark and on an x86 workstation with RTX 3090 GPUs.
+
+=== Accounts and tokens
+
+[cols="1,3",options="header"]
+|===
+| Account | What you need
+
+| A domain at Cloudflare
+| A domain you own, at any registrar, with its DNS moved to a free Cloudflare account, and an API token that can edit that zone's DNS. Moving the DNS can take hours. See xref:cloudflare-token.adoc[Set up your domain].
+
+| Tailscale
+| A Tailscale account, and an auth key, an API token and an OAuth client created in it. See xref:overlay-network.adoc[Connect from anywhere].
+
+| GitHub
+| A personal access token with the scopes the installer checks. See xref:github-token.adoc[Connect to GitHub].
+
+| Hugging Face
+| A read-only access token, and the licence accepted for each gated model you want. See xref:huggingface-token.adoc[Unlock AI models].
+
+| Anthropic (optional)
+| An account for Claude Code, which is a paid service. You sign in the first time you start it in Thinkube IDE.
+|===
+
+== The steps
+
+. xref:node-setup.adoc[Prepare your machines].
+. Create the accounts and tokens above.
+. xref:get-the-installer.adoc[Get the installer] on the desktop machine.
+. xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen, and what each screen does to your machine.
+. xref:adding-nodes.adoc[Add more nodes] — from Thinkube Control, after the install.

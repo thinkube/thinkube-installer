@@ -1,0 +1,386 @@
+/*
+ * Copyright Alejandro Martínez Corriá and the Thinkube contributors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { TkCard, TkCardContent, TkCardHeader, TkCardTitle } from "thinkube-style/components/cards-data"
+import { TkAlert, TkAlertDescription } from "thinkube-style/components/feedback"
+import { TkButton } from "thinkube-style/components/buttons-badges"
+import { TkBadge } from "thinkube-style/components/buttons-badges"
+import { TkProgress } from "thinkube-style/components/feedback"
+import { TkInput } from "thinkube-style/components/forms-inputs"
+import { TkLabel } from "thinkube-style/components/forms-inputs"
+import { TkPageWrapper } from "thinkube-style/components/utilities"
+import {
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  HelpCircle,
+  Loader2
+} from "lucide-react"
+import axios from "@/utils/axios"
+
+interface Server {
+  ip: string
+  hostname?: string
+  os_info?: string
+  ssh_available?: boolean
+  confidence?: "confirmed" | "possible" | "failed" | "unknown"
+  error?: string
+  banner?: string
+}
+
+interface DiscoveredServer extends Server {
+  is_zerotier?: boolean
+}
+
+export default function ServerDiscovery() {
+  const navigate = useNavigate()
+
+  const [networkCIDR, setNetworkCIDR] = useState("192.168.1.0/24")
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(0)
+  const [scanStatus, setScanStatus] = useState("")
+  const [discoveredServers, setDiscoveredServers] = useState<DiscoveredServer[]>([])
+  const [selectedServers, setSelectedServers] = useState<DiscoveredServer[]>([])
+
+  useEffect(() => {
+    autoDetectNetwork()
+  }, [])
+
+  const autoDetectNetwork = async () => {
+    try {
+      const response = await axios.get("/api/local-network")
+      if (response.data.detected) {
+        setNetworkCIDR(response.data.network_cidr)
+      }
+    } catch (error) {
+      // Keep default value
+    }
+  }
+
+  const startDiscovery = async () => {
+    setIsScanning(true)
+    setScanProgress(0)
+    setScanStatus("Initializing scan...")
+    setDiscoveredServers([])
+
+    const progressInterval = setInterval(() => {
+      setScanProgress((prev) => {
+        if (prev < 90) {
+          const newProgress = Math.min(90, prev + Math.random() * 20)
+          setScanStatus(
+            `Scanning ${networkCIDR} - Checking ${Math.floor(newProgress * 2.54)} of 254 hosts`
+          )
+          return newProgress
+        } else {
+          setScanStatus("Processing results...")
+          return prev
+        }
+      })
+    }, 500)
+
+    try {
+      const sudoPassword = sessionStorage.getItem("sudoPassword")
+      const currentUsername = sessionStorage.getItem("systemUsername")
+
+      const response = await axios.post(
+        "/api/discover-servers",
+        {
+          network_cidr: networkCIDR,
+          username: currentUsername,
+          password: sudoPassword
+        },
+        {
+          timeout: 120000
+        }
+      )
+
+      setDiscoveredServers(response.data.servers || [])
+      setScanProgress(100)
+      setScanStatus(
+        `Scan complete - Found ${response.data.servers?.length || 0} servers`
+      )
+    } catch (error: any) {
+      setScanStatus("Scan failed: " + error.message)
+    } finally {
+      clearInterval(progressInterval)
+      setTimeout(() => {
+        setIsScanning(false)
+      }, 1000)
+    }
+  }
+
+  const verifyServer = async (server: DiscoveredServer) => {
+    try {
+      const sudoPassword = sessionStorage.getItem("sudoPassword")
+
+      const response = await axios.post("/api/verify-server-ssh", {
+        ip_address: server.ip,
+        password: sudoPassword
+      })
+
+      const idx = discoveredServers.findIndex((s) => s.ip === server.ip)
+      if (idx >= 0) {
+        const updatedServers = [...discoveredServers]
+        if (response.data.connected) {
+          updatedServers[idx] = {
+            ...updatedServers[idx],
+            hostname: response.data.hostname || server.hostname,
+            os_info: response.data.os_info,
+            confidence: response.data.os_info?.includes("24.04")
+              ? "confirmed"
+              : "possible",
+            error: undefined
+          }
+        } else {
+          updatedServers[idx] = {
+            ...updatedServers[idx],
+            error: response.data.message || "SSH verification failed",
+            confidence: "failed"
+          }
+          alert(
+            `SSH verification failed for ${server.ip}:\n${response.data.message}`
+          )
+        }
+        setDiscoveredServers(updatedServers)
+      }
+    } catch (error: any) {
+      alert(
+        `Failed to verify server ${server.ip}:\n${error.response?.data?.detail || error.message}`
+      )
+    }
+  }
+
+  // Every selected server is installed: the role screen makes one of them
+  // the control plane and the others workers. Selecting a server again
+  // removes it from the selection.
+  const toggleServer = (server: DiscoveredServer) => {
+    setSelectedServers((current) =>
+      current.find((s) => s.ip === server.ip)
+        ? current.filter((s) => s.ip !== server.ip)
+        : [...current, server]
+    )
+  }
+
+  const proceedToNodeConfig = () => {
+    sessionStorage.setItem("selectedServers", JSON.stringify(selectedServers))
+    sessionStorage.setItem("discoveredServers", JSON.stringify(selectedServers))
+    sessionStorage.setItem("networkCIDR", networkCIDR)
+
+    navigate("/ssh-setup")
+  }
+
+  const getConfidenceIcon = (confidence?: string) => {
+    switch (confidence) {
+      case "confirmed":
+        return <CheckCircle2 className="w-8 h-8 text-success" />
+      case "possible":
+        return <AlertCircle className="w-8 h-8 text-warning" />
+      case "failed":
+        return <AlertCircle className="w-8 h-8 text-destructive" />
+      default:
+        return <HelpCircle className="w-8 h-8 text-muted-foreground" />
+    }
+  }
+
+  const getConfidenceTooltip = (confidence?: string) => {
+    switch (confidence) {
+      case "confirmed":
+        return "Confirmed Ubuntu"
+      case "possible":
+        return "Possible Ubuntu"
+      case "failed":
+        return "SSH Verification Failed"
+      default:
+        return "Unknown OS"
+    }
+  }
+
+  return (
+    <TkPageWrapper title="Server Discovery">
+      {/* Discovery Controls */}
+      <TkCard className="mb-6">
+        <TkCardHeader>
+          <TkCardTitle>Scan Network for Ubuntu Servers</TkCardTitle>
+        </TkCardHeader>
+        <TkCardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Enter the CIDR of the local network where your servers are located.
+            The installer will scan for Ubuntu servers with SSH access.
+          </p>
+
+          <div className="mb-4">
+            <div className="flex justify-between items-end mb-2">
+              <TkLabel htmlFor="networkCIDR">Local Network CIDR</TkLabel>
+              <span className="text-sm text-muted-foreground">
+                e.g., 192.168.1.0/24
+              </span>
+            </div>
+            <TkInput
+              id="networkCIDR"
+              value={networkCIDR}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNetworkCIDR(e.target.value)}
+              placeholder="192.168.1.0/24"
+              disabled={isScanning}
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <TkButton onClick={startDiscovery} disabled={isScanning}>
+              {isScanning ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Search className="w-5 h-5" />
+              )}
+              {isScanning ? "Discovering..." : "Start Network Scan"}
+            </TkButton>
+          </div>
+        </TkCardContent>
+      </TkCard>
+
+      {/* Scanning Progress */}
+      {isScanning && (
+        <TkCard className="mb-6">
+          <TkCardContent className="pt-6">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <p className="text-lg font-semibold">Scanning Network...</p>
+                <p className="text-sm text-muted-foreground">{scanStatus}</p>
+              </div>
+              <div className="text-2xl font-bold text-primary">
+                {Math.round(scanProgress)}%
+              </div>
+            </div>
+            <TkProgress value={scanProgress} />
+          </TkCardContent>
+        </TkCard>
+      )}
+
+      {/* Discovered Servers */}
+      {discoveredServers.length > 0 && (
+        <TkCard className="mb-6">
+          <TkCardHeader>
+            <div className="flex items-center gap-2">
+              <TkCardTitle>Discovered Servers</TkCardTitle>
+              <TkBadge appearance="prominent">{discoveredServers.length}</TkBadge>
+            </div>
+          </TkCardHeader>
+          <TkCardContent>
+            <div className="space-y-4">
+              {discoveredServers.map((server) => (
+                <TkCard key={server.ip} className="bg-muted/50">
+                  <TkCardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="flex-shrink-0"
+                          title={getConfidenceTooltip(server.confidence)}
+                        >
+                          {getConfidenceIcon(server.confidence)}
+                        </div>
+
+                        <div>
+                          <h3 className="font-semibold text-lg">
+                            {server.ip}
+                            {server.hostname && (
+                              <span className="text-sm text-muted-foreground ml-2">
+                                ({server.hostname})
+                              </span>
+                            )}
+                          </h3>
+                          <div className="text-sm text-muted-foreground">
+                            {server.error ? (
+                              <span className="text-destructive">
+                                {server.error}
+                              </span>
+                            ) : server.os_info ? (
+                              <span>{server.os_info}</span>
+                            ) : server.ssh_available ? (
+                              <span>SSH Available</span>
+                            ) : (
+                              <span>No SSH Access</span>
+                            )}
+                            {server.banner && !server.error && (
+                              <span className="ml-2 font-mono text-xs">
+                                • {server.banner.substring(0, 30)}...
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {server.confidence === "possible" && (
+                          <TkButton
+                            size="sm"
+                            intent="ghost"
+                            onClick={() => verifyServer(server)}
+                          >
+                            Verify
+                          </TkButton>
+                        )}
+                        {server.ssh_available &&
+                          !server.error &&
+                          !selectedServers.find((s) => s.ip === server.ip) && (
+                            <TkButton
+                              size="sm"
+                              onClick={() => toggleServer(server)}
+                            >
+                              Select
+                            </TkButton>
+                          )}
+                        {server.error && (
+                          <TkButton size="sm" intent="danger" disabled>
+                            Failed
+                          </TkButton>
+                        )}
+                        {selectedServers.find((s) => s.ip === server.ip) && (
+                          <>
+                            <TkBadge status="active">Selected</TkBadge>
+                            <TkButton
+                              size="sm"
+                              intent="ghost"
+                              onClick={() => toggleServer(server)}
+                            >
+                              Deselect
+                            </TkButton>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </TkCardContent>
+                </TkCard>
+              ))}
+            </div>
+          </TkCardContent>
+        </TkCard>
+      )}
+
+      {/* Navigation */}
+      <div className="flex justify-between mt-6">
+        <TkButton
+          intent="ghost"
+          className="gap-2"
+          onClick={() => navigate("/installation")}
+        >
+          <ChevronLeft className="w-5 h-5" />
+          Back
+        </TkButton>
+        <TkButton
+          className="gap-2"
+          onClick={proceedToNodeConfig}
+          disabled={selectedServers.length === 0}
+        >
+          Setup SSH Connectivity
+          <ChevronRight className="w-5 h-5" />
+        </TkButton>
+      </div>
+    </TkPageWrapper>
+  )
+}

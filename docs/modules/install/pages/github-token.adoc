@@ -1,0 +1,58 @@
+= Connect to GitHub
+:page-type: concept
+
+_Create the GitHub personal access token the installer asks for, and know exactly what the platform does with it._
+
+.TL;DR
+Create a GitHub personal access token with the scopes listed below and paste it into the installer. It logs `gh` in for you, lets you publish templates, reads your own template metadata, and keeps a backup of your certificate.
+
+Your code and your deployments live in Thinkube Git, inside the cluster. GitHub is used for four things that sit outside it:
+
+* Thinkube IDE logs the `gh` command-line tool in with the token, so `gh` works from a terminal without a browser.
+* When you publish an application as a template, Thinkube Control creates the repository in the GitHub account that owns the token and pushes the code there.
+* If you keep a repository named `<your username>-metadata` that lists your own templates, the installer reads it. It clones the templates marked for development into Thinkube IDE.
+* The installer keeps an encrypted backup of your wildcard certificate in a private repository named `thinkube-certificates` under the same account.
+
+Container images are stored in Thinkube Registry, not on GitHub.
+
+== 1. Create the token
+
+. Sign in to GitHub. Open your profile photo → *Settings* → *Developer settings* → *Personal access tokens* → *Tokens (classic)*.
+. Choose *Generate new token (classic)*.
+. Name it, for example `Thinkube`.
+. Set an expiry. The token is used after the install too, so choose one you will remember to renew.
+. Select these scopes. The installer checks for each of them and refuses a token that lacks one:
++
+[cols="1,2",options="header"]
+|===
+| Scope | Why
+
+| `repo` | Create and push the repositories above
+| `workflow` | Push repositories that contain GitHub Actions workflows
+| `write:packages` | The installer requires it. `admin:packages` also satisfies it.
+| `write:discussion` | The installer requires it.
+|===
+. *Generate token* and copy it now. Classic tokens start with `ghp_`.
+
+== 2. Give it to the installer
+
+The *Configuration* screen has one field, *GitHub Personal Access Token*. The installer calls GitHub with the token, reads the scopes GitHub reports for it, and shows a green mark when every required scope is present. A missing scope is named in the message.
+
+== Where it goes
+
+* `~/.env` on the machine running the installer, as `GITHUB_TOKEN`. The GitHub username is learned from the token, and kept as `GITHUB_USERNAME` beside it on the control plane.
+* `~/.env` on the control plane. The installer copies it there, so later operations do not need the machine you installed from.
+* Thinkube Control receives it as a secret when it is deployed; that is what publishing a template uses.
+
+== Rotating the token
+
+. Generate a new token with the same scopes.
+. Replace the `GITHUB_TOKEN` line in `~/.env` on the control plane.
+. Deploy Thinkube Control again, because it reads the file when it is deployed. From Thinkube IDE, run the `ansible/40_thinkube/core/thinkube-control/12_deploy.yaml` playbook of the `thinkube` repository.
+. In Thinkube IDE, run `gh auth login --with-token` with the new token.
+. Revoke the old token on GitHub.
+
+== Next
+
+* xref:huggingface-token.adoc[Unlock AI models].
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.

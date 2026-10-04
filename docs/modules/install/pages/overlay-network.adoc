@@ -1,0 +1,88 @@
+= Connect from anywhere
+:page-type: concept
+
+_Create the Tailscale keys the installer asks for, so every node joins your private network and the cluster is reachable from any device on it._
+
+.TL;DR
+Create a Tailscale account. Then create three items (auth key, API token, OAuth client) and paste their four values into the installer. Every node joins your private network, and every service answers at `<name>.<your domain>` from any device on it.
+
+Thinkube puts every node and the cluster's gateway on a Tailscale network, called a tailnet. The computer or phone you work from joins the same tailnet, and from then on `control.<your domain>`, `ide.<your domain>` and every other service resolve and respond from anywhere, with no port forwarding and no public IP. Nothing listens on the internet.
+
+Tailscale is the only overlay network supported. The installer shows no other choice.
+
+== What you create
+
+Three things, all in the Tailscale admin console:
+
+[cols="1,2,2",options="header"]
+|===
+| Item | What the installer does with it | Looks like
+
+| Auth key
+| Each node runs `tailscale up` with it once, to join the tailnet
+| `tskey-auth-…`
+
+| API access token
+| The installer talks to your tailnet's admin API: it verifies the credentials and adds the `tag:k8s-operator` definition to your tailnet's policy file
+| `tskey-api-…`
+
+| OAuth client for the Kubernetes operator
+| The Tailscale Kubernetes operator in the cluster uses it. It lets the cluster's gateway join your tailnet
+| client ID `k…`, secret `tskey-client-…`
+|===
+
+== 1. Create an account
+
+Sign in at https://login.tailscale.com[login.tailscale.com]. Install Tailscale on each device you will use to reach the cluster and log it in to the same account.
+
+== 2. Create an auth key
+
+. Go to *Settings → Keys → Auth keys*.
+. Choose *Generate auth key*.
+. Turn *Reusable* on, so one key can join every node.
+. Set an expiry. The key is only used during the install and when a node is added later.
+. Copy the key now. Tailscale does not show it again.
+
+== 3. Create an API access token
+
+. Go to *Settings → Keys → API access tokens*.
+. Choose *Generate access token*, name it, set an expiry.
+. Copy it now.
+
+== 4. Create the operator's OAuth client
+
+The installer cannot create this one, because Tailscale does not allow it through the API. The installer's *Tailscale Operator Setup* screen repeats these steps. Do them when you reach that screen: the installer first adds the `tag:k8s-operator` definition to your policy file, and the OAuth dialog needs it to exist.
+
+. Go to *Settings → Trust Credentials* (https://login.tailscale.com/admin/settings/oauth[direct link]).
+. Choose *+ Credential*, then *OAuth*, then *Continue*.
+. Leave the scopes dropdown on *Custom* and tick *Devices → Core*, read and write, and *Keys → Auth Keys*, read and write. Leave everything else unticked.
+. Tag: `tag:k8s-operator`.
+. Choose *Generate*. Tailscale shows the client ID and secret once; paste them into the installer before closing the dialog.
+
+The same screen asks for the hostname the gateway will have on your tailnet. Leave it blank for `<cluster name>-gw`.
+
+== What the installer does
+
+. Installs Tailscale on each node and joins it with the auth key.
+. Shows each node's tailnet address on the *Overlay Setup* screen.
+. Installs the Tailscale Kubernetes operator in the cluster. The operator exposes the cluster's gateway and its DNS server as tailnet devices, using the OAuth client.
+. Points the cluster's DNS records for `*.<your domain>` at the gateway's tailnet address.
+
+== Reach the cluster afterwards
+
+Services are reachable from the tailnet and your LAN. Their names resolve only through the cluster's own DNS server; no public DNS record is created.
+
+From any device logged in to the tailnet:
+
+[source,bash]
+----
+tailscale ip <cluster name>-gw        # the gateway's address
+dig +short control.<your domain>      # should print the same address
+----
+
+Each node is a separate tailnet device too, so `ssh <user>@<node>` works from any device on the tailnet.
+
+== Next
+
+* xref:cloudflare-token.adoc[Set up your domain] — the certificates every service uses.
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.

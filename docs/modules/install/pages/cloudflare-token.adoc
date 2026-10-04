@@ -1,0 +1,55 @@
+= Set up your domain
+:page-type: concept
+
+_Put your domain's DNS zone at Cloudflare and create the API token the installer uses to obtain certificates._
+
+.TL;DR
+Move your domain's DNS to Cloudflare and create one API token that can edit that zone's DNS. The installer uses it to obtain a wildcard certificate from Let's Encrypt and renews it by itself.
+
+Every service gets a name under your domain and a certificate signed by Let's Encrypt. Parts of the platform need a trusted certificate, so every install needs a domain. The installer gets the certificate from Let's Encrypt with DNS validation. Let's Encrypt checks a DNS record that the installer creates in your Cloudflare zone. It then issues a wildcard certificate for `<your domain>` and `*.<your domain>`.
+
+That is the only thing Cloudflare does here. The cluster's own DNS server resolves the names, on your network and over Tailscale. No public DNS records are created for your services.
+
+== What you need
+
+* A domain you own. Any registrar.
+* A free Cloudflare account, with the domain added as a site and its nameservers pointed at Cloudflare.
+
+== 1. Add the domain to Cloudflare
+
+. Sign in at https://dash.cloudflare.com[dash.cloudflare.com] and choose *Add a site*.
+. Enter the domain and pick the *Free* plan.
+. Change the domain's nameservers at your registrar to the two Cloudflare gives you.
+. Wait until the site shows as active. Cloudflare emails you when it is.
+
+== 2. Create the token
+
+. In the dashboard, open your profile (top right) → *My Profile* → *API Tokens* → *Create Token*.
+. Choose *Create Custom Token*.
+. Name it, for example `Thinkube certificates`.
+. Permission: *Zone → DNS → Edit*.
+. Zone resources: *Include → Specific zone →* your domain.
+. Optional: restrict the token to your public IP address under *Client IP Address Filtering*.
+. *Continue to summary*, then *Create Token*. Copy it now; it is shown once.
+
+== 3. Give it to the installer
+
+The *Configuration* screen has a *Cloudflare API Token* field next to the domain name. The installer looks up the zone for your domain through Cloudflare's API with the token and shows a green mark when it finds it.
+
+== What the installer does with it
+
+* Copies it to the control plane, so certificates renew without the machine you installed from.
+* Installs acme.sh on the control plane and issues the wildcard certificate with Let's Encrypt as the certificate authority.
+* Installs a renewal hook. The certificate is renewed when it is 30 days old. The hook then updates every Kubernetes TLS secret that holds the old wildcard certificate, and the gateway reloads them.
+* Also keeps an encrypted copy of the certificate in a private repository named `thinkube-certificates` under your GitHub account. The copy is encrypted with AES-256 using your sudo password. The repository's README says how to decrypt it with `openssl` and restore it to a cluster by hand.
+
+== If verification fails
+
+* The token needs *DNS → Edit* on the zone, nothing less.
+* The domain must be active on Cloudflare. `dig NS <your domain>` should print Cloudflare nameservers.
+* Let's Encrypt limits how many identical certificates it issues per week. Repeated reinstalls can reach that limit; the encrypted backup is there so a certificate can be restored instead of reissued.
+
+== Next
+
+* xref:github-token.adoc[Connect to GitHub].
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.

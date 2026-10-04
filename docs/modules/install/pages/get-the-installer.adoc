@@ -1,0 +1,68 @@
+= Get the installer
+:page-type: concept
+
+_Where to download the installer, which file your machine needs, and how to install, start and remove it._
+
+.TL;DR
+On the Ubuntu 24.04 desktop you will install from, download the `.deb` for your architecture from the https://github.com/thinkube/thinkube-installer/releases/latest[latest release], install it with `sudo apt install ./thinkube-installer_*.deb`, and start *Thinkube Installer* from the applications menu.
+
+The installer is a desktop application. It runs on a machine with Ubuntu 24.04 and a desktop, which can be one of your servers or a separate computer (xref:overview.adoc[Install Thinkube]), and it reaches your servers over SSH.
+
+== Which file
+
+Each release carries one package per architecture:
+
+[cols="1,2",options="header"]
+|===
+| File | For
+
+| `thinkube-installer_<version>_amd64.deb` | Intel and AMD computers (x86-64)
+| `thinkube-installer_<version>_arm64.deb` | ARM computers, such as a DGX Spark
+| `SHA256SUMS` | The checksums of both packages
+|===
+
+To see which one your machine needs:
+
+[source,bash]
+----
+dpkg --print-architecture
+----
+
+It prints `amd64` or `arm64`.
+
+== Download and check
+
+Download the package and `SHA256SUMS` from the https://github.com/thinkube/thinkube-installer/releases/latest[latest release] into the same folder, then check the package:
+
+[source,bash]
+----
+sha256sum --check --ignore-missing SHA256SUMS
+----
+
+The line for your package ends in `OK`.
+
+== Install
+
+[source,bash]
+----
+sudo apt install ./thinkube-installer_<version>_<architecture>.deb
+----
+
+`apt` installs what the package needs, `python3`, `python3-pip` and `python3-venv`, and the package then sets up the installer's own Python environment. That step downloads Python packages, so the machine needs internet access while it installs.
+
+== Start it
+
+Open *Thinkube Installer* from the applications menu, or run `thinkube-installer` in a terminal. The first screen is the welcome screen that xref:overview.adoc#_1_welcome[Install Thinkube] describes from there on.
+
+== Remove it
+
+[source,bash]
+----
+sudo apt remove thinkube-installer
+----
+
+Removing the installer leaves your cluster as it is: once the install is complete, the control plane runs on its own, and the machine you installed from is no longer needed.
+
+== Next
+
+xref:node-setup.adoc[Prepare your machines]: what each server needs before the installer can reach it.

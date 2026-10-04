@@ -1,0 +1,72 @@
+= Add more nodes
+:page-type: concept
+
+_Join another machine to a running cluster from Thinkube Control, including one of a different CPU architecture, and build the images it needs._
+
+.TL;DR
+In Thinkube Control open *Cluster Nodes*, press *Add Node*, enter the machine's address and wait: it is found, joined and configured. If the new machine is a different CPU architecture, run the image build from a terminal in Thinkube IDE as section 2 shows.
+
+You add a node in two parts. The first runs in Thinkube Control under *Cluster Nodes*: it finds the machine, joins it to the cluster, and configures it. The second is needed only when the new node has a CPU architecture the cluster did not have. Then every container image must be built for it. Image builds take a long time, and you may need to repeat one step, so you run them from a terminal in Thinkube IDE.
+
+== Before you start
+
+* The new machine meets the same requirements as the first ones — xref:node-setup.adoc[Prepare your machines]: Ubuntu Server 24.04, the same user and sudo password, OpenSSH server, internet access.
+* The cluster is running and you can open Thinkube Control.
+
+Thinkube Control does all the setup on the new machine.
+
+== 1. Find and join the node
+
+. In Thinkube Control open *Cluster Nodes* and choose *Add Node*.
+. Enter the network to scan, for example `192.168.1.0/24`. Several ranges may be given, separated by commas. Scan it.
+. The wizard lists the machines it found with hostname, IP address, Ubuntu version and status. Select the ones to add. A machine that fails a requirement is marked, and the reason is shown.
+. Continue to hardware detection. Thinkube Control connects to each machine over SSH and reads its CPU architecture, its GPUs and its disks. If the architecture is new to the cluster, the wizard says so.
+. Confirm the last step of the wizard.
+
+Thinkube Control connects the node to your tailnet, joins it to the cluster, and sets up DNS, SSH, the GPU and storage. The page shows each step as it runs. Thinkube Control cordons the node during setup, so nothing is scheduled on it until setup finishes.
+
+What happens next depends on the architecture.
+
+*Same architecture as an existing node.* Every image already exists for it. Thinkube Control makes the node ready and reports it.
+
+*New architecture.* The node stays cordoned. The page says which architectures now need images and shows the command to run.
+
+== 2. Build the images for a new architecture
+
+Open a terminal in Thinkube IDE and run the command the page showed:
+
+[source,bash]
+----
+tk_images rebuild --uncordon <node1>,<node2>
+----
+
+`tk_images` runs three steps, in this order:
+
+. *mirror* — mirrors the public images the platform uses from their registries into Thinkube Registry, one tag per architecture;
+. *build-base* — builds the platform's base images natively on a node of each architecture;
+. *build-jupyter* — builds the notebook image with GPU support.
+
+Each step checks Thinkube Registry for an existing per-architecture tag and skips what is already there, so a retry only builds what is missing. When all three succeed, `tk_images` records the architectures that have images and uncordons the nodes you named.
+
+== If a step fails
+
+The error is printed in the terminal. Fix its cause and run only the step that failed:
+
+[source,bash]
+----
+tk_images mirror          # public images only
+tk_images build-base      # base images only
+tk_images build-jupyter   # the notebook image only
+tk_images uncordon <node1>,<node2>
+tk_images status          # which architectures have images, which nodes are cordoned
+----
+
+An image build that fails with `exec format error` pulled a base image that exists for one architecture only. Run `tk_images mirror` again, then retry the build.
+
+== Remove a node
+
+In Thinkube Control, under *Cluster Nodes*, choose *Remove Node* on the node's row. Thinkube Control drains its workloads, removes it from the cluster, and removes it from the inventory.
+
+== Next
+
+* xref:thinkube-docs::kubernetes/index.adoc[Thinkube Kubernetes] — how one cluster runs amd64 and arm64 together and how GPU memory is budgeted.

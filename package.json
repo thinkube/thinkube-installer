@@ -1,0 +1,20 @@
+{
+  "name": "thinkube-installer",
+  "version": "0.1.0",
+  "description": "Installer for Thinkube, a single-user self-hosted AI platform on Kubernetes",
+  "type": "module",
+  "scripts": {
+    "dev": "cd frontend && npm run tauri:dev",
+    "build": "cd frontend && npm run tauri:build",
+    "frontend:dev": "cd frontend && npm run dev"
+  },
+  "keywords": [
+    "kubernetes",
+    "ai",
+    "self-hosted",
+    "installer",
+    "thinkube"
+  ],
+  "author": "thinkube Team",
+  "license": "Apache-2.0"
+}

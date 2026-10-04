@@ -1,0 +1,5 @@
+# Files this project did not write. The header tool leaves them alone; their
+# own upstream notices and licences apply.
+
+# NodeSource's Node.js repository setup script
+nodesource_setup.sh

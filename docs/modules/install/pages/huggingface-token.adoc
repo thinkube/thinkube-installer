@@ -1,0 +1,35 @@
+= Unlock AI models
+:page-type: concept
+
+_Create the Hugging Face token the installer asks for, and know what it is used for._
+
+.TL;DR
+Create a read-only token on Hugging Face, accept the licence of any gated model you want, and paste the token into the installer. Models are downloaded once with it and served from your own storage from then on.
+
+Models come from Hugging Face. The platform mirrors a model once into Thinkube Storage and serves it from there. The download is the only time Hugging Face is contacted. Some models are gated: you must accept their licence on the model's page before the download is allowed.
+
+== 1. Create a token
+
+. Sign in at https://huggingface.co[huggingface.co].
+. Go to https://huggingface.co/settings/tokens[Settings → Access Tokens] and choose *New token*.
+. Give it a name and *Read* access. Reading is all the platform needs.
+. Copy it now.
+
+The token starts with `hf_`.
+
+== 2. Accept the licences you need
+
+For a gated model, open its page on Hugging Face while signed in with the same account and accept the terms. The catalogue in Thinkube Control marks which models are gated. A mirror of a gated model whose licence you have not accepted fails; accept the licence and submit the mirror again.
+
+== 3. Give it to the installer
+
+The *Configuration* screen has a *HuggingFace Access Token* field. The installer verifies the token against Hugging Face's `whoami` endpoint and shows a green mark when it is valid.
+
+== Where it goes and what uses it
+
+The installer stores it on the control plane. Model downloads and Thinkube Control use it from there.
+
+== Next
+
+* xref:run-the-installer.adoc[Run the installer] — the installer, screen by screen.
+* xref:thinkube-docs::playbooks/serve-your-first-model.adoc[Serve your first model] — mirroring a model after the install.
