@@ -1,10 +1,7 @@
 # thinkube-installer
 
-The desktop application that installs [Thinkube](https://github.com/thinkube/thinkube)
-on your machines.
-
-To install Thinkube, start at the
-[Thinkube README](https://github.com/thinkube/thinkube#readme).
+The desktop application that installs Thinkube on your machines. To install
+Thinkube, start at the [Thinkube README](https://github.com/thinkube/thinkube#readme).
 
 ## License
 
