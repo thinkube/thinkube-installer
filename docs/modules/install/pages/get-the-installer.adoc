@@ -52,7 +52,7 @@ sudo apt install ./thinkube-installer_<version>_<architecture>.deb
 
 == Start it
 
-Open *Thinkube Installer* from the applications menu, or run `thinkube-installer` in a terminal. The first screen is the welcome screen that xref:overview.adoc#_1_welcome[Install Thinkube] describes from there on.
+Open *Thinkube Installer* from the applications menu, or run `thinkube-installer` in a terminal. The first screen is the welcome screen; xref:run-the-installer.adoc#_1_welcome[Run the installer] describes every screen from there on.
 
 == Remove it
 
@@ -65,4 +65,4 @@ Removing the installer leaves your cluster as it is: once the install is complet
 
 == Next
 
-xref:node-setup.adoc[Prepare your machines]: what each server needs before the installer can reach it.
+xref:run-the-installer.adoc[Run the installer]: every screen, and what each one does to your machines.
