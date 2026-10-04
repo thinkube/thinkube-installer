@@ -31,7 +31,7 @@ Go through both lists. Each line links to the page with the details.
 
 Every server needs Ubuntu Server 24.04, the same sudo user and password, a running SSH server and internet access.
 
-Thinkube has been tested on a DGX Spark and on an x86 workstation with RTX 3090 GPUs.
+Thinkube has been tested on a DGX Spark and on an amd64 workstation with RTX 3090 GPUs.
 
 === Accounts and tokens
 

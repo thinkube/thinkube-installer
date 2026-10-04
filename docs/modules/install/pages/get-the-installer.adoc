@@ -16,8 +16,8 @@ Each release carries one package per architecture:
 |===
 | File | For
 
-| `thinkube-installer_<version>_amd64.deb` | Intel and AMD computers (x86-64)
-| `thinkube-installer_<version>_arm64.deb` | ARM computers, such as a DGX Spark
+| `thinkube-installer_<version>_amd64.deb` | amd64
+| `thinkube-installer_<version>_arm64.deb` | arm64, such as a DGX Spark
 | `SHA256SUMS` | The checksums of both packages
 |===
 
