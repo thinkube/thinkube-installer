@@ -205,9 +205,9 @@ ps aux | grep "python3 main.py"
 
 ## Key Gotchas
 
-1. **Backend path**: Located at `frontend/src-tauri/backend/`, NOT `backend/` at root. The root `package.json` has a stale `backend:dev` script pointing to the wrong path.
+1. **Backend path**: Located at `frontend/src-tauri/backend/`, NOT `backend/` at root.
 
-2. **Root vs frontend package.json**: The root `package.json` still references Vue.js/Pinia dependencies (legacy). The actual frontend dependencies are in `frontend/package.json` (React).
+2. **Root vs frontend package.json**: The root `package.json` only delegates (`dev`, `build` and `frontend:dev` run in `frontend/`) and declares no dependencies. The frontend dependencies are in `frontend/package.json`.
 
 3. **Two venv names**: Development uses `venv-test`, production uses `.venv`. Cargo runs from `frontend/src-tauri/` in development.
 
@@ -239,7 +239,7 @@ ps aux | grep "python3 main.py"
 ## Modifying Ansible Playbooks
 
 Playbooks are in the separate `thinkube` repository (github.com/thinkube/thinkube):
-- Edit in `~/thinkube/` (source of truth)
+- Edit in the `thinkube` checkout: `~/thinkube-platform/core/thinkube/` in Thinkube IDE (source of truth)
 - Commit and push to GitHub
 - Pull into `/tmp/thinkube-installer/` if installer is already running
 - Never edit files directly in `/tmp/thinkube-installer/`
